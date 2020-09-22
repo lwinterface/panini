@@ -1,70 +1,91 @@
 import os, sys
-import random
-import importlib
+import uuid
 import logging
-
-from utils.singleton import singleton
-from logger.logger import Logger
 from messanger.msgr_client import MessengerClient
-from .event_registrator import EventManager
+from logger.logger import Logger
 
 class App:
-    def __init__(self, **kwargs):
-        #get base parameters
-        self.service_name = kwargs.get('service_name', None)
-        self.client_id = kwargs.get('client_id', str(random.randint(1,1000000)))
-        os.environ['SERVICE_NAME'] = self.service_name
-        os.environ['CLIENT_ID'] = self.client_id
-
-        #logger
-        self.log_file = kwargs.get('log_file', f'{self.service_name}.log')
-        self.log_formatter = kwargs.get('log_formatter', '%(message)s')
-        self.console_level = kwargs.get('console_level', logging.DEBUG)
-        self.file_level = kwargs.get('file_level', logging.INFO)
-        self.logging_level = kwargs.get('logging_level', logging.INFO)
-        self.event_registrator_required = kwargs.get('event_registrator_required', True)
-        script_position = os.path.dirname(sys.argv[0])
-        self.root_path = kwargs.get('root_path', f'{script_position}/' if script_position else '')
-        os.environ['SERVICE_ROOT_PATH'] = self.root_path
-        self.slack_webhook_url = kwargs.get('slack_webhook_url', None)
-
-        #msgr_client
-        self.broker_host = kwargs.get('broker_host', None)
-        self.port = kwargs.get('port', None)
-        self.allow_reconnect = kwargs.get('allow_reconnect', None)
-        self.max_reconnect_attempts = kwargs.get('max_reconnect_attempts', None)
-        self.reconnecting_time_wait = kwargs.get('reconnecting_time_wait', None)
-        self.if_error = kwargs.get('if_error', None)
-        self.client_strategy = kwargs.get('client_strategy', 'in_current_process')
-        self.topics_and_callbacks = kwargs.get('topics_and_callbacks', {})
-        self.publish_topics = kwargs.get('publish_topics', [])
-        self.queue = kwargs.get('queue', "")
-        self.listen_topic_only_if_include_state = kwargs.get('listen_topic_only_if_include_state', False)
-        self.listen_topic_only_if_include = kwargs.get('listen_topic_only_if_include', None)
-
-    def initialize(self):
-        self.logger = Logger(
-            name=self.client_id,
-            log_file=self.log_file,
-            log_formatter=self.log_formatter,
-            console_level=self.console_level,
-            file_level=self.file_level,
-            logging_level=self.logging_level,
-            root_path=self.root_path,
-            slack_webhook_url=self.slack_webhook_url
-        )
+    def __init__(self,
+                 host,
+                 port,
+                 service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
+                 client_id: str = str(uuid.uuid4())[:10],
+                 reconnect: bool = False,
+                 max_reconnect_attempts: int = None,
+                 reconnecting_time_sleep: int = 1,
+                 app_strategy: str = 'asyncio',
+                 subscribe_topics_and_callbacks: dict = {},
+                 publish_topics: list = [],
+                 event_registrator_required: bool = True,
+                 allocation_quenue_group: str = "",
+                 listen_topic_only_if_include: list = None,
+                 logger_required: bool = True,
+                 log_file: str = None,
+                 log_formatter: str = '%(message)s',
+                 console_level: str = logging.DEBUG,
+                 file_level: str = logging.INFO,
+                 logging_level: str = logging.INFO,
+                 root_path: str = '',
+                 slack_webhook_url_for_logs: str = None,
+                 telegram_token_for_logs: str = None,
+                 telegram_chat_for_logs: str = None,
+                 ):
+        """
+        :param host: NATS broker host
+        :param port: NATS broker port
+        :param service_name: Name of microsirvice
+        :param client_id: id of microservice, name and client_id used for NATS client name generating
+        :param reconnect: allows reconnect if connection to NATS has been lost
+        :param max_reconnect_attempts: any number
+        :param reconnecting_time_sleep: pause between reconnection
+        :param app_strategy: 'async' or 'sync' #TODO describe it more detailed
+        :param subscribe_topics_and_callbacks: if you need to subscibe additional topics(except topics from event.py).
+                                        This way doesn't support serializators
+        :param publish_topics: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
+        :param event_registrator_required: False if you don't want to register subscriptions
+        :param allocation_quenue_group: name of NATS queue for distributing incoming messages among many NATS clients
+                                    more detailed here: https://docs.nats.io/nats-concepts/queue
+        :param listen_topic_only_if_include:   #TODO
+        :param logger_required:        #TODO
+        :param log_file:               #TODO
+        :param log_formatter:  #TODO
+        :param console_level:  #TODO
+        :param file_level:     #TODO
+        :param logging_level:  #TODO
+        :param root_path:      #TODO
+        :param slack_webhook_url_for_logs:     #TODO
+        :param telegram_token_for_logs:        #TODO
+        :param telegram_chat_for_logs          #TODO
+        """
         try:
-            # event_registrator
-            if self.event_registrator_required:
-                mod = __import__(f'{self.service_name}.events', fromlist=['EventManager'])
-                registrator = getattr(mod, 'EventManager')
-                self.event_registrator = registrator()
+            if logger_required:
+                self.logger = Logger(
+                    name=client_id,
+                    log_file=log_file if log_file else service_name+'.log',
+                    log_formatter=log_formatter,
+                    console_level=console_level,
+                    file_level=file_level,
+                    logging_level=logging_level,
+                    root_path=root_path,
+                    slack_webhook_url_for_logs=slack_webhook_url_for_logs,
+                    telegram_token_for_logs=telegram_token_for_logs,
+                    telegram_chat_for_logs=telegram_chat_for_logs,
+                )
+            else:
+                self.logger = lambda *x: Exception("Logger hasn't been connected")
+            if event_registrator_required:
+                try:
+                    mod = __import__(f'{service_name}.events', fromlist=['EventManager'])
+                    registrator = getattr(mod, 'EventManager')
+                    self.event_registrator = registrator()
+                except Exception as e:
+                    raise Exception(f'Import from events.py error: {e}')
                 topics_and_callbacks = self.event_registrator.get_topics_and_callbacks()
-                topics_and_callbacks.update(self.topics_and_callbacks)
-                if self.listen_topic_only_if_include_state:
+                topics_and_callbacks.update(subscribe_topics_and_callbacks)
+                if listen_topic_only_if_include is not None:
                     for topic in topics_and_callbacks.copy():
                         success = False
-                        for topic_include in self.listen_topic_only_if_include:
+                        for topic_include in listen_topic_only_if_include:
                             if topic_include in topic:
                                 success = True
                                 break
@@ -73,28 +94,25 @@ class App:
             else:
                 topics_and_callbacks = {}
 
-            self.logger.log(f"workbook: topics_and_callbacks({os.environ['CLIENT_ID']}): {list(topics_and_callbacks.keys())}")
         except Exception as e:
-            error = f'WorkBook.event_registrator critical error: {str(e)}'
-            self.logger.log(error, level='error')
+            error = f'App.event_registrator critical error: {str(e)}'
             raise Exception(error)
-        # msgr_client
-        self.msgr_client = MessengerClient()
-        connection = self.msgr_client.create_connection(
-            client_id=self.client_id,
-            broker_host=self.broker_host,
-            port=self.port,
+
+        self.nats_client = NATSClient()
+        connection = self.nats_client.create_connection(
+            client_id=client_id,
+            host=host,
+            port=port,
             listen_topics_callbacks=topics_and_callbacks,
-            publish_topics=self.publish_topics,
-            allow_reconnect=self.allow_reconnect,
-            queue=self.queue,
-            max_reconnect_attempts=self.max_reconnect_attempts,
-            reconnecting_time_wait=self.reconnecting_time_wait,
-            client_strategy=self.client_strategy
+            publish_topics=publish_topics,
+            allow_reconnect=reconnect,
+            queue=allocation_quenue_group,
+            max_reconnect_attempts=max_reconnect_attempts,
+            reconnecting_time_wait=reconnecting_time_sleep,
+            client_strategy=app_strategy
         )
         if not connection['success']:
-            msg = 'MessengerClient connection problem: %s' % str(connection)
-            self.logger.log(msg, level='error', slack=True)
+            msg = 'NATSClient connection problem: %s' % str(connection)
             raise Exception(msg)
 
 
