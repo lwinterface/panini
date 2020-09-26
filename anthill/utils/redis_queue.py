@@ -1,11 +1,8 @@
 import redis
-from config.redis_config import HOST, PORT
-from logger.logger import Logger
 
-# HOST = '127.0.0.1'
 
 class RedisQueue:
-    def __init__(self, name, namespace='queue', host=HOST, port=PORT, db=0):
+    def __init__(self, name, namespace='queue', host='127.0.0.1', port='6379', db=0):
         self.__db = redis.Redis(host=host, port=port, db=db)
         self.key = '%s:%s' % (namespace, name)
 

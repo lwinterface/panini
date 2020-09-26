@@ -5,24 +5,25 @@ import random
 from utils.helper import start_thread
 from logger.logger import Logger, InterServicesRequestLogger
 from utils.singleton import singleton
-import config.msgr_config as config
-
+from ._asyncio_cli import _AsyncioNATSClient
+from ._multi_proc_cli import _MultiProcNATSClient
 
 class NATSClient:
 
     def __init__(self,
                 client_id: str,
                 host: str,
-                port: int,
+                port: int or str,
                 listen_topics_callbacks: dict,
                 allow_reconnect: bool or None,
                 max_reconnect_attempts: int or None,
                 reconnecting_time_wait: int or None,
-                if_error='warning',  # warning or error
                 publish_topics=[],
                 # TODO: auth_credentialns
                 queue="",
-                client_strategy='in_current_process',  # in_current_process' or in_separate_processes'
+                client_strategy='asyncio',  # in_current_process' or in_separate_processes'
+                redis_host='127.0.0.1',
+                redis_port='6379',
                 pending_bytes_limit=65536 * 1024 * 10,
                 ):
         """
@@ -34,10 +35,9 @@ class NATSClient:
         :param allow_reconnect: False if you want to stop instance when connection lost
         :param max_reconnect_attempts:
         :param reconnecting_time_wait:
-        :param if_error: type of logs for errors
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-        self.log = Logger(name='MessengerClient').log
+        self.log = Logger(name='NATSClient').log
         self.connected = False
         self.client_id = client_id
         self.host = host
@@ -48,64 +48,19 @@ class NATSClient:
         self.allow_reconnect = allow_reconnect
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnecting_time_wait = reconnecting_time_wait
-        self.if_error = if_error
         self.client_strategy = client_strategy
         self.pending_bytes_limit = pending_bytes_limit
+        self.redis_host = redis_host
+        self.redis_port = redis_port
         self._initialize_sub_class(client_strategy)
         #TODO: check that connect/sub/pub interface exist
-        self._connect()
-
 
     def _initialize_sub_class(self, client_strategy):
         if client_strategy == 'asyncio':
-            _AsyncioNATSClient.__init__()
+            _AsyncioNATSClient()
         elif client_strategy == 'sync':
-            _MultiProcNATSClient.__init__()
+            _MultiProcNATSClient())
 
-
-    def _connect_old(self):
-        if self.client_strategy == 'asyncio':
-            from messanger._msgr_client_v4 import _MessengerClient
-            self.client = _MessengerClient().establish_connection(
-                # client_id='client' + str(random.randint(1, 100)),
-                client_id=self.client_id,
-                broker_host=config.BROKER_HOST,
-                port=config.PORT,
-                listen_topics_callbacks=self.listen_topics_callbacks,
-                publish_topics=self.publish_topics,
-                queue=self.queue,
-                allow_reconnect=config.ALLOW_RECONNECT,
-                max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-                reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
-            )
-        elif self.client_strategy == 'in_current_process':
-            from messanger._msgr_client_v2 import _MessengerClient
-            self.client = _MessengerClient().establish_connection(
-                # client_id='client' + str(random.randint(1, 100)),
-                client_id=self.client_id,
-                broker_host=config.BROKER_HOST,
-                port=config.PORT,
-                listen_topics_callbacks=self.listen_topics_callbacks,
-                publish_topics=self.publish_topics,
-                queue=self.queue,
-                allow_reconnect=config.ALLOW_RECONNECT,
-                max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-                reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
-            )
-        elif self.client_strategy == 'in_separate_processes':
-            from messanger._msgr_client_v3 import _MessengerClient
-            self.client = _MessengerClient().establish_connection(
-                # client_id='client' + str(random.randint(1, 100)),
-                client_id=self.client_id,
-                broker_host=config.BROKER_HOST,
-                port=config.PORT,
-                listen_topics_callbacks=self.listen_topics_callbacks,
-                publish_topics=self.publish_topics,
-                queue=self.queue,
-                allow_reconnect=config.ALLOW_RECONNECT,
-                max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-                reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
-            )
 
 @singleton
 class MessengerClient:
@@ -257,16 +212,15 @@ if __name__ == "__main__":
         print(f"reciever_msg_handler <<<<< topic: {topic}, msg: {msg}")
 
 
-    cli = MessengerClient()
-    cli.create_connection(
+    cli = NATSClient(
         client_id='client'+str(random.randint(1,100)),
-        broker_host=config.BROKER_HOST,
-        port=config.PORT,
+        host='127.0.0.1',
+        port='4222',
         listen_topics_callbacks={'topic2.wqe':reciever_msg_handler},
         # publish_topics=['topic2.wqe',],
-        allow_reconnect=config.ALLOW_RECONNECT,
-        max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-        reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
+        allow_reconnect=True,
+        max_reconnect_attempts=10,
+        reconnecting_time_wait=1,
     )
     time.sleep(5)
     start_thread(msg_generator)

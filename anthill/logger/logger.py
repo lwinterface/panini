@@ -1,8 +1,6 @@
 import os, sys
 import logging, logging.handlers
 import datetime
-from .slack import Slack
-from service_core.service_name_registrator import create_client_code_by_hostname
 
 
 
@@ -27,9 +25,6 @@ class Logger:
                      file_level=logging.DEBUG,
                  logging_level=logging.DEBUG,
                  root_path=None,
-                 slack_webhook_url_for_logs=None,
-                 telegram_token_for_logs=None,
-                 telegram_chat_for_logs=None
                  ):
         self.name = name
         if log_file is not None:
@@ -37,8 +32,6 @@ class Logger:
         else:
             if 'CLIENT_ID' in os.environ:
                 self.log_file = f"{os.environ['CLIENT_ID']}.log"
-            # if 'SERVICE_NAME' in os.environ:
-            #     self.log_file = f"{os.environ['SERVICE_NAME']}.log"
             else:
                 self.log_file = f"{name}.log"
         self.log_formatter = log_formatter
@@ -52,10 +45,6 @@ class Logger:
                 self.root_path = os.environ['SERVICE_ROOT_PATH']
             except:
                 self.root_path = '/'
-        self.slack = None
-        if slack_webhook_url_for_logs:
-            self.slack = Slack(webhook_url=slack_webhook_url_for_logs)
-            self.slack.webhook_check(webhook_url=slack_webhook_url_for_logs)
         if log_file:
             separate_file = True
         else:
@@ -109,7 +98,7 @@ class Logger:
         except OSError as e:
             pass
 
-    def log(self, msg, level='info', from_=None, slack=False, telegram=False, print_=False, **log):
+    def log(self, msg, level='info', from_=None, print_=False, **log):
         if from_:
             log['from'] = self.name + '__' + from_
         else:
@@ -131,13 +120,7 @@ class Logger:
             self.logger.info(log)
         if print_:
             print(msg)
-        if slack:
-            if not self.slack:
-                raise Exception("Slack hasn't connected")
-            try:
-                self.slack.send_slack_message(msg)
-            except:
-                pass
+
 
 
 class InterServicesRequestLogger(Logger):
@@ -149,7 +132,7 @@ class InterServicesRequestLogger(Logger):
                  logging_level=logging.DEBUG,
                  root_path=None,
                  separated_file=False,
-                 slack_webhook_url='https://hooks.slack.com/services/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'):
+                 ):
         self.name = name
         if log_file is not None:
             self.log_file = log_file
@@ -166,10 +149,6 @@ class InterServicesRequestLogger(Logger):
                 self.root_path = "/".join(os.environ['SERVICE_ROOT_PATH'][:-1].split('/')[:-1])+"/messanger/"
             except:
                 self.root_path = '/'
-        self.slack = None
-        if slack_webhook_url:
-            self.slack = Slack(webhook_url=slack_webhook_url)
-            self.slack.webhook_check(webhook_url=slack_webhook_url)
         self.logger = self.create(separate_file=separated_file)
 
     def isr_log(self, message, **kwargs):

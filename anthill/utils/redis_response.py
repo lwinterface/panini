@@ -6,7 +6,6 @@ from nats.aio.errors import ErrTimeout, NatsError
 
 from utils.redis_queue import RedisQueue
 from logger.logger import Logger
-from config.redis_config import HOST, PORT
 
 log = Logger(name='_MessengerClient_V3').log
 # HOST = '127.0.0.1'
@@ -16,7 +15,7 @@ class ResponseData:
         self.data = data
 
 class RedisResponse(RedisQueue):
-    def __init__(self, name, namespace='response', host=HOST, port=PORT, db=0, waiting_btwn_check=0.05):
+    def __init__(self, name, namespace='response', host='127.0.0.1', port='6379', db=0, waiting_btwn_check=0.05):
         if 'SERVICE_NAME' in os.environ:
             if '_sender_client' in os.environ['SERVICE_NAME']:
                 service_name = os.environ['SERVICE_NAME'].replace('_sender_client','')

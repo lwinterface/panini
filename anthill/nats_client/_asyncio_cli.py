@@ -17,7 +17,7 @@ class _AsyncioNATSClient:
     Subinterface for NATSClient, create asyncio NATS connection for sending and listening
     """
 
-    def _connect(self):
+    def connect(self):
         #TODO: check that all cls attr exists
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
@@ -25,7 +25,7 @@ class _AsyncioNATSClient:
     async def _establish_connection(self):
         # TODO: authorization
         self.client = NATS()
-        self.server = self.host + ':' + self.port
+        self.server = self.host + ':' + str(self.port)
         kwargs = {'servers': self.server, 'loop': self.loop, 'name': self.client_id}
         if self.allow_reconnect:
             kwargs['allow_reconnect'] = self.allow_reconnect
@@ -90,7 +90,6 @@ class _AsyncioNATSClient:
                 # isr_log(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
-            # isr_id = data.pop('isr-id', None)
             isr_id = data.get('isr-id', str(uuid.uuid4())[:10])
             try:
                 await handle_message_with_response(cli, data, reply_to, isr_id)
@@ -199,9 +198,16 @@ class _AsyncioNATSClient:
             return True
         log('NATS Client status: DISCONNECTED', level='warning')
 
+
+
+
+
+
+
+
 # for test
 if __name__ == "__main__":
-    os.environ['SERVICE_NAME'] = 'NATSCli'
+    os.environ['SERVICE_NAME'] = 'NATSAIOCli'
 
     def msg_generator():
         loop = asyncio.new_event_loop()
@@ -283,7 +289,7 @@ if __name__ == "__main__":
         print('amsg_generator started')
 
         async def request(i):
-            result = await cli.aio_publish_request({'data': f' =======>>>>>>some message number {str(i)}'},
+            result = await cli.aio_publish_request({'data': f' =======>>>>>>some request number {str(i)}'},
                                                    'topic2.wqe', timeout=60)
             print(result)
             return result
@@ -317,17 +323,17 @@ if __name__ == "__main__":
         return response
 
     print('start')
-    cli = _MessengerClient()
-    cli.establish_connection(
-        client_id='client' + str(random.randint(1, 100)),
-        broker_host='127.0.0.1',
-        port=config.PORT,
-        listen_topics_callbacks={'topic2.wqe': [reciever_msg_handler]},
-        publish_topics=['topic2.wqe', ],
-        allow_reconnect=config.ALLOW_RECONNECT,
-        max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-        reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
-    )
+    cli = _AsyncioNATSClient()
+    cli.client_id = 'client' + str(random.randint(1, 100))
+    cli.host = '127.0.0.1'
+    cli.port = "4222"
+    cli.listen_topics_callbacks = {'topic2.wqe': [reciever_msg_handler]}
+    cli.allow_reconnect = True
+    cli.max_reconnect_attempts = 10
+    cli.reconnecting_time_wait = 10
+    cli.queue = ''
+    cli.pending_bytes_limit = 65536 * 1024 * 10
+    cli.connect()
     time.sleep(3)
     # start_thread(msg_generator)
     # start_thread(msg_req_generator)
@@ -335,7 +341,7 @@ if __name__ == "__main__":
     # loop.create_task(job(cli.client))
     # loop.create_task(amsg_generator_v2(cli))
     # loop.create_task(amsg_req_generator(cli))
-    loop.create_task(amsg_req_generator_v2(cli))
+    # loop.create_task(amsg_req_generator_v2(cli))
     tasks = asyncio.all_tasks(loop)
     loop.run_until_complete(asyncio.gather(*tasks))
     loop.run_forever()

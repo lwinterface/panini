@@ -9,11 +9,7 @@ import multiprocessing
 import concurrent.futures
 from concurrent.futures import ProcessPoolExecutor
 from queue import Empty
-from asyncio.base_events import BaseEventLoop
-
 from nats.aio.client import Client as NATS
-
-import config.msgr_config as config
 from logger.logger import Logger, InterServicesRequestLogger
 from utils.helper import start_thread, start_process, is_json
 from utils.redis_queue import RedisQueue
@@ -34,7 +30,7 @@ def transform_topic(topic):
     return ".".join([os.environ['CLIENT_ID'], topic.split('.')[-1]])
 
 
-class _MessengerClient:
+class _MultiProcClient:
     """
     Interface over NATS messaging system
     """
@@ -83,12 +79,10 @@ class _MessengerClient:
         self._launch_listener()
         self._launch_sender()
         for topic, q in self.listen_message_queue.items():
-            print(f'{os.environ["CLIENT_ID"]}*listening for topic: {topic}')
             start_thread(self._listen_incoming_messages_forever, args=(q, topic))
 
     def _launch_listener(self):
         start_process(listener_process, args=(
-            # self.loop,
                   self.client_id,
                   self.broker_host,
                   self.port,
@@ -472,17 +466,20 @@ if __name__ == "__main__":
         except Exception as e:
             pass
 
-    cli = _MessengerClient()
-    cli.establish_connection(
-        client_id='client' + str(random.randint(1, 100)),  # for logging
-        broker_host=config.BROKER_HOST,
-        port=config.PORT,
-        listen_topics_callbacks={'data_connector.public.>':[trades]},
-        publish_topics=['topic2',],# 'topic3', 'topic4'],
-        allow_reconnect=config.ALLOW_RECONNECT,
-        max_reconnect_attempts=config.MAX_RECONNECT_ATTEMPTS,
-        reconnecting_time_wait=config.RECONNECTING_TIME_WAIT,
-    )
+
+    print('start')
+    cli = _MultiProcClient()
+    cli.client_id = 'client' + str(random.randint(1, 100))
+    cli.host = '127.0.0.1'
+    cli.port = "4222"
+    cli.listen_topics_callbacks = {'topic2.wqe': [trades]}
+    cli.allow_reconnect = True
+    cli.max_reconnect_attempts = 10
+    cli.reconnecting_time_wait = 10
+    cli.queue = ''
+    cli.pending_bytes_limit = 65536 * 1024 * 10
+    cli.connect()
+    time.sleep(3)
 
 
     while True:

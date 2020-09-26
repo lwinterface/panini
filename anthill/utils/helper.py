@@ -126,7 +126,6 @@ def percentage_difference_dec(first, second):
 def percentage_difference(first, second):
     return float(percentage_difference_dec(Decimal(str(first)), Decimal(str(second))))
 
-
 def start_process(method, args=None, daemon=True):
     kwargs = dict(target=method, daemon=daemon)
     if args is not None:

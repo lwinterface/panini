@@ -1,7 +1,7 @@
 import os, sys
 import uuid
 import logging
-from messanger.msgr_client import MessengerClient
+from nats_client.nats_client import NATSClient
 from logger.logger import Logger
 
 class App:
@@ -26,9 +26,6 @@ class App:
                  file_level: str = logging.INFO,
                  logging_level: str = logging.INFO,
                  root_path: str = '',
-                 slack_webhook_url_for_logs: str = None,
-                 telegram_token_for_logs: str = None,
-                 telegram_chat_for_logs: str = None,
                  ):
         """
         :param host: NATS broker host
@@ -67,9 +64,6 @@ class App:
                     file_level=file_level,
                     logging_level=logging_level,
                     root_path=root_path,
-                    slack_webhook_url_for_logs=slack_webhook_url_for_logs,
-                    telegram_token_for_logs=telegram_token_for_logs,
-                    telegram_chat_for_logs=telegram_chat_for_logs,
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
@@ -98,8 +92,7 @@ class App:
             error = f'App.event_registrator critical error: {str(e)}'
             raise Exception(error)
 
-        self.nats_client = NATSClient()
-        connection = self.nats_client.create_connection(
+        self.nats_client = NATSClient(
             client_id=client_id,
             host=host,
             port=port,
@@ -111,9 +104,6 @@ class App:
             reconnecting_time_wait=reconnecting_time_sleep,
             client_strategy=app_strategy
         )
-        if not connection['success']:
-            msg = 'NATSClient connection problem: %s' % str(connection)
-            raise Exception(msg)
 
 
 
