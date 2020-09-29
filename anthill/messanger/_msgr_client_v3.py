@@ -188,8 +188,10 @@ class PublishClientInterface():
             response = redis_response.return_response_when_appeared(topic=None, timeout=timeout)
             # isr_log(f'6ARREQUEST reply {reply}', phase='response', topic=topic)
             if unpack:
-                return json.loads(response.data.decode())
-            return response.data.decode()
+                return json.loads(response.decode())
+            #     return json.loads(response.data.decode())
+            return response.decode()
+            # return response.data.decode()
         except Exception as e:
             isr_log(f"6ERROR reply {reply} "+str(e), level='error', from_='PublishClientInterface.publish_request', topic=topic, request=str(message))
 

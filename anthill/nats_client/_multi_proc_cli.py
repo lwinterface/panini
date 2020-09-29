@@ -10,7 +10,8 @@ from queue import Empty
 from nats.aio.client import Client as NATS
 from logger.logger import Logger, InterServicesRequestLogger
 from utils.helper import start_thread, start_process, is_json
-from utils.redis_response import RedisResponse
+from ._redis_response import RedisResponse
+from ..exceptions import EventHandlingError, PublishError
 
 log = Logger(name='_MessengerClient_V3').log
 # isr_log = InterServicesRequestLogger(name='InterServicesRequest_V3', separated_file=True).isr_log
@@ -22,12 +23,13 @@ def transform_topic(topic):
     return ".".join([os.environ['CLIENT_ID'], topic.split('.')[-1]])
 
 
-class _MultiProcNATSClient:
+class _MultiProcNATSClient(object):
     """
     Subinterface for NATSClient, create additional processes for sending and listening
     """
-    def connect(self):
+    def __init__(self, child_obj):
         #TODO: check that all cls attr exists
+        self.__dict__ = child_obj.__dict__
         self.listen_message_queue = {}
         [self.listen_message_queue.update({topic: multiprocessing.Queue()}) for topic in self.listen_topics_callbacks]
         self.publish_message_queue = {}
@@ -105,7 +107,7 @@ class _MultiProcNATSClient:
                             RedisResponse(reply_key).put(str(reply))
             except Empty:
                 pass
-            except Exception as e:
+            except EventHandlingError as e:
                 if not 'reply' in locals():
                     reply = "hasn't handeled"
                 if not 'new_msg' in locals():
@@ -120,7 +122,7 @@ class _MultiProcNATSClient:
         if not redis_topic in self.publish_message_queue:
             error = f'Unexpected new topic: {redis_topic}, all topics {self.publish_message_queue}. You must specify the topics to which you want to send messages in the class App'
             isr_log(error, level='error')
-            raise Exception(error)
+            raise PublishError(error)
         if type(message) == str and is_json(message):
             message = json.loads(message)
         message['topic'] = topic

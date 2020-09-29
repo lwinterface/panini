@@ -1,5 +1,6 @@
 import datetime
 import inspect
+from .exceptions import SerializationError
 
 _serializers = {}
 
@@ -20,13 +21,13 @@ class Serializer:
         [delattr(cls, field_name) for field_name in serialisers]
 
     @classmethod
-    def validate_message(cls, message):
+    def validated_message(cls, message):
         if not type(message) in [dict, list]:
-            raise Exception(
-                'Unexpected message, expected dict. Accepted dict or list')
+            raise SerializationError(
+                'Unexpected message. Accepted dict or list')
         if type(message) is list:
             if not cls.__many:
-                raise Exception('Unexpected message, expected dict. You can set many=True in serializer if you need to handle list of dicts')
+                raise SerializationError('Unexpected message, expected dict. You can set many=True in serializer if you need to handle list of dicts')
             for m in message:
                 cls._validate_message(cls, m)
             return True
@@ -37,22 +38,22 @@ class Serializer:
     @classmethod
     def _validate_message(cls, message):
         if not type(message) is dict:
-            raise Exception(
+            raise SerializationError(
                 'Unexpected message, expected dict')
         for key, field_obj in cls.serialisers.items():
             if hasattr(field_obj.type, 'validated_serializer') and field_obj.type.validated_serializer is True:
                 field_obj.type.validate_message(message[key])
                 continue
             if not key in message and not hasattr(field_obj, 'default'):
-                raise Exception(
+                raise SerializationError(
                     f'Expected field "{key}" not found')
             elif not key in message and hasattr(field_obj, 'default'):
                 message[key] = field_obj.default
             if message[key] is None and field_obj.null is False:
-                raise Exception(
+                raise SerializationError(
                     f'Wrong value None for field "{key}" (because null=False)')
             if field_obj.type is not type(message[key]) and message[key] is not None:
-                raise Exception(
+                raise SerializationError(
                     f'Expected field "{key}" type is {field_obj.type} but got {type(message[key])}')
             continue
         return message
@@ -69,19 +70,19 @@ class Field:
 
     def validate_field(self, kwargs):
         if not 'type' in kwargs:
-            raise Exception('type required in Field')
+            raise SerializationError('type required in Field')
         if 'default' in kwargs and kwargs['default'] is None and (not 'null' in kwargs or kwargs['null'] == False):
-            raise Exception('You have to set null=True first if you want to set default=None')
+            raise SerializationError('You have to set null=True first if you want to set default=None')
         if 'default' in kwargs and kwargs['default'] is not None and kwargs['type'] is not type(kwargs['default']):
-            raise Exception(f'Your default type is {type(kwargs["default"])} but expected {kwargs["type"]}')
+            raise SerializationError(f'Your default type is {type(kwargs["default"])} but expected {kwargs["type"]}')
         if not kwargs['type'] in [str, int, float, list, dict]:
             all_clss = inspect.getmro(kwargs['type'])
             if len(all_clss) > 1:
                 serializator_name = all_clss[0].__name__
                 if not serializator_name in _serializers:
-                    raise Exception(f"Serializer {serializator_name} hasn't registered yet. You have to register in first")
+                    raise SerializationError(f"Serializer {serializator_name} hasn't registered yet. You have to register in first")
                 parent_name = all_clss[1].__name__
                 if not parent_name == 'Serializer':
-                    raise Exception('You have to inherit your serializer from the class "Serializer"')
+                    raise SerializationError('You have to inherit your serializer from the class "Serializer"')
             else:
-                raise Exception(f'Invalid data type {kwargs["type"]} for field. Only JSON data types or another Serializer class allowed')
+                raise SerializationError(f'Invalid data type {kwargs["type"]} for field. Only JSON data types or another Serializer class allowed')

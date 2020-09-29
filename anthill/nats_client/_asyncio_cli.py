@@ -8,16 +8,18 @@ import uuid
 from nats.aio.client import Client as NATS
 from logger.logger import Logger, InterServicesRequestLogger
 from utils.helper import is_json, run_coro_threadsafe
+from ..exceptions import EventHandlingError
 
 log = Logger(name='_AsyncioNATSClient').log
 isr_log = InterServicesRequestLogger(name='InterServicesRequest_AsyncioNATSClient').isr_log
 
-class _AsyncioNATSClient:
+class _AsyncioNATSClient(object):
     """
     Subinterface for NATSClient, create asyncio NATS connection for sending and listening
     """
 
-    def connect(self):
+    def __init__(self, base_obj):
+        self.__dict__ = base_obj.__dict__
         #TODO: check that all cls attr exists
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
@@ -56,16 +58,16 @@ class _AsyncioNATSClient:
                                 reply['isr-id'] = isr_id
                                 reply = json.dumps(reply)
                                 await cli.aio_publish(reply, reply_to)
-                        except Exception as e:
+                        except EventHandlingError as e:
                             if not 'reply' in locals():
                                 reply = ""
-                            raise Exception(
+                            raise EventHandlingError(
                                 f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}")
 
                     try:
                         asyncio.ensure_future(coro_callback_with_reply(subject, data, reply_to, isr_id))
                         # await coro_callback_with_reply(subject, data, reply_to, isr_id)
-                    except Exception as e:
+                    except EventHandlingError as e:
                         raise Exception(f"callback ERROR: {str(e)}")
                 else:
                     return cb(subject, data)
@@ -93,7 +95,7 @@ class _AsyncioNATSClient:
             isr_id = data.get('isr-id', str(uuid.uuid4())[:10])
             try:
                 await handle_message_with_response(cli, data, reply_to, isr_id)
-            except Exception as e:
+            except EventHandlingError as e:
                 if not 'isr_id' in locals():
                     isr_id = 'Absent or Unknown'
                 isr_log("4SENDING RESPONSE error msg: " + str(e), level='error', topic=subject, isr_id=isr_id)

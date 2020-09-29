@@ -1,22 +1,28 @@
 import os, sys
+import asyncio
 import uuid
 import logging
-from nats_client.nats_client import NATSClient
-from logger.logger import Logger
+import random
+from .nats_client.nats_client import NATSClient
+from .logger.logger import Logger
+from .managers import EventManager, TaskManager, IntervalTaskManager
+from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
+from .utils.helper import start_thread
 
-class App:
+class App(EventManager, TaskManager, IntervalTaskManager, NATSClient):
     def __init__(self,
                  host,
                  port,
                  service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
-                 client_id: str = str(uuid.uuid4())[:10],
+                 client_id: str = None,
+                 tasks: list = [],
+                 start_tasks_now: bool = True,
                  reconnect: bool = False,
                  max_reconnect_attempts: int = None,
                  reconnecting_time_sleep: int = 1,
                  app_strategy: str = 'asyncio',
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
-                 event_registrator_required: bool = True,
                  allocation_quenue_group: str = "",
                  listen_topic_only_if_include: list = None,
                  logger_required: bool = True,
@@ -32,6 +38,8 @@ class App:
         :param port: NATS broker port
         :param service_name: Name of microsirvice
         :param client_id: id of microservice, name and client_id used for NATS client name generating
+        :param tasks:              #TODO
+        :param start_tasks_now:    #TODO
         :param reconnect: allows reconnect if connection to NATS has been lost
         :param max_reconnect_attempts: any number
         :param reconnecting_time_sleep: pause between reconnection
@@ -55,6 +63,8 @@ class App:
         :param telegram_chat_for_logs          #TODO
         """
         try:
+            if client_id is None:
+                client_id = self._create_client_code_by_hostname(service_name)
             if logger_required:
                 self.logger = Logger(
                     name=client_id,
@@ -67,32 +77,24 @@ class App:
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
-            if event_registrator_required:
-                try:
-                    mod = __import__(f'{service_name}.events', fromlist=['EventManager'])
-                    registrator = getattr(mod, 'EventManager')
-                    self.event_registrator = registrator()
-                except Exception as e:
-                    raise Exception(f'Import from events.py error: {e}')
-                topics_and_callbacks = self.event_registrator.get_topics_and_callbacks()
-                topics_and_callbacks.update(subscribe_topics_and_callbacks)
-                if listen_topic_only_if_include is not None:
-                    for topic in topics_and_callbacks.copy():
-                        success = False
-                        for topic_include in listen_topic_only_if_include:
-                            if topic_include in topic:
-                                success = True
-                                break
-                        if success is False:
-                            del topics_and_callbacks[topic]
+            topics_and_callbacks = self.SUBSCRIPTIONS
+            topics_and_callbacks.update(subscribe_topics_and_callbacks)
+            if listen_topic_only_if_include is not None:
+                for topic in topics_and_callbacks.copy():
+                    success = False
+                    for topic_include in listen_topic_only_if_include:
+                        if topic_include in topic:
+                            success = True
+                            break
+                    if success is False:
+                        del topics_and_callbacks[topic]
             else:
                 topics_and_callbacks = {}
-
-        except Exception as e:
+        except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
-            raise Exception(error)
+            raise InitializingEventManagerError(error)
 
-        self.nats_client = NATSClient(
+        NATSClient.__init__(self,
             client_id=client_id,
             host=host,
             port=port,
@@ -104,6 +106,38 @@ class App:
             reconnecting_time_wait=reconnecting_time_sleep,
             client_strategy=app_strategy
         )
+        self.app_strategy = app_strategy
+        self.tasks = tasks + self.TASKS
+        self.interval_tasks = self.INTERVAL_TASKS
+        if start_tasks_now:
+            self.start_tasks()
 
+    def start_tasks(self):
+        if self.app_strategy == 'asyncio':
+            loop = asyncio.get_event_loop()
+            tasks = asyncio.all_tasks(loop)
+            for coro in self.tasks:
+                if not asyncio.iscoroutinefunction(coro):
+                    raise InitializingTaskError('For asyncio app_strategy only coroutine tasks allowed')
+                loop.create_task(coro)
+            for coro in self.interval_tasks:
+                if not asyncio.iscoroutinefunction(coro):
+                    raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
+                loop.create_task(coro)
+            loop.run_until_complete(asyncio.gather(*tasks))
+        elif self.app_strategy == 'sync':
+            for t in self.tasks:
+                if asyncio.iscoroutinefunction(t):
+                    raise InitializingIntevalTaskError("For sync app_strategy coroutine task doesn't allowed")
+                start_thread(t)
+            for t in self.interval_tasks:
+                if asyncio.iscoroutinefunction(t):
+                    raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
+                start_thread(t)
 
-
+    def _create_client_code_by_hostname(self, name):
+        return '__'.join([
+            name,
+            os.environ['HOSTNAME'] if 'HOSTNAME' in os.environ else 'non_docker_env_' + str(random.randint(1, 1000000)),
+            str(random.randint(1, 1000000))
+        ])
