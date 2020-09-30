@@ -72,6 +72,9 @@ class NATSClient:
         else:
             self.log(f'NATS connection status: {self.connector.client.check_connection}', level='warning')
 
+    def subscribe_new_topic(self, topic, callback):
+        self.connector.subscribe_new_topic(topic, callback)
+
     def disconnect(self):
         self.connector.client.disconnect()
 

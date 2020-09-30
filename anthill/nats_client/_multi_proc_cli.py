@@ -82,6 +82,8 @@ class _MultiProcNATSClient(object):
     def listener_process(*args):
         _Listener().launch(*args)
 
+
+
     def _listen_incoming_messages_forever(self, shared_queue, topic):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -237,16 +239,33 @@ class _Listener(_MessageClientBase):
               max_reconnect_attempts=max_reconnect_attempts,
               reconnecting_time_wait=reconnecting_time_wait)
         self.loop = asyncio.get_event_loop()
-        self.loop.create_task(self.subscribe())
+        self.loop.create_task(self.subscribe_all())
+        self.loop.create_task(self.listen_for_new_subscribtion(client_id+'__new_subscribtion'))
         self.loop.run_forever()
 
-    async def subscribe(self):
+    async def subscribe_all(self):
         while not hasattr(self, 'connected'):
             time.sleep(0.5)
         if self.connected:
             for topic in self.listen_message_queue:
-                wrapped_callback = self.wrap_callback(topic, self.listen_message_queue[topic], self.client)
-                await self.client.subscribe(topic, cb=wrapped_callback, pending_bytes_limit=65536 * 1024 * 10)
+                await self.subscribe(topic)
+
+    async def subscribe(self, topic):
+        wrapped_callback = self.wrap_callback(topic, self.listen_message_queue[topic], self.client)
+        await self.client.subscribe(topic, cb=wrapped_callback, pending_bytes_limit=65536 * 1024 * 10)
+
+    async def listen_for_new_subscribtion(self, topic):
+        try:
+            new_subscribtion_queue = RedisResponse(topic)
+            while True:
+                if new_subscribtion_queue.empty() is True:
+                    await asyncio.sleep(0.1)
+                    continue
+                new_topic_raw = new_subscribtion_queue.get()
+                new_topic = new_topic_raw.decode()
+                await self.subscribe(new_topic)
+        except Exception as e:
+            log(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e), level='error')
 
     def wrap_callback(self, base_topic, q, cli):
         async def wrapped_callback(msg):
@@ -263,7 +282,6 @@ class _Listener(_MessageClientBase):
                     await cli.publish(reply, response.data)
                 except Exception as e:
                     isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
-
         return wrapped_callback
 
 class _Sender(_MessageClientBase):

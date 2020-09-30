@@ -1,29 +1,42 @@
 import time
 import asyncio
+import venusian
 from typing import Callable
-from .exceptions import SerializationError, InitializingIntevalTaskError
+from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError
 
 
-
-class EventManager:
+class _EventManager:
     """
     Collect all functions from each module wrapped by @app.subscription or @EventManager.subscribe
     """
     SUBSCRIPTIONS = {}
 
-    @staticmethod
-    def subscribe(subsciption: list or str, serializator: type = None):
+    def listen(self, topic: list or str, serializator: type = None):
         def wrapper(function):
-            function = EventManager.wrap_function_by_serializer(function, serializator)
-            if type(subsciption) is list:
-                for s in subsciption:
-                    EventManager._check_subscription(s)
-                    EventManager.SUBSCRIPTIONS[s].append(function)
-            else:
-                EventManager._check_subscription(subsciption)
-                EventManager.SUBSCRIPTIONS[subsciption].append(function)
+            function = _EventManager.wrap_function_by_serializer(function, serializator)
+            def init_cb():
+                if type(topic) is list:
+                    for s in topic:
+                        _EventManager._check_subscription(s)
+                        _EventManager.SUBSCRIPTIONS[s].append(function)
+                else:
+                    _EventManager._check_subscription(topic)
+                    _EventManager.SUBSCRIPTIONS[topic].append(function)
+                venusian.attach(function, init_cb, category='listen')
             return function
+        # venusian.attach(wrapper, function)
+        # if type(subsciption) is list:
+        #     for s in subsciption:
+        #         self._subscribe(s, wrapper)
+        # else:
+        #     self._subscribe(subsciption, wrapper)
         return wrapper
+
+    def _subscribe(self, topic, function):
+        if not hasattr(self, 'connector') or self.connector.check_connection is False:
+            raise NotReadyError('Something wrong. NATS client should be connected first')
+        self.subscribe_new_topic(topic, function)
+
 
     @staticmethod
     def wrap_function_by_serializer(function, serializator):
@@ -39,12 +52,12 @@ class EventManager:
 
     @staticmethod
     def _check_subscription(subsciption):
-        if not subsciption in EventManager.SUBSCRIPTIONS:
-            EventManager.SUBSCRIPTIONS[subsciption] = []
+        if not subsciption in _EventManager.SUBSCRIPTIONS:
+            _EventManager.SUBSCRIPTIONS[subsciption] = []
 
 
 
-class TaskManager:
+class _TaskManager:
     """
     Collect all functions from each module wrapped by @app.task or @TaskManager.task
     """
@@ -53,8 +66,8 @@ class TaskManager:
     @staticmethod
     def task(**kwargs):
         def wrapper(task):
-            TaskManager._check_task(task)
-            TaskManager.TASKS.append(task)
+            _TaskManager._check_task(task)
+            _TaskManager.TASKS.append(task)
             return task
         return wrapper
 
@@ -65,7 +78,7 @@ class TaskManager:
 
 
 
-class IntervalTaskManager:
+class _IntervalTaskManager:
     """
     Collect all functions from each module wrapped by @app.task or @TaskManager.task
     """
@@ -74,14 +87,14 @@ class IntervalTaskManager:
     @staticmethod
     def timer_task(interval: float or int):
         def wrapper(interval_task: Callable):
-            IntervalTaskManager._check_timer_task(interval, interval_task)
+            _IntervalTaskManager._check_timer_task(interval, interval_task)
             if asyncio.iscoroutinefunction(interval_task):
-                interval_task = IntervalTaskManager.wrap_coro_by_interval(interval, interval_task)
+                interval_task = _IntervalTaskManager.wrap_coro_by_interval(interval, interval_task)
             else:
-                interval_task = IntervalTaskManager.wrap_function_by_interval(interval, interval_task)
-            if not interval in IntervalTaskManager.INTERVAL_TASKS:
-                IntervalTaskManager.INTERVAL_TASKS[interval] = []
-            IntervalTaskManager.INTERVAL_TASKS[interval].append(interval_task)
+                interval_task = _IntervalTaskManager.wrap_function_by_interval(interval, interval_task)
+            if not interval in _IntervalTaskManager.INTERVAL_TASKS:
+                _IntervalTaskManager.INTERVAL_TASKS[interval] = []
+            _IntervalTaskManager.INTERVAL_TASKS[interval].append(interval_task)
             return interval_task
         return wrapper
 

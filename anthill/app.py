@@ -1,23 +1,25 @@
 import os, sys
+import importlib
+import venusian
 import asyncio
 import uuid
 import logging
 import random
 from .nats_client.nats_client import NATSClient
 from .logger.logger import Logger
-from .managers import EventManager, TaskManager, IntervalTaskManager
+from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread
 
-class App(EventManager, TaskManager, IntervalTaskManager, NATSClient):
+class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def __init__(self,
                  host,
                  port,
                  service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
                  client_id: str = None,
                  tasks: list = [],
-                 start_tasks_now: bool = True,
                  reconnect: bool = False,
+                 specific_app_path: str = os.getcwd(),
                  max_reconnect_attempts: int = None,
                  reconnecting_time_sleep: int = 1,
                  app_strategy: str = 'asyncio',
@@ -77,6 +79,7 @@ class App(EventManager, TaskManager, IntervalTaskManager, NATSClient):
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
+            self.autodiscover()
             topics_and_callbacks = self.SUBSCRIPTIONS
             topics_and_callbacks.update(subscribe_topics_and_callbacks)
             if listen_topic_only_if_include is not None:
@@ -109,8 +112,7 @@ class App(EventManager, TaskManager, IntervalTaskManager, NATSClient):
         self.app_strategy = app_strategy
         self.tasks = tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
-        if start_tasks_now:
-            self.start_tasks()
+        self.start_tasks()
 
     def start_tasks(self):
         if self.app_strategy == 'asyncio':
@@ -141,3 +143,31 @@ class App(EventManager, TaskManager, IntervalTaskManager, NATSClient):
             os.environ['HOSTNAME'] if 'HOSTNAME' in os.environ else 'non_docker_env_' + str(random.randint(1, 1000000)),
             str(random.randint(1, 1000000))
         ])
+
+    def autodiscover(self):
+        all_module_paths = self._autodiscover_modules(os.getcwd())
+        scanner = venusian.Scanner()
+        for name, absolute_path in all_module_paths:
+            # module = self._path_import(absolute_path)
+            try:
+                module = importlib.import_module(name, package=absolute_path)
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError(
+                    f'Unknown module {name}, {absolute_path}')
+            scanner.scan(module)
+
+    def _autodiscover_modules(self, path):
+        modules = []
+        with os.scandir(path) as list_of_entries:
+            for entry in list_of_entries:
+                if entry.is_file() and entry.name[-3:] == '.py' and not entry.name == '__init__.py':
+                    modules.append((entry.name[:-3], entry.__fspath__()))
+                elif entry.is_dir() and not entry.name in ['bin', 'include', 'lib']:
+                    modules = modules + self._autodiscover_modules("/".join([path, entry.name]))
+        return modules
+
+    def _path_import(self, absolute_path):
+        spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
