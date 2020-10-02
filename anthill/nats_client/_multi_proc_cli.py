@@ -8,8 +8,8 @@ import datetime
 import multiprocessing
 from queue import Empty
 from nats.aio.client import Client as NATS
-from logger.logger import Logger, InterServicesRequestLogger
-from utils.helper import start_thread, start_process, is_json
+from ..logger.logger import Logger, InterServicesRequestLogger
+from ..utils.helper import start_thread, start_process, is_json
 from ._redis_response import RedisResponse
 from ..exceptions import EventHandlingError, PublishError
 
@@ -161,7 +161,7 @@ class _MultiProcNATSClient(object):
     async def aio_publish_request(self, message, topic, timeout=10, unpack=True):
         return self.publish_request(message, topic, timeout=timeout, unpack=unpack)
 
-    async def aio_publish_request_reply_to_another_topic(self, message, topic, reply_to=None):
+    async def aio_publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
         raise NotImplementedError
 
     def close(self):

@@ -12,7 +12,7 @@ import datetime as dt
 from time import time
 from threading import Thread
 from multiprocessing import Process
-from logger.logger import Logger
+from ..logger.logger import Logger
 
 
 def create_dir_when_none(dir_name):

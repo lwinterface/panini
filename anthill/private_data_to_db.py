@@ -2,9 +2,8 @@ import time
 import json
 import random
 import asyncio
-from config import msgr_config
 from queue import Empty
-from logger.logger import Logger
+from .logger.logger import Logger
 
 
 

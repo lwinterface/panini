@@ -1,6 +1,6 @@
 import json
-from utils.helper import is_json
-from logger.logger import Logger
+from .utils.helper import is_json
+from .logger.logger import Logger
 
 
 log = Logger(name='service_core_parsers').log

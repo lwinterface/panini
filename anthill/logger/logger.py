@@ -32,8 +32,11 @@ class Logger:
         else:
             if 'CLIENT_ID' in os.environ:
                 self.log_file = f"{os.environ['CLIENT_ID']}.log"
+                self.client_id = os.environ['CLIENT_ID']
             else:
                 self.log_file = f"{name}.log"
+        if not hasattr(self, 'client_id'):
+            self.client_id = name
         self.log_formatter = log_formatter
         self.console_level = console_level
         self.file_level = file_level
@@ -106,7 +109,7 @@ class Logger:
         log['timestamp'] = datetime.datetime.now().timestamp()
         log['msg'] = str(msg)
         log['level'] = level
-        log['client_id'] = os.environ['CLIENT_ID']
+        log['client_id'] = self.client_id
         if level == 'warning':
             self.logger.warning(log)
         elif level == 'error':

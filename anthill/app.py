@@ -8,8 +8,11 @@ import random
 from .nats_client.nats_client import NATSClient
 from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
+from .serializer import Serializer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread
+
+_app = None
 
 class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def __init__(self,
@@ -19,7 +22,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
-                 specific_app_path: str = os.getcwd(),
+                 specific_app_directory: str = os.getcwd(),
                  max_reconnect_attempts: int = None,
                  reconnecting_time_sleep: int = 1,
                  app_strategy: str = 'asyncio',
@@ -67,6 +70,26 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         try:
             if client_id is None:
                 client_id = self._create_client_code_by_hostname(service_name)
+            else:
+                client_id = client_id
+
+            self.nats_config = {
+                'host':host,
+                'port':port,
+                'client_id':client_id,
+                'listen_topics_callbacks':None,
+                'publish_topics':publish_topics,
+                'allow_reconnect':reconnect,
+                'queue':allocation_quenue_group,
+                'max_reconnect_attempts':max_reconnect_attempts,
+                'reconnecting_time_wait':reconnecting_time_sleep,
+                'client_strategy':app_strategy,
+            }
+            self.tasks = tasks
+            self.app_strategy = app_strategy
+            self.listen_topic_only_if_include = listen_topic_only_if_include
+            self.subscribe_topics_and_callbacks = subscribe_topics_and_callbacks
+
             if logger_required:
                 self.logger = Logger(
                     name=client_id,
@@ -79,38 +102,35 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
-            self.autodiscover()
+            global _app
+            _app = self
+        except InitializingEventManagerError as e:
+            error = f'App.event_registrator critical error: {str(e)}'
+            raise InitializingEventManagerError(error)
+
+    def start(self):
+        try:
             topics_and_callbacks = self.SUBSCRIPTIONS
-            topics_and_callbacks.update(subscribe_topics_and_callbacks)
-            if listen_topic_only_if_include is not None:
+            topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
+            if self.listen_topic_only_if_include is not None:
                 for topic in topics_and_callbacks.copy():
                     success = False
-                    for topic_include in listen_topic_only_if_include:
+                    for topic_include in self.listen_topic_only_if_include:
                         if topic_include in topic:
                             success = True
                             break
                     if success is False:
                         del topics_and_callbacks[topic]
-            else:
-                topics_and_callbacks = {}
         except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
 
+        self.nats_config['listen_topics_callbacks'] = topics_and_callbacks
+
         NATSClient.__init__(self,
-            client_id=client_id,
-            host=host,
-            port=port,
-            listen_topics_callbacks=topics_and_callbacks,
-            publish_topics=publish_topics,
-            allow_reconnect=reconnect,
-            queue=allocation_quenue_group,
-            max_reconnect_attempts=max_reconnect_attempts,
-            reconnecting_time_wait=reconnecting_time_sleep,
-            client_strategy=app_strategy
+            **self.nats_config
         )
-        self.app_strategy = app_strategy
-        self.tasks = tasks + self.TASKS
+        self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self.start_tasks()
 
@@ -121,11 +141,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for coro in self.tasks:
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingTaskError('For asyncio app_strategy only coroutine tasks allowed')
-                loop.create_task(coro)
+                loop.create_task(coro())
             for coro in self.interval_tasks:
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
-                loop.create_task(coro)
+                loop.create_task(coro())
             loop.run_until_complete(asyncio.gather(*tasks))
         elif self.app_strategy == 'sync':
             for t in self.tasks:
@@ -144,30 +164,50 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             str(random.randint(1, 1000000))
         ])
 
-    def autodiscover(self):
-        all_module_paths = self._autodiscover_modules(os.getcwd())
-        scanner = venusian.Scanner()
-        for name, absolute_path in all_module_paths:
-            # module = self._path_import(absolute_path)
-            try:
-                module = importlib.import_module(name, package=absolute_path)
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError(
-                    f'Unknown module {name}, {absolute_path}')
-            scanner.scan(module)
-
-    def _autodiscover_modules(self, path):
-        modules = []
-        with os.scandir(path) as list_of_entries:
-            for entry in list_of_entries:
-                if entry.is_file() and entry.name[-3:] == '.py' and not entry.name == '__init__.py':
-                    modules.append((entry.name[:-3], entry.__fspath__()))
-                elif entry.is_dir() and not entry.name in ['bin', 'include', 'lib']:
-                    modules = modules + self._autodiscover_modules("/".join([path, entry.name]))
-        return modules
-
-    def _path_import(self, absolute_path):
-        spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
+    # def autodiscover2(self):
+    #     module_name = os.getcwd().split('/')[-1]
+    #     scanner = venusian.Scanner()
+    #     try:
+    #         module = importlib.import_module(module_name)
+    #     except ModuleNotFoundError:
+    #         raise ModuleNotFoundError(
+    #             f'Unknown module {module_name}, {module_name}')
+    #     scanner.scan(module)
+    #
+    # def autodiscover(self):
+    #     entry_point = os.getcwd()
+    #     all_module_paths = self._autodiscover_modules(os.getcwd())
+    #     scanner = venusian.Scanner()
+    #     def get_python_import_path(name, absolute_path):
+    #         parent_directories = absolute_path.replace(''.join(['/' ,name, '.py']), '').replace(entry_point, '')
+    #         if parent_directories != "" and parent_directories[0] == '/':
+    #             parent_directories = parent_directories[1:]
+    #         python_import_path = parent_directories.replace('/','.')
+    #         if parent_directories == "":
+    #             return name
+    #         return '.'.join([python_import_path, name])
+    #     for name, absolute_path in all_module_paths:
+    #         path = get_python_import_path(name, absolute_path)
+    #         print(path)
+    #         try:
+    #             module = importlib.import_module(path)
+    #         except ModuleNotFoundError:
+    #             raise ModuleNotFoundError(
+    #                 f'Unknown module {name}, {absolute_path}')
+    #         scanner.scan(module)
+    #
+    # def _autodiscover_modules(self, path):
+    #     modules = []
+    #     with os.scandir(path) as list_of_entries:
+    #         for entry in list_of_entries:
+    #             if entry.is_file() and entry.name[-3:] == '.py' and not entry.name == '__init__.py':
+    #                 modules.append((entry.name[:-3], entry.__fspath__()))
+    #             elif entry.is_dir() and not entry.name in ['bin', 'include', 'lib']:
+    #                 modules = modules + self._autodiscover_modules("/".join([path, entry.name]))
+    #     return modules
+    #
+    # def _path_import(self, absolute_path):
+    #     spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
+    #     module = importlib.util.module_from_spec(spec)
+    #     spec.loader.exec_module(module)
+    #     return module

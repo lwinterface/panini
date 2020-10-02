@@ -6,8 +6,8 @@ import asyncio
 import datetime
 import uuid
 from nats.aio.client import Client as NATS
-from logger.logger import Logger, InterServicesRequestLogger
-from utils.helper import is_json, run_coro_threadsafe
+from ..logger.logger import Logger, InterServicesRequestLogger
+from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 
 log = Logger(name='_AsyncioNATSClient').log

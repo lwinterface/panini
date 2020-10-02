@@ -1,8 +1,9 @@
 import time
 import asyncio
 import venusian
+from . import exceptions
 from typing import Callable
-from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError
+from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError, BaseError
 
 
 class _EventManager:
@@ -11,25 +12,23 @@ class _EventManager:
     """
     SUBSCRIPTIONS = {}
 
-    def listen(self, topic: list or str, serializator: type = None):
+    def listen(self, topic: list or str, serializator: type = None, dynamic_subscription=False):
         def wrapper(function):
             function = _EventManager.wrap_function_by_serializer(function, serializator)
-            def init_cb():
-                if type(topic) is list:
-                    for s in topic:
-                        _EventManager._check_subscription(s)
-                        _EventManager.SUBSCRIPTIONS[s].append(function)
-                else:
-                    _EventManager._check_subscription(topic)
-                    _EventManager.SUBSCRIPTIONS[topic].append(function)
-                venusian.attach(function, init_cb, category='listen')
+            if type(topic) is list:
+                for t in topic:
+                    _EventManager._check_subscription(t)
+                    _EventManager.SUBSCRIPTIONS[t].append(function)
+            else:
+                _EventManager._check_subscription(topic)
+                _EventManager.SUBSCRIPTIONS[topic].append(function)
             return function
-        # venusian.attach(wrapper, function)
-        # if type(subsciption) is list:
-        #     for s in subsciption:
-        #         self._subscribe(s, wrapper)
-        # else:
-        #     self._subscribe(subsciption, wrapper)
+        if dynamic_subscription:
+            if type(topic) is list:
+                for t in topic:
+                    self._subscribe(t, wrapper)
+            else:
+                self._subscribe(subsciption, wrapper)
         return wrapper
 
     def _subscribe(self, topic, function):
@@ -44,9 +43,11 @@ class _EventManager:
             try:
                 if serializator is not None:
                     message = serializator.validated_message(message)
-            except SerializationError as e:
-                error = f'topic: {topic} error: {str(e)}'
-                raise SerializationError(error)
+            except exceptions.SerializationError as se:
+                error = f'topic: {topic} error: {str(se)}'
+                return {'success':False, 'error':error}
+            except Exception as e:
+                a = e
             return function(topic, message)
         return wrapper
 
@@ -54,7 +55,6 @@ class _EventManager:
     def _check_subscription(subsciption):
         if not subsciption in _EventManager.SUBSCRIPTIONS:
             _EventManager.SUBSCRIPTIONS[subsciption] = []
-
 
 
 class _TaskManager:
@@ -75,7 +75,6 @@ class _TaskManager:
     def _check_task(task):
         #TODO
         pass
-
 
 
 class _IntervalTaskManager:

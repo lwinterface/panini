@@ -1,8 +1,8 @@
 import sys
 import time
 import random
-from utils.helper import start_thread
-from logger.logger import Logger, InterServicesRequestLogger
+from ..utils.helper import start_thread
+from ..logger.logger import Logger, InterServicesRequestLogger
 from ._asyncio_cli import _AsyncioNATSClient
 from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
@@ -79,22 +79,22 @@ class NATSClient:
         self.connector.client.disconnect()
 
     def publish(self, message, topic, reply_to=None):
-        self.connector.client.publish(message, topic, reply_to=reply_to)
+        self.connector.publish(message, topic, reply_to=reply_to)
 
     def publish_request(self, message, topic, timeout=10, unpack=True):
-        return self.connector.client.publish_request(message, topic, timeout=timeout, unpack=unpack)
+        return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)
 
     def publish_request_reply_to_another_topic(self, message, topic, reply_to=None):
-       self.connector.client.publish_request_reply_to_another_topic(message, topic, reply_to)
+       self.connector.publish_request_reply_to_another_topic(message, topic, reply_to)
 
     async def aio_publish(self, message, topic, force=False):
-        await self.connector.client.aio_publish(message, topic, force=force)
+        await self.connector.aio_publish(message, topic, force=force)
 
     async def aio_publish_request(self, message, topic, timeout=10, unpack=True):
-        return await self.connector.client.aio_publish_request(message, topic, timeout, unpack=unpack)
+        return await self.connector.aio_publish_request(message, topic, timeout, unpack=unpack)
 
-    async def aio_publish_request_reply_to_another_topic(self, message, topic, reply_to=None):
-       await self.connector.client.aio_publish_request_reply_to_another_topic(message, topic, reply_to)
+    async def aio_publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+       await self.connector.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
 
 

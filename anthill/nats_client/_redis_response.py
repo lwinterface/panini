@@ -4,8 +4,8 @@ import datetime
 
 from nats.aio.errors import ErrTimeout, NatsError
 
-from utils.redis_queue import RedisQueue
-from logger.logger import Logger
+from ..utils.redis_queue import RedisQueue
+from ..logger.logger import Logger
 
 
 log = Logger(name='_MessengerClient_V3').log
