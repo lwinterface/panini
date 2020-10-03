@@ -53,11 +53,13 @@ def start_thread(method, args=None, daemon=False):
     thread.start()
     return thread
 
-def start_process(method, args=None, daemon=True):
-    kwargs = dict(target=method, daemon=daemon)
+def start_process(method, args=None, kwargs=None, daemon=True):
+    proc_kwargs = dict(target=method, daemon=daemon)
     if args is not None:
-        kwargs['args'] = args
-    proc = Process(**kwargs)
+        proc_kwargs['args'] = args
+    if kwargs is not None:
+        proc_kwargs['kwargs'] = kwargs
+    proc = Process(**proc_kwargs)
     proc.start()
     return proc
 

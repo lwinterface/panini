@@ -40,9 +40,12 @@ class _AsyncioNATSClient(object):
             listen_topics_callbacks = self.listen_topics_callbacks
             for topic, callbacks in listen_topics_callbacks.items():
                 for callback in callbacks:
-                    await self.subscribe_new_topic(topic, callback)
-
-    async def subscribe_new_topic(self, topic, callback):
+                    await self.aio_subscribe_new_topic(topic, callback)
+    
+    def subscribe_new_topic(self, topic, callback):
+        self.loop.run_until_complete(aio_subscribe_new_topic(topic, callback))
+        
+    async def aio_subscribe_new_topic(self, topic, callback):
         wrapped_callback = self.wrap_callback(callback, self)
         await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
                                     pending_bytes_limit=self.pending_bytes_limit)

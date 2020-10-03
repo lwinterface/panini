@@ -26,6 +26,7 @@ class NATSClient:
                 redis_host='127.0.0.1',
                 redis_port='6379',
                 pending_bytes_limit=65536 * 1024 * 10,
+                num_of_queues=None
                 ):
         """
         :param client_id: instance identificator for NATS, str
@@ -53,6 +54,7 @@ class NATSClient:
         self.pending_bytes_limit = pending_bytes_limit
         self.redis_host = redis_host
         self.redis_port = redis_port
+        self.num_of_queues = num_of_queues
         self._initialize_sub_class(client_strategy)
         #TODO: check that connect/sub/pub interface exist
         global message

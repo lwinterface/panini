@@ -1,4 +1,5 @@
 import os, sys
+import time
 import importlib
 import venusian
 import asyncio
@@ -26,6 +27,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  max_reconnect_attempts: int = None,
                  reconnecting_time_sleep: int = 1,
                  app_strategy: str = 'asyncio',
+                 num_of_queues: int = 1,    #only for sync strategy
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
@@ -72,7 +74,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 client_id = self._create_client_code_by_hostname(service_name)
             else:
                 client_id = client_id
-
+            os.environ["CLIENT_ID"] = client_id
             self.nats_config = {
                 'host':host,
                 'port':port,
@@ -85,6 +87,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 'reconnecting_time_wait':reconnecting_time_sleep,
                 'client_strategy':app_strategy,
             }
+            if app_strategy == 'sync':
+                self.nats_config['num_of_queues'] = num_of_queues
             self.tasks = tasks
             self.app_strategy = app_strategy
             self.listen_topic_only_if_include = listen_topic_only_if_include
@@ -130,6 +134,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         NATSClient.__init__(self,
             **self.nats_config
         )
+        
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self.start_tasks()

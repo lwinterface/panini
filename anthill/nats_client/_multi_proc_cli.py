@@ -6,36 +6,45 @@ import random
 import asyncio
 import datetime
 import multiprocessing
+from itertools import cycle
 from queue import Empty
 from nats.aio.client import Client as NATS
 from ..logger.logger import Logger, InterServicesRequestLogger
 from ..utils.helper import start_thread, start_process, is_json
-from ._redis_response import RedisResponse
+from ._redis_response import RedisResponse, RedisQueue
 from ..exceptions import EventHandlingError, PublishError
 
 log = Logger(name='_MessengerClient_V3').log
 # isr_log = InterServicesRequestLogger(name='InterServicesRequest_V3', separated_file=True).isr_log
 isr_log = Logger(name='InterServicesRequest_V3', log_file=f'InterServicesRequest_V3.log').log
 
+LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = os.environ['CLIENT_ID'] if 'CLIENT_ID' in os.environ else str(uuid.uuid4())[10:] + '__new_subscribtion'
 
 
-def transform_topic(topic):
-    return ".".join([os.environ['CLIENT_ID'], topic.split('.')[-1]])
+def transform_topic(topic, keyword=''):
+    return ".".join([os.environ['CLIENT_ID'], topic.split('.')[-1], keyword])
 
 
 class _MultiProcNATSClient(object):
     """
     Subinterface for NATSClient, create additional processes for sending and listening
     """
+
     def __init__(self, child_obj):
         #TODO: check that all cls attr exists
         self.__dict__ = child_obj.__dict__
         self.listen_message_queue = {}
-        [self.listen_message_queue.update({topic: multiprocessing.Queue()}) for topic in self.listen_topics_callbacks]
+        # [self.listen_message_queue.update({topic: multiprocessing.Queue()}) for topic in self.listen_topics_callbacks]
+        [self.listen_message_queue.update({topic: RedisQueue(transform_topic(topic, 'listener'))}) for topic in self.listen_topics_callbacks]
         self.publish_message_queue = {}
-        [self.publish_message_queue.update({transform_topic(topic): RedisResponse(transform_topic(topic))}, host=self.redis_host, port=self.redis_port) for topic in
-         self.publish_topics]
-        self.new_topics_redis_queue = multiprocessing.Queue()
+        # [self.publish_message_queue.update({transform_topic(topic): RedisResponse(transform_topic(topic))}, host=self.redis_host, port=self.redis_port) for topic in
+        #  self.publish_topics]
+        # [self.publish_message_queue.update({transform_topic(topic): RedisResponse(transform_topic(topic))},
+        #                                    host=self.redis_host, port=self.redis_port) for topic in
+        #  self.publish_topics]
+        [self.publish_message_queue.update({transform_topic('queue'+str(i)): RedisResponse(transform_topic('queue'+str(i)), 'publisher')}) for i in range(self.num_of_queues)]
+        self.publish_queue_circle = cycle(list(self.publish_message_queue.values()))
+        self.new_listen_topics_redis_queue = RedisQueue(transform_topic(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC))
         self.forced_closure = False
         self._launch()
 
@@ -46,45 +55,78 @@ class _MultiProcNATSClient(object):
             print(f'{os.environ["CLIENT_ID"]}*listening for topic: {topic}')
             start_thread(self._listen_incoming_messages_forever, args=(q, topic))
 
+    async def aio_subcribe_new_topic(self, topic, callback):
+        subcribe_new_topic(topic, callback)
+
+    def listen_new_topic(self, topic, callback):
+        # TODO: include all "topic_include" rules
+        q = RedisQueue(topic)
+        self.listen_message_queue.update({topic: q})
+        self.new_listen_topics_redis_queue.put(topic)
+        print(f'{os.environ["CLIENT_ID"]}*listening for topic: {topic}')
+        start_thread(self._listen_incoming_messages_forever, args=(q, topic))
+
     def _launch_listener(self):
-        start_process(_MultiProcNATSClient.listener_process, args=(
-                  self.client_id,
-                  self.host,
-                  self.port,
-                  self.listen_topics_callbacks,
-                  self.listen_message_queue,
-                  self.publish_topics,
-                  self.publish_message_queue,
-                  self.allow_reconnect,
-                  self.max_reconnect_attempts,
-                  self.reconnecting_time_wait))
+        listen_queue_topics = list(self.listen_message_queue.keys())
+        start_process(_ListenerProc, kwargs={
+            'client_id':self.client_id,
+            'host':self.host,
+            'port':self.port,
+            'listen_queue_topics':listen_queue_topics,
+            'allow_reconnect':self.allow_reconnect,
+            'max_reconnect_attempts':self.max_reconnect_attempts,
+            'reconnecting_time_wait':self.reconnecting_time_wait
+        })
 
     def _launch_sender(self):
-        start_process(_MultiProcNATSClient.sender_process, args=(
-                  self.client_id,
-                  self.host,
-                  self.port,
-                  self.listen_topics_callbacks,
-                  self.listen_message_queue,
-                  self.publish_topics,
-                  self.publish_message_queue,
-                  self.allow_reconnect,
-                  self.max_reconnect_attempts,
-                  self.reconnecting_time_wait,
-                  self.new_topics_redis_queue
-                ))
-
-    @staticmethod
-    def sender_process(*args):
-        _Sender().launch(*args)
-
-    @staticmethod
-    def listener_process(*args):
-        _Listener().launch(*args)
-
-
+        publish_queue_topics = list(self.publish_message_queue.keys())
+        start_process(_SenderProc, kwargs={
+            'client_id': self.client_id,
+            'host': self.host,
+            'port': self.port,
+            'publish_queue_topics': publish_queue_topics,
+            'allow_reconnect': self.allow_reconnect,
+            'max_reconnect_attempts': self.max_reconnect_attempts,
+            'reconnecting_time_wait': self.reconnecting_time_wait,
+        })
 
     def _listen_incoming_messages_forever(self, shared_queue, topic):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        print(f'_listen_incoming_messages_forever: {shared_queue.key}')
+        while self.forced_closure is False:
+            try:
+                new_msg = shared_queue.get(block=False)
+                if new_msg is None:
+                    continue
+                base_topic = new_msg.pop('base_topic')
+                if 'reply' in new_msg:
+                    reply_key = new_msg.pop('reply')
+                    # isr_log(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_topic}")
+                callbacks = self.listen_topics_callbacks[base_topic]
+                for callback in callbacks:
+                    reply = callback(**new_msg)
+                    if reply:
+                        if not 'reply_key' in locals():
+                            isr_log(f"Got reply from callback but NATS massage doesn't expect for it. \ntopic: {base_topic}, message: {new_msg}, reply: {reply}", level='error', slack=True)
+                        else:
+                            if type(reply) is dict:
+                                reply = json.dumps(reply)
+                            else:
+                                reply = str(reply)
+                            isr_log(f"4SENDING RESPONSE msg: {new_msg['message']} {base_topic}")
+                            RedisResponse(reply_key).put(str(reply))
+            except Empty:
+                pass
+            except Exception as e:
+                if not 'reply' in locals():
+                    reply = "hasn't handeled"
+                if not 'new_msg' in locals():
+                    new_msg = "hasn't handeled"
+                error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
+                log(error, level='error', slack=True)
+
+    def _listen_incoming_messages_forever_old(self, shared_queue, topic):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         while self.forced_closure is False:
@@ -120,16 +162,12 @@ class _MultiProcNATSClient(object):
     def publish(self, message, topic, reply_to=None):
         if reply_to:
             raise NotImplementedError
-        redis_topic = transform_topic(topic)
-        if not redis_topic in self.publish_message_queue:
-            error = f'Unexpected new topic: {redis_topic}, all topics {self.publish_message_queue}. You must specify the topics to which you want to send messages in the class App'
-            isr_log(error, level='error')
-            raise PublishError(error)
         if type(message) == str and is_json(message):
             message = json.loads(message)
         message['topic'] = topic
         message = json.dumps(message)
-        self.publish_message_queue[redis_topic].put(message)
+        q = self.publish_queue_circle.__next__()
+        q.put(message)
 
     def publish_request(self, message, topic, timeout=10, unpack=True):
         try:
@@ -167,91 +205,33 @@ class _MultiProcNATSClient(object):
     def close(self):
         self.close()
 
-class _MessageClientBase():
-    def _connect(self,
-                  # loop: asyncio.AbstractEventLoop,
-                  client_id: str,
-                  host: str,
-                  port: int,
-                  listen_topics_callbacks: dict,
-                  listen_message_queue: dict,
-                  publish_topics: list or None,
-                  publish_message_queue: dict,
-                  allow_reconnect: bool,
-                  max_reconnect_attempts: int,
-                  reconnecting_time_wait: int,
-                  new_topics_redis_queue=None,
-                  # TODO: auth_credentialns
-                  ):
-        if not hasattr(self, 'connected') or not self.connected:
-            self.connected = False
-            self.messages_queue = []
-            self.client_id = client_id
-            self.host = host
-            self.port = port
-            self.listen_topics_callbacks = listen_topics_callbacks
-            self.listen_message_queue = listen_message_queue
-            self.publish_topics = publish_topics
-            self.publish_message_queue = publish_message_queue
-            if new_topics_redis_queue:
-                self.new_topics_redis_queue = new_topics_redis_queue
-            self.loop = asyncio.get_event_loop()
-            self.loop.run_until_complete(self._establish_connection())
-            self.connected = True
-
-    async def _establish_connection(self):
-        #TODO: authorization
-        CLIENT = NATS()
-        self.client = CLIENT
-        self.server = self.host+':'+self.port
-        await self.client.connect(self.server, loop=self.loop, name=self.client_id+'__'+self.role)
-        log('connected ' + self.role)
-
-    def disconnect(self):
-        self.loop.run_until_complete(self.aio_disconnect())
-        log('Disconnected', level='warning')
-
-    async def aio_disconnect(self):
-        await self.client.drain()
-
-class _Listener(_MessageClientBase):
-    def launch(self,
+class _ListenerProc():
+    def __init__(self,
               client_id: str,
               host: str,
               port: int,
-              listen_topics_callbacks: dict,
-              listen_message_queue: dict,
-              publish_topics: list or None,
-              publish_message_queue: dict,
+              listen_queue_topics: list,
               allow_reconnect: bool,
               max_reconnect_attempts: int,
               reconnecting_time_wait: int):
         self.role = 'listener'
-        self._connect(
-              client_id=client_id,
-              host=host,
-              port=port,
-              listen_topics_callbacks=listen_topics_callbacks,
-              listen_message_queue=listen_message_queue,
-              publish_topics=publish_topics,
-              publish_message_queue=publish_message_queue,
-              allow_reconnect=allow_reconnect,
-              max_reconnect_attempts=max_reconnect_attempts,
-              reconnecting_time_wait=reconnecting_time_wait)
+        self.listen_queue_topics = listen_queue_topics
         self.loop = asyncio.get_event_loop()
-        self.loop.create_task(self.subscribe_all())
-        self.loop.create_task(self.listen_for_new_subscribtion(client_id+'__new_subscribtion'))
-        self.loop.run_forever()
+        self.client = NATS()
+        self.loop.run_until_complete(self.client.connect(host+':'+port, loop=self.loop, name=client_id + '__' + self.role))
+        self.connected = True
+        log('connected ' + self.role)
+        self.loop.run_until_complete(self.subscribe_all())
+        self.loop.create_task(self.listen_for_new_subscribtion(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC))
+        self.loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(self.loop)))
 
     async def subscribe_all(self):
-        while not hasattr(self, 'connected'):
-            time.sleep(0.5)
         if self.connected:
-            for topic in self.listen_message_queue:
+            for topic in self.listen_queue_topics:
                 await self.subscribe(topic)
 
     async def subscribe(self, topic):
-        wrapped_callback = self.wrap_callback(topic, self.listen_message_queue[topic], self.client)
+        wrapped_callback = self.wrap_callback(topic, RedisQueue(transform_topic(topic, self.role)), self.client)
         await self.client.subscribe(topic, cb=wrapped_callback, pending_bytes_limit=65536 * 1024 * 10)
 
     async def listen_for_new_subscribtion(self, topic):
@@ -272,10 +252,11 @@ class _Listener(_MessageClientBase):
             subject = msg.subject
             reply = msg.reply
             data = msg.data.decode()
+            print(f'lc {q.key}')
             if reply == "":
-                q.put(dict(base_topic=base_topic, topic=subject, message=data))
+                q.put(json.dumps(dict(base_topic=base_topic, topic=subject, message=data)))
             else:
-                q.put(dict(base_topic=base_topic, topic=subject, message=data, reply=reply))
+                q.put(json.dumps(dict(base_topic=base_topic, topic=subject, message=data, reply=reply)))
                 redis_response = RedisResponse(reply)
                 response = redis_response.return_response_when_appeared(topic=base_topic)
                 try:
@@ -284,42 +265,29 @@ class _Listener(_MessageClientBase):
                     isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
         return wrapped_callback
 
-class _Sender(_MessageClientBase):
-    def __init__(self):
-        super().__init__()
-
-    def launch(self,
+class _SenderProc():
+    def __init__(self,
                client_id: str,
                host: str,
                port: int,
-               listen_topics_callbacks: dict,
-               listen_message_queue: dict,
-               publish_topics: list or None,
-               publish_message_queue: dict,
+               publish_queue_topics: list,
                allow_reconnect: bool,
                max_reconnect_attempts: int,
-               reconnecting_time_wait: int,
-               new_topics_redis_queue=None):
+               reconnecting_time_wait: int):
         self.role = 'publisher'
-        self._connect(
-            client_id=client_id,
-            host=host,
-            port=port,
-            listen_topics_callbacks=listen_topics_callbacks,
-            listen_message_queue=listen_message_queue,
-            publish_topics=publish_topics,
-            publish_message_queue=publish_message_queue,
-            allow_reconnect=allow_reconnect,
-            max_reconnect_attempts=max_reconnect_attempts,
-            reconnecting_time_wait=reconnecting_time_wait,
-            new_topics_redis_queue=new_topics_redis_queue)
-        self.run_publish_handlers(publish_message_queue)
+        self.client = NATS()
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(
+            self.client.connect(host + ':' + port, loop=self.loop, name=client_id + '__' + self.role))
+        log('connected ' + self.role)
+        self.connected = True
+        self.run_publish_handlers(publish_queue_topics)
 
-    def run_publish_handlers(self, publish_message_queue):
+    def run_publish_handlers(self, publish_queue_topics):
         while self.connected is False:
             time.sleep(1)
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._run_publish_handlers(publish_message_queue))
+        loop.run_until_complete(self._run_publish_handlers(publish_queue_topics))
 
     async def _run_publish_handlers(self, redis_topics):
         try:
@@ -330,19 +298,19 @@ class _Sender(_MessageClientBase):
         except Exception as e:
             isr_log(f"ERROR _run_publish_handlers {os.environ['SERVICE_NAME']}: {str(e)}")
 
-    async def _handle_topic_queue_forever(self, redis_topic):
+    async def _handle_topic_queue_forever(self, redis_topic_name):
         try:
             loop = asyncio.get_event_loop()
-            publish_message_queue = RedisResponse(redis_topic)
+            publish_message_queue = RedisResponse(redis_topic_name, self.role)
             while True:
                 if publish_message_queue.empty() is True:
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.001)
                     continue
                 message = publish_message_queue.get()
                 message = message.decode()
-                loop.create_task(self._send(redis_topic, message))
+                loop.create_task(self._send(redis_topic_name, message))
         except Exception as e:
-            log(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e), level='error')
+            log(f"_handle_topic_queue_forever error {os.environ['CLIENT_ID']}: " + str(e), level='error')
 
     async def _send(self, redis_topic, message):
         try:
@@ -350,6 +318,7 @@ class _Sender(_MessageClientBase):
                 if type(message) == str:
                     message = json.loads(message)
                 topic = message.pop('topic')
+                print(f'msg to topic: {topic}')
                 if 'reply' in message:
                     try:
                         reply = message.pop('reply')

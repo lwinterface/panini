@@ -12,7 +12,6 @@ class Serializer:
         super().__init_subclass__(**kwargs)
         Serializer.set_logger()
         cls.retrieve_fields()
-        # cls.validated_serializer = True
         _serializers[cls.__name__] = cls
 
     @staticmethod
