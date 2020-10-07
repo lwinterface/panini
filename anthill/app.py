@@ -1,6 +1,7 @@
 import os, sys
 import time
 import importlib
+import threading
 import venusian
 import asyncio
 import uuid
@@ -153,14 +154,15 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 loop.create_task(coro())
             loop.run_until_complete(asyncio.gather(*tasks))
         elif self.app_strategy == 'sync':
-            for t in self.tasks:
-                if asyncio.iscoroutinefunction(t):
+            for task in self.tasks:
+                if asyncio.iscoroutinefunction(task):
                     raise InitializingIntevalTaskError("For sync app_strategy coroutine task doesn't allowed")
-                start_thread(t)
-            for t in self.interval_tasks:
-                if asyncio.iscoroutinefunction(t):
-                    raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
-                start_thread(t)
+                start_thread(task)
+            for interval in self.interval_tasks:
+                for task in self.interval_tasks[interval]:
+                    if asyncio.iscoroutinefunction(task):
+                        raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
+                    start_thread(task)
 
     def _create_client_code_by_hostname(self, name):
         return '__'.join([
@@ -168,51 +170,3 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             os.environ['HOSTNAME'] if 'HOSTNAME' in os.environ else 'non_docker_env_' + str(random.randint(1, 1000000)),
             str(random.randint(1, 1000000))
         ])
-
-    # def autodiscover2(self):
-    #     module_name = os.getcwd().split('/')[-1]
-    #     scanner = venusian.Scanner()
-    #     try:
-    #         module = importlib.import_module(module_name)
-    #     except ModuleNotFoundError:
-    #         raise ModuleNotFoundError(
-    #             f'Unknown module {module_name}, {module_name}')
-    #     scanner.scan(module)
-    #
-    # def autodiscover(self):
-    #     entry_point = os.getcwd()
-    #     all_module_paths = self._autodiscover_modules(os.getcwd())
-    #     scanner = venusian.Scanner()
-    #     def get_python_import_path(name, absolute_path):
-    #         parent_directories = absolute_path.replace(''.join(['/' ,name, '.py']), '').replace(entry_point, '')
-    #         if parent_directories != "" and parent_directories[0] == '/':
-    #             parent_directories = parent_directories[1:]
-    #         python_import_path = parent_directories.replace('/','.')
-    #         if parent_directories == "":
-    #             return name
-    #         return '.'.join([python_import_path, name])
-    #     for name, absolute_path in all_module_paths:
-    #         path = get_python_import_path(name, absolute_path)
-    #         print(path)
-    #         try:
-    #             module = importlib.import_module(path)
-    #         except ModuleNotFoundError:
-    #             raise ModuleNotFoundError(
-    #                 f'Unknown module {name}, {absolute_path}')
-    #         scanner.scan(module)
-    #
-    # def _autodiscover_modules(self, path):
-    #     modules = []
-    #     with os.scandir(path) as list_of_entries:
-    #         for entry in list_of_entries:
-    #             if entry.is_file() and entry.name[-3:] == '.py' and not entry.name == '__init__.py':
-    #                 modules.append((entry.name[:-3], entry.__fspath__()))
-    #             elif entry.is_dir() and not entry.name in ['bin', 'include', 'lib']:
-    #                 modules = modules + self._autodiscover_modules("/".join([path, entry.name]))
-    #     return modules
-    #
-    # def _path_import(self, absolute_path):
-    #     spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
-    #     module = importlib.util.module_from_spec(spec)
-    #     spec.loader.exec_module(module)
-    #     return module

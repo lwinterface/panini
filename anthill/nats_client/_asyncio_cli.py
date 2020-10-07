@@ -69,7 +69,6 @@ class _AsyncioNATSClient(object):
                                 reply = ""
                             raise EventHandlingError(
                                 f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}")
-
                     try:
                         asyncio.ensure_future(coro_callback_with_reply(subject, data, reply_to, isr_id))
                         # await coro_callback_with_reply(subject, data, reply_to, isr_id)

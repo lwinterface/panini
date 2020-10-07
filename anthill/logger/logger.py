@@ -141,6 +141,8 @@ class InterServicesRequestLogger(Logger):
             self.log_file = log_file
         else:
             self.log_file = f"inter_services_requests.log"
+        if not hasattr(self, 'client_id'):
+            self.client_id = name
         self.log_formatter = log_formatter
         self.console_level = console_level
         self.file_level = file_level
@@ -156,5 +158,5 @@ class InterServicesRequestLogger(Logger):
 
     def isr_log(self, message, **kwargs):
         if not 'from_' in kwargs:
-            kwargs['from_'] = os.environ['SERVICE_NAME']
+            kwargs['from_'] = os.environ['CLIENT_ID']
         self.log(message, **kwargs)

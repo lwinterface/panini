@@ -86,8 +86,8 @@ class NATSClient:
     def publish_request(self, message, topic, timeout=10, unpack=True):
         return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)
 
-    def publish_request_reply_to_another_topic(self, message, topic, reply_to=None):
-       self.connector.publish_request_reply_to_another_topic(message, topic, reply_to)
+    def publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+       self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
     async def aio_publish(self, message, topic, force=False):
         await self.connector.aio_publish(message, topic, force=force)
