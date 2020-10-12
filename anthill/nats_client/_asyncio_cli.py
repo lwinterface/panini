@@ -35,6 +35,7 @@ class _AsyncioNATSClient(object):
             kwargs['max_reconnect_attempts'] = self.max_reconnect_attempts
         if self.reconnecting_time_wait:
             kwargs['reconnect_time_wait'] = self.reconnecting_time_wait
+        kwargs.update(self.auth)
         await self.client.connect(**kwargs)
         if self.client.is_connected:
             listen_topics_callbacks = self.listen_topics_callbacks
@@ -117,8 +118,7 @@ class _AsyncioNATSClient(object):
         self.loop.call_soon_threadsafe(self.publish, message, topic)
 
     def publish_request(self, message, topic, timeout=10, unpack=None):
-        isr_log(f'publish_request error: NotImplementedError', level='error')
-        raise NotImplementedError
+        asyncio.ensure_future(self.aio_publish_request(message, topic, timeout, unpack))
 
     def publish_request_from_another_thread(self, message, topic, loop, timeout=10, unpack=None):
         coro = self.aio_publish_request(message, topic, timeout, unpack)

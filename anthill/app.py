@@ -7,9 +7,11 @@ import asyncio
 import uuid
 import logging
 import random
+from aiohttp import web
 from .nats_client.nats_client import NATSClient
 from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
+from .http_server.http_server_app import HTTPServer
 from .serializer import Serializer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread
@@ -24,7 +26,6 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
-                 specific_app_directory: str = os.getcwd(),
                  max_reconnect_attempts: int = None,
                  reconnecting_time_sleep: int = 1,
                  app_strategy: str = 'asyncio',
@@ -33,6 +34,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
                  listen_topic_only_if_include: list = None,
+                 web_app: web.Application = None,
+                 web_host: str = None,
+                 web_port: int = None,
                  logger_required: bool = True,
                  log_file: str = None,
                  log_formatter: str = '%(message)s',
@@ -59,6 +63,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param allocation_quenue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
         :param listen_topic_only_if_include:   #TODO
+        :param web_app: web.Application = None,
+        :param web_host: str = None,    #TODO
+        :param web_port: int = None,    #TODO
         :param logger_required:        #TODO
         :param log_file:               #TODO
         :param log_formatter:  #TODO
@@ -107,13 +114,28 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
+
+            if web_app:
+                self.http = web.RouteTableDef()     #for http decorator
+                self.http_server = HTTPServer(base_app=self, web_app=web_app)
+            elif web_host is not None or web_port is not None:
+                self.http = web.RouteTableDef()     #for http decorator
+                self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port)
+            else:
+                self.http_server = None
             global _app
             _app = self
         except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
-
+        
     def start(self):
+        if self.http_server is None:
+            self._start()
+        else:
+            start_thread(self._start())
+            
+    def _start(self):
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
             topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
@@ -138,9 +160,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
-        self.start_tasks()
+        self._start_tasks()
 
-    def start_tasks(self):
+    def _start_tasks(self):
         if self.app_strategy == 'asyncio':
             loop = asyncio.get_event_loop()
             tasks = asyncio.all_tasks(loop)
@@ -148,10 +170,13 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingTaskError('For asyncio app_strategy only coroutine tasks allowed')
                 loop.create_task(coro())
-            for coro in self.interval_tasks:
-                if not asyncio.iscoroutinefunction(coro):
-                    raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
-                loop.create_task(coro())
+            for interval in self.interval_tasks:
+                for coro in self.interval_tasks[interval]:
+                    if not asyncio.iscoroutinefunction(coro):
+                        raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
+                    loop.create_task(coro())
+            if self.http_server:
+                self.http_server.start_server()
             loop.run_until_complete(asyncio.gather(*tasks))
         elif self.app_strategy == 'sync':
             for task in self.tasks:
@@ -163,8 +188,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                     if asyncio.iscoroutinefunction(task):
                         raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
                     start_thread(task)
+            if self.http_server:
+                self.http_server.start_server()
 
-    def _create_client_code_by_hostname(self, name):
+
+    def _create_client_code_by_hostname(self, name: str):
         return '__'.join([
             name,
             os.environ['HOSTNAME'] if 'HOSTNAME' in os.environ else 'non_docker_env_' + str(random.randint(1, 1000000)),

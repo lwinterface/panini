@@ -20,7 +20,7 @@ class NATSClient:
                 max_reconnect_attempts: int or None,
                 reconnecting_time_wait: int or None,
                 publish_topics=[],
-                # TODO: auth_credentialns
+                auth: dict={},
                 queue="",
                 client_strategy='asyncio',  # in_current_process' or in_separate_processes'
                 redis_host='127.0.0.1',
@@ -45,6 +45,7 @@ class NATSClient:
         self.host = host
         self.port = port
         self.queue = queue
+        self.auth = auth
         self.listen_topics_callbacks = listen_topics_callbacks
         self.publish_topics = publish_topics
         self.allow_reconnect = allow_reconnect
