@@ -43,7 +43,7 @@ class _AsyncioNATSClient(object):
                     await self.aio_subscribe_new_topic(topic, callback)
     
     def subscribe_new_topic(self, topic, callback):
-        self.loop.run_until_complete(aio_subscribe_new_topic(topic, callback))
+        self.loop.run_until_complete(self.aio_subscribe_new_topic(topic, callback))
         
     async def aio_subscribe_new_topic(self, topic, callback):
         wrapped_callback = self.wrap_callback(callback, self)
@@ -124,10 +124,14 @@ class _AsyncioNATSClient(object):
         coro = self.aio_publish_request(message, topic, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
-    async def aio_publish(self, message, topic, force=False):
-        if is_json(message) is False:
+    async def aio_publish(self, message, topic, force=False, nonjson=False):
+        if type(message) is dict and nonjson is False:
             message = json.dumps(message)
-        message = message.encode()
+            message = message.encode()
+        elif type(message) is str:
+            message = message.encode()
+        elif type(message) is bytes:
+            pass
         if not force:
             await self.client.publish(topic, message)
         else:

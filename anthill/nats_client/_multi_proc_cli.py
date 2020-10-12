@@ -292,7 +292,12 @@ class _SenderProc():
         self.client = NATS()
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(
-            self.client.connect(host + ':' + port, loop=self.loop, name=self.client_id + '__' + self.role))
+            self.client.connect(host + ':' + port,
+                                loop=self.loop,
+                                name=self.client_id + '__' + self.role,
+                                allow_reconnect=allow_reconnect,
+                                max_reconnect_attempts=max_reconnect_attempts,
+                                reconnect_time_wait=reconnecting_time_wait))
         log('connected ' + self.role)
         self.connected = True
         self.run_publish_handlers(publish_queue_topics)
@@ -312,21 +317,20 @@ class _SenderProc():
         except Exception as e:
             isr_log(f"ERROR _run_publish_handlers {os.environ['SERVICE_NAME']}: {str(e)}")
 
-    async def _handle_topic_queue_forever(self, redis_topic_name):
+    async def _handle_topic_queue_forever(self, redis_queue_name):
         try:
-            loop = asyncio.get_event_loop()
-            publish_message_queue = RedisResponse(redis_topic_name)
+            publish_message_queue = RedisResponse(redis_queue_name)
             while True:
                 if publish_message_queue.empty() is True:
                     await asyncio.sleep(0.005)
                     continue
                 message = publish_message_queue.get(timeout=1)
                 message = message.decode()
-                await self._send(redis_topic_name, message)
+                await self._send(redis_queue_name, message)
         except Exception as e:
             log(f"_handle_topic_queue_forever error {self.client_id}: " + str(e), level='error')
 
-    async def _send(self, redis_topic, message):
+    async def _send(self, redis_queue_name, message):
         try:
             if self.validate_msg(message):
                 if type(message) == str:
@@ -343,7 +347,7 @@ class _SenderProc():
                                 return
                             except Exception as e:
                                 isr_log(f'sending NATS error: {str(e)}', level='error', phase='request',
-                                        topic=topic, redis_topic=redis_topic)
+                                        topic=topic, redis_topic=redis_queue_name)
                         timeout = message.pop('timeout', 10)
                         isr_id = reply
                         message = self.register_msg(message, topic, isr_id)
@@ -355,7 +359,7 @@ class _SenderProc():
                         if 'isr_log' in locals():
                             isr_log(f"4ERROR isr_id: {isr_id} {message}", level='error')
                         isr_log(f'Invalid message: {message}, error: {str(e)}', level='error', phase='request',
-                                redis_topic=redis_topic,
+                                redis_topic=redis_queue_name,
                                 slack=True)
                 else:
                     # isr_log(f'2PUBLISH: message: {message} topic: {topic} ')
