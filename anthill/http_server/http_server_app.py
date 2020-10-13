@@ -1,9 +1,7 @@
-import asyncio
 from aiohttp import web
-from utils.helper import start_thread
 
 class HTTPServer:
-    def __init__(self, base_app, host=None, port=None, web_app=None, web_app_thread=None):
+    def __init__(self, base_app, host: str = None, port: int = None, web_app: web.Application = None):
         self.app = base_app
         self.routes = base_app.http
         self.host = host

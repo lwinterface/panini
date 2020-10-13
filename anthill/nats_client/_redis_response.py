@@ -12,7 +12,7 @@ log = Logger(name='RedisResponse').log
 
 
 class RedisResponse(RedisQueue):
-    def __init__(self, name, namespace='response', host='127.0.0.1', port=6379, db=0, waiting_btwn_check=0.05):
+    def __init__(self, name: str, namespace: str = 'response', host: str = '127.0.0.1', port: int = 6379, db: int = 0, waiting_btwn_check: float = 0.001):
         if 'SERVICE_NAME' in os.environ:
             if '_sender_client' in os.environ['SERVICE_NAME']:
                 service_name = os.environ['SERVICE_NAME'].replace('_sender_client','')
@@ -29,7 +29,7 @@ class RedisResponse(RedisQueue):
         while datetime.datetime.now().timestamp() - started < timeout:
             try:
                 if self.empty():
-                    time.sleep(0.001)
+                    time.sleep(self.waiting_btwn_check)
                     continue
                 return self.get()
             except Exception as e:

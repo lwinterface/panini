@@ -1,9 +1,7 @@
 import os
-import datetime
-import random
 
 
-def create_service_name_from_docker(default=None):
+def create_service_name_from_docker(default: str = None):
     try:
         return _get_docker_name()
     except Exception as e:

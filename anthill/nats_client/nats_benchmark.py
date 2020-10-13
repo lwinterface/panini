@@ -1,7 +1,6 @@
 import argparse, sys
 import asyncio
 import time
-from random import randint
 
 from nats.aio.client import Client as NATS
 from nats.aio.errors import ErrTimeout

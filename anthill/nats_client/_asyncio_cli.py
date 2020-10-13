@@ -1,10 +1,11 @@
-import sys, os
+import os
 import time
 import json
 import random
 import asyncio
 import datetime
 import uuid
+from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ..logger.logger import Logger, InterServicesRequestLogger
 from ..utils.helper import is_json, run_coro_threadsafe
@@ -43,10 +44,10 @@ class _AsyncioNATSClient(object):
                 for callback in callbacks:
                     await self.aio_subscribe_new_topic(topic, callback)
     
-    def subscribe_new_topic(self, topic, callback):
+    def subscribe_new_topic(self, topic: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_topic(topic, callback))
         
-    async def aio_subscribe_new_topic(self, topic, callback):
+    async def aio_subscribe_new_topic(self, topic: str, callback: CoroutineType):
         wrapped_callback = self.wrap_callback(callback, self)
         await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
                                     pending_bytes_limit=self.pending_bytes_limit)
@@ -54,7 +55,7 @@ class _AsyncioNATSClient(object):
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
 
-            async def callback(cb, subject, data, reply_to=None, isr_id=None):
+            async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
                 if asyncio.iscoroutinefunction(cb):
                     async def coro_callback_with_reply(subject, data, reply_to, isr_id):
                         try:
@@ -108,23 +109,23 @@ class _AsyncioNATSClient(object):
 
         return wrapped_callback
 
-    def publish(self, message, topic):
+    def publish(self, message, topic: str):
         asyncio.ensure_future(self.aio_publish(message, topic))
 
-    def publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+    def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
         asyncio.ensure_future(self.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to))
 
-    def publish_from_another_thread(self, message, topic):
+    def publish_from_another_thread(self, message, topic: str):
         self.loop.call_soon_threadsafe(self.publish, message, topic)
 
-    def publish_request(self, message, topic, timeout=10, unpack=None):
+    def publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = False):
         asyncio.ensure_future(self.aio_publish_request(message, topic, timeout, unpack))
 
-    def publish_request_from_another_thread(self, message, topic, loop, timeout=10, unpack=None):
+    def publish_request_from_another_thread(self, message, topic: str, loop: asyncio.unix_events._UnixSelectorEventLoop, timeout: int = 10, unpack: bool = False):
         coro = self.aio_publish_request(message, topic, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
-    async def aio_publish(self, message, topic, force=False, nonjson=False):
+    async def aio_publish(self, message, topic: str, force: bool = False, nonjson: bool = False):
         if type(message) is dict and nonjson is False:
             message = json.dumps(message)
             message = message.encode()
@@ -137,7 +138,7 @@ class _AsyncioNATSClient(object):
         else:
             raise NotImplementedError
 
-    async def aio_publish_soon(self, message, topic):
+    async def aio_publish_soon(self, message, topic: str):
         if is_json(message) is False:
             message = json.dumps(message)
         message = message.encode()
@@ -146,7 +147,7 @@ class _AsyncioNATSClient(object):
     async def aio_publish_force(self, message, topic):
         raise NotImplementedError
 
-    async def aio_publish_request(self, message, topic, timeout=10, unpack=None):
+    async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = False):
         if type(message) == str:
             message = json.loads(message)
         if self.validate_msg(message):
@@ -164,7 +165,7 @@ class _AsyncioNATSClient(object):
             return response
         isr_log(f'Invalid message: {message}', level='error', topic=topic)
 
-    async def aio_publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+    async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: bool = False):
         message['isr-id'] = str(uuid.uuid4())[:10]
         if is_json(message):
             message = json.loads(message)
@@ -182,12 +183,12 @@ class _AsyncioNATSClient(object):
             return True
         return False
 
-    def register_msg(self, message, isr_id=None):
+    def register_msg(self, message, isr_id: str = None):
         if type(message) is str and is_json(message):
             message = json.loads(message)
         return json.dumps(self.add_isr_id_if_absent(message, isr_id))
 
-    def add_isr_id_if_absent(self, message, isr_id=None):
+    def add_isr_id_if_absent(self, message, isr_id: str = None):
         if not 'isr-id' in message:
             if isr_id is None:
                 message['isr-id'] = str(uuid.uuid4())

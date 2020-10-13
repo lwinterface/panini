@@ -1,8 +1,4 @@
-import os, sys
-import time
-import importlib
-import threading
-import venusian
+import os
 import asyncio
 import uuid
 import logging
@@ -12,7 +8,6 @@ from .nats_client.nats_client import NATSClient
 from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
-from .serializer import Serializer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread
 
@@ -40,9 +35,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  logger_required: bool = True,
                  log_file: str = None,
                  log_formatter: str = '%(message)s',
-                 console_level: str = logging.DEBUG,
-                 file_level: str = logging.INFO,
-                 logging_level: str = logging.INFO,
+                 console_level: int = logging.DEBUG,
+                 file_level: int = logging.INFO,
+                 logging_level: int = logging.INFO,
                  root_path: str = '',
                  ):
         """

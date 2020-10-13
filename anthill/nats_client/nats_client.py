@@ -1,8 +1,7 @@
-import sys
 import time
 import random
 from ..utils.helper import start_thread
-from ..logger.logger import Logger, InterServicesRequestLogger
+from ..logger.logger import Logger
 from ._asyncio_cli import _AsyncioNATSClient
 from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
@@ -61,7 +60,7 @@ class NATSClient:
         global message
         message = self
 
-    def _initialize_sub_class(self, client_strategy):
+    def _initialize_sub_class(self, client_strategy: str):
         if client_strategy == 'asyncio':
             self.connector = _AsyncioNATSClient(self)
         elif client_strategy == 'sync':
@@ -75,28 +74,28 @@ class NATSClient:
         else:
             self.log(f'NATS connection status: {self.connector.client.check_connection}', level='warning')
 
-    def subscribe_new_topic(self, topic, callback):
+    def subscribe_new_topic(self, topic: str, callback):
         self.connector.subscribe_new_topic(topic, callback)
 
     def disconnect(self):
         self.connector.client.disconnect()
 
-    def publish(self, message, topic, reply_to=None):
+    def publish(self, message, topic: str, reply_to: str = None):
         self.connector.publish(message, topic, reply_to=reply_to)
 
-    def publish_request(self, message, topic, timeout=10, unpack=True):
+    def publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):
         return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)
 
-    def publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+    def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
        self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
-    async def aio_publish(self, message, topic, force=False):
+    async def aio_publish(self, message, topic: str, force: bool = False):
         await self.connector.aio_publish(message, topic, force=force)
 
-    async def aio_publish_request(self, message, topic, timeout=10, unpack=True):
+    async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):
         return await self.connector.aio_publish_request(message, topic, timeout, unpack=unpack)
 
-    async def aio_publish_request_with_reply_to_another_topic(self, message, topic, reply_to=None):
+    async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
        await self.connector.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
 

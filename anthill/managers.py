@@ -1,7 +1,5 @@
 import time
-import json
 import asyncio
-import venusian
 from . import exceptions
 from typing import Callable
 from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError, BaseError
@@ -126,39 +124,3 @@ class _IntervalTaskManager:
     def _check_timer_task(interval, interval_task):
         #TODO
         pass
-
-# 
-# class _HTTPEndpoint:
-#     """
-#     Collect all functions from each module wrapped by @app.subscription or @EventManager.subscribe
-#     """
-#     ENDPOINTS = {}
-# 
-#     def http(self, verb, url: str, serializator: type = None):
-#         def wrapper(function):
-#             function = _HTTPEndpoint.wrap_function_by_serializer(function, serializator)
-#             _HTTPEndpoint._check_subscription(url)
-#             _HTTPEndpoint.ENDPOINTS[url].append(function)
-#             return function
-#         return wrapper
-# 
-#     @staticmethod
-#     def wrap_function_by_serializer(function, serializator):
-#         def wrapper(topic, message):
-#             try:
-#                 if serializator is not None:
-#                     message = json.loads(message)
-#                     message = serializator.validated_message(message)
-#             except exceptions.SerializationError as se:
-#                 error = f'topic: {topic} error: {str(se)}'
-#                 return {'success': False, 'error': error}
-#             except Exception as e:
-#                 a = e
-#             return function(topic, message)
-# 
-#         return wrapper
-# 
-#     @staticmethod
-#     def _check_subscription(subsciption):
-#         if not subsciption in _EventManager.SUBSCRIPTIONS:
-#             _EventManager.SUBSCRIPTIONS[subsciption] = []

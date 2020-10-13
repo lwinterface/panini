@@ -19,12 +19,12 @@ class Logger:
     return: logging object, contain rules for logging.
     """
     def __init__(self, name,
-                 log_file=None,
-                 log_formatter='%(message)s',
-                 console_level=logging.DEBUG,
-                     file_level=logging.DEBUG,
-                 logging_level=logging.DEBUG,
-                 root_path=None,
+                 log_file: str = None,
+                 log_formatter: str = '%(message)s',
+                 console_level: int = logging.DEBUG,
+                 file_level: int = logging.DEBUG,
+                 logging_level: int = logging.DEBUG,
+                 root_path: str = None,
                  ):
         self.name = name
         if log_file is not None:
@@ -54,7 +54,7 @@ class Logger:
             separate_file = False
         self.logger = self.create(separate_file=separate_file)
 
-    def create(self, separate_file=False):
+    def create(self, separate_file: bool = False):
         dir_name = f'{self.root_path}logfiles'
         self._create_dir_when_none(dir_name)
         log_file = f'{dir_name}/{self.log_file}'
@@ -87,7 +87,7 @@ class Logger:
             logger.addHandler(handler)
         return logger
 
-    def _create_dir_when_none(self, dir_name):
+    def _create_dir_when_none(self, dir_name: str):
         """Check if a directory exist or create one.
         return: bool."""
         try:
@@ -101,13 +101,13 @@ class Logger:
         except OSError as e:
             pass
 
-    def log(self, msg, level='info', from_=None, print_=False, **log):
+    def log(self, msg: str, level: str = 'info', from_: str = None, print_: bool = False, **log):
         if from_:
             log['from'] = self.name + '__' + from_
         else:
             log['from'] = self.name
         log['timestamp'] = datetime.datetime.now().timestamp()
-        log['msg'] = str(msg)
+        log['msg'] = msg
         log['level'] = level
         log['client_id'] = self.client_id
         if level == 'warning':
@@ -127,14 +127,14 @@ class Logger:
 
 
 class InterServicesRequestLogger(Logger):
-    def __init__(self, name,
-                 log_file=None,
-                 log_formatter='%(message)s',
-                 console_level=logging.DEBUG,
-                     file_level=logging.DEBUG,
-                 logging_level=logging.DEBUG,
-                 root_path=None,
-                 separated_file=False,
+    def __init__(self, name: str,
+                 log_file: str = None,
+                 log_formatter: str = '%(message)s',
+                 console_level: int = logging.DEBUG,
+                     file_level: int = logging.DEBUG,
+                 logging_level: int = logging.DEBUG,
+                 root_path: str = None,
+                 separated_file: bool = False,
                  ):
         self.name = name
         if log_file is not None:
@@ -156,7 +156,7 @@ class InterServicesRequestLogger(Logger):
                 self.root_path = '/'
         self.logger = self.create(separate_file=separated_file)
 
-    def isr_log(self, message, **kwargs):
+    def isr_log(self, message: str, **kwargs):
         if not 'from_' in kwargs:
             kwargs['from_'] = os.environ['CLIENT_ID']
         self.log(message, **kwargs)
