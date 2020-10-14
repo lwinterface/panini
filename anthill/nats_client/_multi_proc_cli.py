@@ -190,7 +190,7 @@ class _ListenerProc():
         self.listen_queue_topics = listen_queue_topics
         self.loop = asyncio.get_event_loop()
         self.client = NATS()
-        self.loop.run_until_complete(self.client.connect(host+':'+port, loop=self.loop, name=self.client_id + '__' + self.role))
+        self.loop.run_until_complete(self.client.connect(host+':'+str(port), loop=self.loop, name=self.client_id + '__' + self.role))
         self.connected = True
         log('connected ' + self.role)
         self.loop.run_until_complete(self.subscribe_all())
@@ -261,7 +261,7 @@ class _SenderProc():
         self.client = NATS()
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(
-            self.client.connect(host + ':' + port,
+            self.client.connect(host + ':' + str(port),
                                 loop=self.loop,
                                 name=self.client_id + '__' + self.role,
                                 allow_reconnect=allow_reconnect,

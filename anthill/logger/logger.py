@@ -101,13 +101,13 @@ class Logger:
         except OSError as e:
             pass
 
-    def log(self, msg: str, level: str = 'info', from_: str = None, print_: bool = False, **log):
+    def log(self, msg, level: str = 'info', from_: str = None, print_: bool = False, **log):
         if from_:
             log['from'] = self.name + '__' + from_
         else:
             log['from'] = self.name
         log['timestamp'] = datetime.datetime.now().timestamp()
-        log['msg'] = msg
+        log['msg'] = str(msg)
         log['level'] = level
         log['client_id'] = self.client_id
         if level == 'warning':

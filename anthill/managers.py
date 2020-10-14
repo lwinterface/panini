@@ -38,7 +38,7 @@ class _EventManager:
 
     @staticmethod
     def wrap_function_by_serializer(function, serializator):
-        def wrapper(topic, message):
+        def serialize_message(topic, message):
             try:
                 if serializator is not None:
                     message = serializator.validated_message(message)
@@ -46,9 +46,21 @@ class _EventManager:
                 error = f'topic: {topic} error: {str(se)}'
                 return {'success':False, 'error':error}
             except Exception as e:
-                a = e
+                raise SerializationError(e)
+            return message
+
+        def wrapper(topic, message):
+            message = serialize_message(topic, message)
             return function(topic, message)
-        return wrapper
+
+        async def wrapper_async(topic, message):
+            message = serialize_message(topic, message)
+            return await function(topic, message)
+
+        if asyncio.iscoroutinefunction(function):
+            return wrapper_async
+        else:
+            return wrapper
 
     @staticmethod
     def _check_subscription(subsciption):

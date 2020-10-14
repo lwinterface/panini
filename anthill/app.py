@@ -1,4 +1,5 @@
 import os
+import time
 import asyncio
 import uuid
 import logging
@@ -21,14 +22,15 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
-                 max_reconnect_attempts: int = None,
-                 reconnecting_time_sleep: int = 1,
+                 max_reconnect_attempts: int = 60,
+                 reconnecting_time_sleep: int = 2,
                  app_strategy: str = 'asyncio',
                  num_of_queues: int = 1,    #only for sync strategy
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
                  listen_topic_only_if_include: list = None,
+                 web_server=False,
                  web_app: web.Application = None,
                  web_host: str = None,
                  web_port: int = None,
@@ -45,20 +47,21 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param port: NATS broker port
         :param service_name: Name of microsirvice
         :param client_id: id of microservice, name and client_id used for NATS client name generating
-        :param tasks:              #TODO
-        :param start_tasks_now:    #TODO
+        :param tasks:              List of additional tasks
         :param reconnect: allows reconnect if connection to NATS has been lost
-        :param max_reconnect_attempts: any number
+        :param max_reconnect_attempts:  number of reconnect attempts
         :param reconnecting_time_sleep: pause between reconnection
-        :param app_strategy: 'async' or 'sync' #TODO describe it more detailed
+        :param app_strategy: 'async' or 'sync'. We strongly recommend using 'async'.
+        'sync' app_strategy works in many times slower and created only for lazy microservices.
         :param subscribe_topics_and_callbacks: if you need to subscibe additional topics(except topics from event.py).
                                         This way doesn't support serializators
         :param publish_topics: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
         :param event_registrator_required: False if you don't want to register subscriptions
         :param allocation_quenue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
-        :param listen_topic_only_if_include:   #TODO
-        :param web_app: web.Application = None,
+        :param listen_topic_only_if_include:   if not None, client will subscribe only to topics that include these key words
+        :param web_app: web.Application:       custom aiohttp app that you can create separately from anthill.
+                            if you set this argument client will only run this aiohttp app without handeling
         :param web_host: str = None,    #TODO
         :param web_port: int = None,    #TODO
         :param logger_required:        #TODO
@@ -109,13 +112,12 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
-
-            if web_app:
-                self.http = web.RouteTableDef()     #for http decorator
-                self.http_server = HTTPServer(base_app=self, web_app=web_app)
-            elif web_host is not None or web_port is not None:
-                self.http = web.RouteTableDef()     #for http decorator
-                self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port)
+            if web_server:
+                self.http = web.RouteTableDef()  # for http decorator
+                if web_app:
+                    self.http_server = HTTPServer(base_app=self, web_app=web_app)
+                else:
+                    self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port)
             else:
                 self.http_server = None
             global _app
@@ -174,6 +176,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 self.http_server.start_server()
             loop.run_until_complete(asyncio.gather(*tasks))
         elif self.app_strategy == 'sync':
+            time.sleep(1)
             for task in self.tasks:
                 if asyncio.iscoroutinefunction(task):
                     raise InitializingIntevalTaskError("For sync app_strategy coroutine task doesn't allowed")

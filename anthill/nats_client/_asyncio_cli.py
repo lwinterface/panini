@@ -54,7 +54,6 @@ class _AsyncioNATSClient(object):
 
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
-
             async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
                 if asyncio.iscoroutinefunction(cb):
                     async def coro_callback_with_reply(subject, data, reply_to, isr_id):

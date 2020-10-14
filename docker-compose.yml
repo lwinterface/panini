@@ -1,0 +1,49 @@
+version: '3.6'
+
+networks:
+  internet:
+    name: "internet"
+    driver: bridge
+
+
+services:
+  nats-server:
+    volumes:
+      - ./config:/config
+    command:
+      - "-p"
+      - "4222"
+      - "-m"
+      - "8222"
+      - "-c"
+      - "/config/nats-server.conf"
+    ports:
+      - 4222:4222
+      - 8222:8222
+    image: nats:latest
+    container_name: nats-server
+    networks:
+      - no-internet
+      - internet
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 200M
+    restart: always
+  redis:
+    image: sameersbn/redis:4.0.9-3
+    ports:
+      - 6379:6379
+    command: "redis-server --appendonly yes --protected-mode no"
+#    command: "--logfile /var/log/redis/redis-server.log"
+#    volumes:
+#      - ./redis-data:/data/db
+#      - ./config/redis.conf:/redis.conf
+#      - /srv/docker/redis:/var/lib/redis
+    networks:
+      - no-internet
+      - internet
+    restart: always
+
