@@ -1,0 +1,49 @@
+version: '3.6'
+
+networks:
+  internet:
+    name: "internet"
+    driver: bridge
+
+
+services:
+  nats-server:
+    command:
+      - "-p"
+      - "4222"
+      - "-m"
+      - "8222"
+    ports:
+      - 4222:4222
+      - 8222:8222
+    image: nats:latest
+    container_name: nats-server
+    networks:
+      - internet
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 200M
+    restart: always
+  redis:
+    image: sameersbn/redis:4.0.9-3
+    ports:
+      - 6379:6379
+    command: "redis-server --appendonly yes --protected-mode no"
+    networks:
+      - internet
+    restart: always
+  microservice1:
+    volumes:
+      - ./microservice1:/app/microservice1
+    build: microservice1/.
+    networks:
+      - internet
+  microservice2:
+    volumes:
+      - ./microservice2:/app/microservice2
+    build: microservice2/.
+    networks:
+      - internet

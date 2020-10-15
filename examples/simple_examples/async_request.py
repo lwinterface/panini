@@ -21,7 +21,6 @@ async def request():
     for _ in range(10):
         result = await app.aio_publish_request(msg, topic='some.request.topic.123')
         log(result)
-    return
 
 
 

@@ -9,7 +9,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 
 setup(name='anthill',
-      version='0.1',
+      version='0.1.0',
       description='A python messaging framework for microservices based on NATS',
       long_description=long_description,
       url='https://github.com/lwinterface/anthill',
@@ -36,7 +36,6 @@ setup(name='anthill',
                   'aiohttp-cors>=0.7.0',
                   'async-timeout>=3.0.1',
                   'asyncio-nats-client>=0.11.2',
-                  'colorclass>=2.2.0',
                   'redis>=3.5.3',
                   'requests>=2.24.0',
                   'six>=1.15.0',

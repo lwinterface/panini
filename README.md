@@ -1,18 +1,43 @@
 # Anthill
-Simple [asyncio](https://docs.python.org/3/library/asyncio.html) framework based on [NATS python client](https://github.com/nats-io/nats.py).
+
+Easy to work [asyncio](https://docs.python.org/3/library/asyncio.html) library based on [NATS python client](https://github.com/nats-io/nats.py).
+
+The syntax makes it easy to create fast and flexible microservices that are ready to scale.
+Just try to follow the examples and you will see how uncomplicated it is.
+
+The project is inspired by the syntax of [faust](https://github.com/robinhood/faust), the wonderful python project based on [Kafka Streams](https://kafka.apache.org/documentation/streams/) 
+
+## Documentation
+is coming..
 
 ## Installing
 
 ```bash
 pip install anthill
 ```
-## Run broker
 
-TODO
+Additional requirements:
+- docker >= 19.03.8
+
+## Broker
+
+Run broker in directory that include file docker-compose.yml in [repository](https://github.com/lwinterface/anthill) by command below:
+```bash
+docker-compose up
+```
+
+Stop broker:
+```bash
+docker-compose down
+```
+
+Note, for production we recommend running the broker with dockerized microservices. Example of dockerized Anthill project [here](https://github.com/lwinterface/anthill/examples/dockercompose_project)
 
 ## Examples
 
 ### Publish
+
+For streams:
 
 ```python
 
@@ -52,7 +77,17 @@ if __name__ == "__main__":
 
 ```
 
+Let's say name of script above `app.py`. Be sure that broker is running and just run it:
+
+```python
+python3 app.py
+```
+
+It's all! Microservice launched
+
 ### Request
+
+Classical request-response:
 
 ```python
 from anthill import app as ant_app
@@ -86,6 +121,9 @@ if __name__ == "__main__":
 ```
 
 ### Request with response to another topic
+
+A response of request is sent to the third topic. This method can significantly increase the throughput in comparison to classical request-response model
+
 ```python
 
 from anthill import app as ant_app
@@ -108,12 +146,10 @@ async def request_to_another_topic():
         await app.aio_publish_request_with_reply_to_another_topic(msg, topic='some.topic.for.request.with.response.to.another.topic', reply_to='reply.to.topic')
         log('sent request')
 
-
 @app.listen('some.topic.for.request.with.response.to.another.topic')
-async def topic_for_requests_istener(topic, message):
+async def request_listener(topic, message):
     log('request has been processed')
     return {'success': True, 'data': 'request has been processed'}
-
 
 @app.listen('reply.to.topic')
 async def another_topic_listener(topic, message):
@@ -126,6 +162,8 @@ if __name__ == "__main__":
 ```
 
 ### Serializers
+
+Serializer allows you to validate incoming messages:
 
 ```python
 
@@ -179,6 +217,9 @@ if __name__ == "__main__":
 
 ### HTTP server
 
+You must specify web_server=True to activate the web server. [Aiohttp](https://docs.python.org/3/library/asyncio.html) is used as a web server. Accordingly, you can use their syntax.
+Also you can spacify web
+
 ```python
 
 from aiohttp import web
@@ -189,7 +230,9 @@ app = ant_app.App(
     host='127.0.0.1',
     port=4222,
     app_strategy='asyncio',
-    web_server=True
+    web_server=True,
+    web_host='127.0.0.1',
+    web_port=8999,
 )
 
 log = app.logger.log
@@ -222,6 +265,9 @@ if __name__ == "__main__":
 ```
 
 ### Sync example
+
+Not familiar with asyncio? Try a synchronous implementation
+
 
 ```python
 
@@ -258,3 +304,64 @@ def topic_for_requests_istener(topic, message):
 if __name__ == "__main__":
     app.start()
 ```
+Remember, a synchronous app_strategy many times slower than an asynchronous one. It is designed for users who have no experience with asyncio. Sync implementation only useful for very lazy microservices:
+
+## Logging
+
+Anthill creates a logfile folder in the project directory and stores all logs there. There are several ways to store your own logs there.
+
+Logging from app object:
+```python
+from anthill import app as ant_app
+
+app = ant_app.App(  #create app
+    service_name='ms_template_sync_by_lib',
+    host='127.0.0.1',
+    port=4222,
+    app_strategy='sync',
+)
+
+log = app.logger.log    #create log handler
+
+log("some log")         #write log
+log("some warn log", level='warning')
+log("some error log", level='error')
+
+```
+
+Separated:
+
+```python
+from anthill.logger import Logger
+
+log = Logger('some_logger_name',    #create log handler
+log_file='some_logger_file_name_you_want_to_create')    
+
+log("some log")         #write log
+
+```
+## Testing
+
+is coming..
+ 
+## Contibuting
+
+Welcome contributer! We are looking developers to make Anthill a great project.
+
+Working on your first Pull Request? You can learn how from this *free* series, [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github).
+
+Here's how you can help:
+
+* suggest new updates or report about bug [here](https://github.com/lwinterface/anthill/issues)
+* review a [pull request](https://github.com/lwinterface/anthill/pulls)
+* fix an [issue](https://github.com/lwinterface/anthill/issues)
+* write a tutorial
+* always follow by [this](https://github.com/firstcontributions/first-contributions) guide for your contributions
+
+At this point, you're ready to make your changes! Feel free to ask for help :smile_cat:
+
+
+
+
+
+
