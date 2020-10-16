@@ -30,11 +30,12 @@ class Logger:
         if log_file is not None:
             self.log_file = log_file
         else:
-            if 'CLIENT_ID' in os.environ:
-                self.log_file = f"{os.environ['CLIENT_ID']}.log"
-                self.client_id = os.environ['CLIENT_ID']
-            else:
-                self.log_file = f"{name}.log"
+            # if 'CLIENT_ID' in os.environ:
+            #     self.log_file = f"{os.environ['CLIENT_ID']}.log"
+            #     self.client_id = os.environ['CLIENT_ID']
+            # else:
+            #     self.log_file = f"{name}.log"
+            self.log_file = f"{name}.log"
         if not hasattr(self, 'client_id'):
             self.client_id = name
         self.log_formatter = log_formatter
@@ -44,10 +45,7 @@ class Logger:
         if root_path is not None:
             self.root_path = root_path
         else:
-            try:
-                self.root_path = os.environ['SERVICE_ROOT_PATH']
-            except:
-                self.root_path = '/'
+            self.root_path = '/'
         if log_file:
             separate_file = True
         else:
@@ -58,13 +56,14 @@ class Logger:
         dir_name = f'{self.root_path}logfiles'
         self._create_dir_when_none(dir_name)
         log_file = f'{dir_name}/{self.log_file}'
-        if separate_file:
-            logger = logging.getLogger(self.log_file)
-        else:
-            try:
-                logger = logging.getLogger(os.environ['SERVICE_NAME'])
-            except:
-                logger = logging.getLogger(self.log_file)
+        # if separate_file:
+        #     logger = logging.getLogger(log_file)
+        # else:
+        #     try:
+        #         logger = logging.getLogger(os.environ['SERVICE_NAME'])
+        #     except:
+        #         logger = logging.getLogger(log_file)
+        logger = logging.getLogger(log_file)
         if not logger.handlers:
             logger.setLevel(self.logging_level)
             formatter = logging.Formatter(self.log_formatter)
@@ -73,17 +72,14 @@ class Logger:
             ch.setLevel(self.console_level)
             ch.setFormatter(formatter)
             # File Handler stream
-            try:
-                fh = logging.FileHandler(log_file)
-            except:
-                log_file = os.path.dirname(sys.argv[0])+log_file
-                fh = logging.FileHandler(log_file)
+            handler_path = os.getcwd()+'/'+log_file
+            fh = logging.FileHandler(handler_path)
             fh.setLevel(self.file_level)
             fh.setFormatter(formatter)
             logger.addHandler(ch)
             logger.addHandler(fh)
             handler = logging.handlers.RotatingFileHandler(
-                log_file, maxBytes=2000000, backupCount=20)
+                handler_path, maxBytes=2000000, backupCount=20)
             logger.addHandler(handler)
         return logger
 
@@ -150,10 +146,7 @@ class InterServicesRequestLogger(Logger):
         if root_path is not None:
             self.root_path = root_path
         else:
-            try:
-                self.root_path = "/".join(os.environ['SERVICE_ROOT_PATH'][:-1].split('/')[:-1])+"/messanger/"
-            except:
-                self.root_path = '/'
+            self.root_path = '/'
         self.logger = self.create(separate_file=separated_file)
 
     def isr_log(self, message: str, **kwargs):

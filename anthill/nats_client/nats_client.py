@@ -38,7 +38,7 @@ class NATSClient:
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-        self.log = Logger(name='NATSClient').log
+        self.log = Logger(name='nats_cli').log
         self.connected = False
         self.client_id = client_id
         self.host = host

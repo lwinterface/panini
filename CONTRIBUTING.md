@@ -2,7 +2,7 @@
 
 ### Welcome contributer! 
 
-First off, thank you for considering contributing to Anthill. We are looking for people like you to make Anthill a great project.
+First off, thank you for considering contributing to Anthill. We are looking for developers to make Anthill a great project.
 
 ### Why you need to read your guidelines.
 

@@ -11,8 +11,7 @@ from ..logger.logger import Logger, InterServicesRequestLogger
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 
-log = Logger(name='_AsyncioNATSClient').log
-isr_log = InterServicesRequestLogger(name='InterServicesRequest_AsyncioNATSClient').isr_log
+isr_log = Logger(name='nats_cli').log
 
 class _AsyncioNATSClient(object):
     """

@@ -8,11 +8,13 @@ from ..utils.redis_queue import RedisQueue
 from ..logger.logger import Logger
 
 
-log = Logger(name='RedisResponse').log
+
 
 
 class RedisResponse(RedisQueue):
+
     def __init__(self, name: str, namespace: str = 'response', host: str = '127.0.0.1', port: int = 6379, db: int = 0, waiting_btwn_check: float = 0.001):
+        self.log = Logger(name='RedisResponse').log
         if 'SERVICE_NAME' in os.environ:
             if '_sender_client' in os.environ['SERVICE_NAME']:
                 service_name = os.environ['SERVICE_NAME'].replace('_sender_client','')
@@ -33,7 +35,7 @@ class RedisResponse(RedisQueue):
                     continue
                 return self.get()
             except Exception as e:
-                    log('RedisResponse error: ', str(e))
+                self.log('RedisResponse error: ', str(e))
         msg = 'Nats client timeout'
-        log(f"Waiting for response from redis ERROR: {msg}, topic: {topic}", level='error')
+        self.log(f"Waiting for response from redis ERROR: {msg}, topic: {topic}", level='error')
         raise ErrTimeout(msg)

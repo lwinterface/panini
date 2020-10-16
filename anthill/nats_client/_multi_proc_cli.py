@@ -13,9 +13,7 @@ from ..logger.logger import Logger, InterServicesRequestLogger
 from ..utils.helper import start_thread, start_process, is_json
 from ._redis_response import RedisResponse, RedisQueue
 
-log = Logger(name='_MessengerClient_V3').log
-# isr_log = InterServicesRequestLogger(name='InterServicesRequest_V3', separated_file=True).isr_log
-isr_log = Logger(name='InterServicesRequest_V3', log_file=f'InterServicesRequest_V3.log').log
+isr_log = Logger(name='nats_cli').log
 
 LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = os.environ['CLIENT_ID'] if 'CLIENT_ID' in os.environ else str(uuid.uuid4())[10:] + '__new_subscribtion'
 
@@ -118,7 +116,7 @@ class _MultiProcNATSClient(object):
                 if not 'new_msg' in locals():
                     new_msg = "hasn't handeled"
                 error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
-                log(error, level='error', slack=True)
+                isr_log(error, level='error', slack=True)
 
     def publish(self, message, topic: str, reply_to: str = None):
         if reply_to:
@@ -192,7 +190,7 @@ class _ListenerProc():
         self.client = NATS()
         self.loop.run_until_complete(self.client.connect(host+':'+str(port), loop=self.loop, name=self.client_id + '__' + self.role))
         self.connected = True
-        log('connected ' + self.role)
+        isr_log('connected ' + self.role)
         self.loop.run_until_complete(self.subscribe_all())
         self.loop.create_task(self.listen_for_new_subscribtion(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC))
         self.loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(self.loop)))
@@ -219,7 +217,7 @@ class _ListenerProc():
                 new_topic = new_topic_raw.decode()
                 await self.subscribe(new_topic)
         except Exception as e:
-            log(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e), level='error')
+            isr_log(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e), level='error')
 
     def wrap_callback(self, base_topic: str, q: RedisQueue, cli):
         async def wrapped_callback(msg):
@@ -267,7 +265,7 @@ class _SenderProc():
                                 allow_reconnect=allow_reconnect,
                                 max_reconnect_attempts=max_reconnect_attempts,
                                 reconnect_time_wait=reconnecting_time_wait))
-        log('connected ' + self.role)
+        isr_log('connected ' + self.role)
         self.connected = True
         self.run_publish_handlers(publish_queue_topics)
 
@@ -297,7 +295,7 @@ class _SenderProc():
                 message = message.decode()
                 await self._send(redis_queue_name, message)
         except Exception as e:
-            log(f"_handle_topic_queue_forever error {self.client_id}: " + str(e), level='error')
+            isr_log(f"_handle_topic_queue_forever error {self.client_id}: " + str(e), level='error')
 
     async def _send(self, redis_queue_name: str, message):
         try:
@@ -337,7 +335,7 @@ class _SenderProc():
             else:
                 isr_log(f'Invalid message: {message}', level='error', phase='request', redis_topic=redis_topic)
         except Exception as e:
-            log('Request error :' + str(e), slack=True)
+            isr_log('Request error :' + str(e), slack=True)
 
     def validate_msg(self, message):
         if type(message) is dict:

@@ -21,7 +21,7 @@ Additional requirements:
 
 ## Broker
 
-Run broker in directory that include file docker-compose.yml in [repository](https://github.com/lwinterface/anthill) by command below:
+Run broker from directory that include file [docker-compose.yml](https://github.com/lwinterface/anthill/blob/master/docker-compose.yml). Command below:
 ```bash
 docker-compose up
 ```
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
 ```
 
-Let's say name of script above `app.py`. Be sure that broker is running and just run it:
+Let's say name of script above `app.py`. Be sure that broker is running and just execute:
 
 ```python
 python3 app.py
@@ -304,7 +304,7 @@ def topic_for_requests_istener(topic, message):
 if __name__ == "__main__":
     app.start()
 ```
-Remember, a synchronous app_strategy many times slower than an asynchronous one. It is designed for users who have no experience with asyncio. Sync implementation only useful for very lazy microservices:
+Remember, a synchronous app_strategy many times slower than an asynchronous one. It is designed for users who have no experience with asyncio. Sync implementation only useful for very lazy microservices
 
 ## Logging
 
