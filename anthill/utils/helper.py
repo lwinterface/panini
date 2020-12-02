@@ -7,6 +7,11 @@ from threading import Thread
 from multiprocessing import Process
 
 
+def set_root_path():
+    root_path = os.path.dirname(sys.argv[0])
+    return f"{root_path}/" if root_path else ""
+
+
 def create_dir_when_none(dir_name):
     """Check if a directory exist or create one.
     return: bool."""
