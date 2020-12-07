@@ -33,7 +33,7 @@ class _EventManager:
     def _subscribe(self, topic, function):
         if not hasattr(self, 'connector') or self.connector.check_connection is False:
             raise NotReadyError('Something wrong. NATS client should be connected first')
-        self.subscribe_new_topic(topic, function)
+        self.subscribe_topic(topic, function)
 
 
     @staticmethod
