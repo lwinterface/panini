@@ -37,7 +37,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  web_app = None,
                  web_host: str = '127.0.0.1',
                  web_port: int = 5000,
-                 web_framework: str = 'fastapi',
+                 web_framework: str = None,
                  logger_required: bool = True,
                  log_file: str = None,
                  log_formatter: str = '%(message)s',

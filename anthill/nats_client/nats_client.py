@@ -101,8 +101,6 @@ class NATSClient:
         await self.connector.aio_unsubscribe_topic(topic)
 
     async def aio_publish(self, message, topic: str, force: bool = False):
-        print(hasattr(self, 'connector'))
-        print(len(clients))
         await self.connector.aio_publish(message, topic, force=force)
 
     async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):

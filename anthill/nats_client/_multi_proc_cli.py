@@ -48,7 +48,7 @@ class _MultiProcNATSClient(object):
         for topic, q in self.listen_message_queue.items():
             start_thread(self._listen_incoming_messages_forever, args=(q, topic))
 
-    async def aio_subcribe_new_topic(self, topic: str, callback: CoroutineType):
+    async def aio_subscribe_topic(self, topic: str, callback: CoroutineType):
         self.listen_new_topic(topic, callback)
 
     def listen_new_topic(self, topic: str, callback: CoroutineType):
