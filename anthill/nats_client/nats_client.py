@@ -7,6 +7,7 @@ from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
 
 message = None
+clients = []
 
 class NATSClient:
 
@@ -18,14 +19,15 @@ class NATSClient:
                 allow_reconnect: bool or None,
                 max_reconnect_attempts: int = 60,
                 reconnecting_time_wait: int = 2,
-                publish_topics=[],
-                auth: dict={},
-                queue="",
-                client_strategy='asyncio',  # in_current_process' or in_separate_processes'
-                redis_host='127.0.0.1',
-                redis_port='6379',
-                pending_bytes_limit=65536 * 1024 * 10,
-                num_of_queues=None
+                publish_topics = [],
+                auth: dict = {},
+                queue: str = "",
+                client_strategy: str = 'asyncio',  # in_current_process' or in_separate_processes'
+                redis_host: str = '127.0.0.1',
+                redis_port: str ='6379',
+                pending_bytes_limit: int = 65536 * 1024 * 10,
+                num_of_queues: int = None,
+                data_absorbing: bool = False,
                 ):
         """
         :param client_id: instance identificator for NATS, str
@@ -55,10 +57,13 @@ class NATSClient:
         self.redis_host = redis_host
         self.redis_port = redis_port
         self.num_of_queues = num_of_queues
+        self.data_absorbing = data_absorbing
         self._initialize_sub_class(client_strategy)
         #TODO: check that connect/sub/pub interface exist
         global message
         message = self
+        global clients
+        clients.append(message)
 
     def _initialize_sub_class(self, client_strategy: str):
         if client_strategy == 'asyncio':
@@ -74,8 +79,8 @@ class NATSClient:
         else:
             self.log(f'NATS connection status: {self.connector.client.check_connection}', level='warning')
 
-    def subscribe_new_topic(self, topic: str, callback):
-        self.connector.subscribe_new_topic(topic, callback)
+    def subscribe_topic(self, topic: str, callback):
+        self.connector.subscribe_topic(topic, callback)
 
     def disconnect(self):
         self.connector.client.disconnect()
@@ -89,7 +94,15 @@ class NATSClient:
     def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
        self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
+    async def aio_subscribe_topic(self, topic: str, callback):
+        await self.connector.aio_subscribe_topic(topic, callback)
+
+    async def aio_unsubscribe_topic(self, topic: str):
+        await self.connector.aio_unsubscribe_topic(topic)
+
     async def aio_publish(self, message, topic: str, force: bool = False):
+        print(hasattr(self, 'connector'))
+        print(len(clients))
         await self.connector.aio_publish(message, topic, force=force)
 
     async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):
