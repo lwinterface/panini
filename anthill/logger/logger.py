@@ -35,6 +35,7 @@ class Logger:
     self.logging_level: logging object, optional, the level of logging to catch.
     self.log_directory: name of directory for storing logs.
     self.log_config_file_path: path (relative from root_path) to advanced log config file (ex. log_config.json).
+    self.in_separate_process: Do logging in separate process? (with all pros and cons of that - advanced topic).
     return: logging object, contain rules for logging.
     """
 
@@ -47,16 +48,12 @@ class Logger:
                  root_path: str = None,
                  log_directory: str = None,
                  log_config_file_path: str = None,
+                 in_separate_process: bool = False,
                  ):
         self.name = name
         if log_file is not None:
             self.log_file = log_file
         else:
-            # if 'CLIENT_ID' in os.environ:
-            #     self.log_file = f"{os.environ['CLIENT_ID']}.log"
-            #     self.client_id = os.environ['CLIENT_ID']
-            # else:
-            #     self.log_file = f"{name}.log"
             self.log_file = f"{name}.log"
         if not hasattr(self, 'client_id'):
             self.client_id = name
@@ -66,6 +63,7 @@ class Logger:
         self.logging_level = logging_level
         self.log_directory = log_directory if log_directory is not None else 'logfiles'
         self.log_config_file_path = log_config_file_path
+        self.in_separate_process = in_separate_process
         if root_path is not None:
             self.root_path = root_path
         else:
@@ -77,11 +75,13 @@ class Logger:
         else:
             config = self.configure_logging_with_config_file()
 
-        print(config)
         logging.config.dictConfig(config)
 
-        processes_queue, stop_event, listener_process = self.set_logger_in_separate_process()
-        self.logger = self.get_process_logging_config(processes_queue, name)
+        if self.in_separate_process:
+            processes_queue, stop_event, listener_process = self.set_logger_in_separate_process()
+            self.logger = self.get_process_logging_config(processes_queue, name)
+        else:
+            self.logger = logging.getLogger(name)
 
     def create(self):
         dir_name = f'{self.root_path}{self.log_directory}'
