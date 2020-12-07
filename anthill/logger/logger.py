@@ -34,7 +34,7 @@ class Logger:
         logging file. Need to be superior to logging_level.
     self.logging_level: logging object, optional, the level of logging to catch.
     self.log_directory: name of directory for storing logs.
-    self.log_config_file_path: path (relative from root_path) to advanced log config file (ex. log_config.json).
+    self.log_config_file_path: path (relative from root_path) to advanced log config file (ex. log_config.json.sample).
     self.in_separate_process: Do logging in separate process? (with all pros and cons of that - advanced topic).
     return: logging object, contain rules for logging.
     """
@@ -70,7 +70,7 @@ class Logger:
             self.root_path = '/'
 
         if self.log_config_file_path is None:
-            config = self.create()
+            config = self.configure_simple_logging()
 
         else:
             config = self.configure_logging_with_config_file()
@@ -83,7 +83,7 @@ class Logger:
         else:
             self.logger = logging.getLogger(name)
 
-    def create(self):
+    def configure_simple_logging(self):
         dir_name = f'{self.root_path}{self.log_directory}'
         if dir_name[0] == '/':
             dir_name = dir_name[1:]
