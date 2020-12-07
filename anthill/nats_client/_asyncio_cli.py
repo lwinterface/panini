@@ -20,6 +20,7 @@ class _AsyncioNATSClient(object):
 
     def __init__(self, base_obj):
         self.__dict__ = base_obj.__dict__
+        self.ssid_map = {}
         #TODO: check that all cls attr exists
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
@@ -40,16 +41,37 @@ class _AsyncioNATSClient(object):
         if self.client.is_connected:
             listen_topics_callbacks = self.listen_topics_callbacks
             for topic, callbacks in listen_topics_callbacks.items():
-                for callback in callbacks:
-                    await self.aio_subscribe_new_topic(topic, callback)
+                if not type(callbacks) is list:
+                    await self.aio_subscribe_topic(topic, callbacks)
+                else:
+                    for callback in callbacks:
+                        await self.aio_subscribe_topic(topic, callback)
     
-    def subscribe_new_topic(self, topic: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.aio_subscribe_new_topic(topic, callback))
+    def subscribe_topic(self, topic: str, callback: CoroutineType):
+        self.loop.run_until_complete(self.aio_subscribe_topic(topic, callback))
+
+    def unsubscribe_topic(self, topic: str):
+        self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
         
-    async def aio_subscribe_new_topic(self, topic: str, callback: CoroutineType):
+    async def aio_subscribe_topic(self, topic: str, callback: CoroutineType):
         wrapped_callback = self.wrap_callback(callback, self)
-        await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
+        ssid = await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
                                     pending_bytes_limit=self.pending_bytes_limit)
+        self.ssid_map[topic] = ssid
+        self.topics_and_callbacks[topic] = callback
+
+    async def aio_unsubscribe_topic(self, topic: str):
+        if not topic in self.ssid_map:
+            raise Exception(f"Topic {topic} hasn't been subscribed")
+        await self.client.unsubscribe(self.ssid_map[topic])
+        del self.ssid_map[topic]
+
+    def get_absorber_topic(self, topic, type='publish'):
+        return f'absorber.{self.client_id}.{topic}.{type}.{datetime.datetime.now().timestamp()}'
+
+    async def push_to_absorber(self, topic, message, type='publish'):
+        absorber_topic = self.get_absorber_topic(topic, type=type)
+        await self.client.publish(absorber_topic, message)
 
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
@@ -91,9 +113,13 @@ class _AsyncioNATSClient(object):
             data = json.loads(raw_data)
             if not msg.reply == '':
                 reply_to = msg.reply
+                if cli.data_absorbing:
+                    await cli.push_to_absorber(msg.subject, msg.data, type='request')
             elif 'reply_to' in data:
                 reply_to = data.pop('reply_to')
             else:
+                if cli.data_absorbing:
+                    await cli.push_to_absorber(msg.subject, msg.data, type='publish')
                 # isr_log(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
@@ -131,10 +157,12 @@ class _AsyncioNATSClient(object):
             message = message.encode()
         elif type(message) is bytes:
             pass
-        if not force:
-            await self.client.publish(topic, message)
-        else:
-            raise NotImplementedError
+        await self.client.publish(topic, message)
+        if force:
+            await self.client.flush(timeout=1)
+
+    async def flush(self, timeout=1):
+        await self.client.flush(timeout=1)
 
     async def aio_publish_soon(self, message, topic: str):
         if is_json(message) is False:
@@ -157,22 +185,22 @@ class _AsyncioNATSClient(object):
             message = message.encode()
             response = await self.client.request(topic, message, timeout=timeout)
             response = response.data
+            if self.data_absorbing:
+                await self.push_to_absorber(topic, message, type='response')
             # isr_log(f'6RESPONSE message: {message}', phase='response', topic=topic)
             if unpack:
                 response = json.loads(response)
             return response
         isr_log(f'Invalid message: {message}', level='error', topic=topic)
 
-    async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: bool = False):
-        message['isr-id'] = str(uuid.uuid4())[:10]
+    async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: bool = False, force: bool = False):
         if is_json(message):
             message = json.loads(message)
-            message['reply_to'] = reply_to
-        else:
-            message['reply_to'] = reply_to
+        message['reply_to'] = reply_to
+        message['isr-id'] = str(uuid.uuid4())[:10]
         message = json.dumps(message)
         # isr_log(f'1REQUEST_to_another_topic message: {message}', phase='request', topic=topic)
-        await self.aio_publish(message, topic)
+        await self.aio_publish(message, topic, force=force)
 
     def validate_msg(self, message):
         if type(message) is dict:
@@ -196,17 +224,17 @@ class _AsyncioNATSClient(object):
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
-        log('Disconnected', level='warning')
+        isr_log('Disconnected', level='warning')
 
     async def aio_disconnect(self):
         await self.client.drain()
-        log('Disconnected', level='warning')
+        isr_log('Disconnected', level='warning')
 
     def check_connection(self):
         if self.client._status is NATS.CONNECTED:
-            log('NATS Client status: CONNECTED')
+            isr_log('NATS Client status: CONNECTED')
             return True
-        log('NATS Client status: DISCONNECTED', level='warning')
+        isr_log('NATS Client status: DISCONNECTED', level='warning')
 
 
 

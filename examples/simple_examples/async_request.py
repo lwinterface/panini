@@ -5,6 +5,7 @@ app = ant_app.App(
     host='127.0.0.1',
     port=4222,
     app_strategy='asyncio',
+    data_absorbing=True,
 )
 
 log = app.logger.log

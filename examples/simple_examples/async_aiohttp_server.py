@@ -2,11 +2,12 @@ from aiohttp import web
 from anthill import app as ant_app
 
 app = ant_app.App(
-    service_name='async_web_server',
+    service_name='async_web_server_aiohttp',
     host='127.0.0.1',
     port=4222,
     app_strategy='asyncio',
-    web_server=True
+    web_server=True,
+    web_framework='aiohttp',
 )
 
 log = app.logger.log

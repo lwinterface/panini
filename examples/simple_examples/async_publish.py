@@ -18,7 +18,7 @@ async def publish():
         log(f'send message {msg}')
 
 
-@app.timer_task(interval=2)
+@app.timer_task(interval=1)
 async def publish_pereodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
