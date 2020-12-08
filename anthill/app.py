@@ -40,6 +40,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  console_level: int = logging.DEBUG,
                  file_level: int = logging.INFO,
                  logging_level: int = logging.INFO,
+                 log_directory: str = None,
+                 log_config_file_path: str = None,
+                 log_in_separate_process: bool = False,
                  root_path: str = '',
                  ):
         """
@@ -69,6 +72,13 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param log_formatter:  #TODO
         :param console_level:  #TODO
         :param file_level:     #TODO
+        :param log_directory: name of directory for storing logs.
+        :param log_config_file_path: path (relative from root_path)
+            to advanced log config file (ex. log_config.json.sample)
+            (no other logging features used (except log_directory and log_in_separate_process) if provided).
+        :param log_in_separate_process: do logging in separate process? (with all pros and cons of that - advanced topic).
+        :param logging_level:  #TODO
+        :param logging_level:  #TODO
         :param logging_level:  #TODO
         :param root_path:      #TODO
         :param slack_webhook_url_for_logs:     #TODO
@@ -108,6 +118,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                     console_level=console_level,
                     file_level=file_level,
                     logging_level=logging_level,
+                    log_directory=log_directory,
+                    log_config_file_path=log_config_file_path,
+                    in_separate_process=log_in_separate_process,
                     root_path=root_path,
                 )
             else:

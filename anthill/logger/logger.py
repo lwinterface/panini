@@ -75,13 +75,12 @@ class Logger:
         else:
             config = self.configure_logging_with_config_file()
 
-        logging.config.dictConfig(config)
-
         if self.in_separate_process:
-            processes_queue, stop_event, listener_process = self.set_logger_in_separate_process()
-            self.logger = self.get_process_logging_config(processes_queue, name)
+            processes_queue, stop_event, listener_process = self.set_logger_in_separate_process(config)
+            self.logger = self.get_process_logging_config(processes_queue, self.name)
         else:
-            self.logger = logging.getLogger(name)
+            logging.config.dictConfig(config)
+            self.logger = logging.getLogger(self.name)
 
     def configure_simple_logging(self):
         dir_name = f'{self.root_path}{self.log_directory}'
@@ -89,40 +88,39 @@ class Logger:
             dir_name = dir_name[1:]
         self._create_dir_when_none(dir_name)
         log_file = f'{dir_name}/{self.log_file}'
-        logger = logging.getLogger(log_file)
-        config = {}
-        if not logger.handlers:
-            config = {
-                'version': 1,
-                'disable_existing_loggers': True,
-                'formatters': {
-                    "default": {
-                        "class": "logging.Formatter",
-                        "format": self.log_formatter
-                    }
-                },
-                'handlers': {
-                    'console': {
-                        'level': self.console_level,
-                        'formatter': "default",
-                        'class': 'logging.StreamHandler',
-                        'stream': 'ext://sys.stdout',
-                    },
-                    'file': {
-                        'class': 'logging.handlers.RotatingFileHandler',
-                        'maxBytes': 2000000,
-                        'backupCount': 20,
-                        'filename': log_file,
-                        'mode': 'a',
-                        'formatter': "default",
-                        'level': self.file_level,
-                    },
-                },
-                'root': {
-                    'handlers': ['console', 'file'],
-                    'level': 'DEBUG'
+        config = {
+            'version': 1,
+            'disable_existing_loggers': False,
+            'formatters': {
+                "default": {
+                    "class": "logging.Formatter",
+                    "format": self.log_formatter
                 }
-            }
+            },
+            'handlers': {
+                'console': {
+                    'level': self.console_level,
+                    'formatter': "default",
+                    'class': 'logging.StreamHandler',
+                    'stream': 'ext://sys.stdout',
+                },
+                'file': {
+                    'class': 'logging.handlers.RotatingFileHandler',
+                    'maxBytes': 2000000,
+                    'backupCount': 20,
+                    'filename': log_file,
+                    'mode': 'a',
+                    'formatter': "default",
+                    'level': self.file_level,
+                },
+            },
+            "loggers": {
+                self.name: {
+                    'handlers': ['console', 'file'],
+                    'level': self.logging_level,
+                }
+            },
+        }
 
         return config
 
@@ -147,19 +145,20 @@ class Logger:
             raise SystemExit()
 
     @staticmethod
-    def _dedicated_listener_process(processes_queue: Queue, stop_event: Event) -> None:
+    def _dedicated_listener_process(processes_queue: Queue, stop_event: Event, config: dict) -> None:
+        logging.config.dictConfig(config)
         listener = logging.handlers.QueueListener(processes_queue, Handler())
         listener.start()
         stop_event.wait()
         listener.stop()
 
-    def set_logger_in_separate_process(self) -> (Queue, Event, Process):
+    def set_logger_in_separate_process(self, config: dict) -> (Queue, Event, Process):
         try:
             processes_queue = Queue()
             stop_event = Event()
             listener_process = Process(target=self._dedicated_listener_process,
                                        name='listener',
-                                       args=(processes_queue, stop_event,))
+                                       args=(processes_queue, stop_event, config))
             listener_process.start()
 
             return processes_queue, stop_event, listener_process
@@ -182,9 +181,8 @@ class Logger:
         except OSError as e:
             pass
 
-    @staticmethod
-    def get_process_logging_config(processes_queue: Queue, name: str):
-        logging.config.dictConfig({
+    def get_process_logging_config(self, processes_queue: Queue, name: str):
+        config = {
             'version': 1,
             'disable_existing_loggers': True,
             'handlers': {
@@ -193,11 +191,12 @@ class Logger:
                     'queue': processes_queue
                 }
             },
-            'root': {
+            "root": {
                 'handlers': ['queue'],
-                'level': 'DEBUG'
+                'level': self.logging_level,
             }
-        })
+        }
+        logging.config.dictConfig(config)
         return logging.getLogger(name)
 
     def log(self, msg, level: str = 'info', from_: str = None, print_: bool = False, **log):
