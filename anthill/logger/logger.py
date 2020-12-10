@@ -5,6 +5,7 @@ import logging.handlers
 import logging.config
 import os
 from multiprocessing import Process, Queue, Event
+from ..utils import helper
 
 
 class Handler:
@@ -15,8 +16,6 @@ class Handler:
         else:
             logger = logging.getLogger(record.name)
 
-        # print(record)
-        # print(logger)
         if logger.isEnabledFor(record.levelno):
             logger.handle(record)
 
@@ -39,108 +38,129 @@ class Logger:
     return: logging object, contain rules for logging.
     """
 
-    def __init__(self, name,
-                 log_file: str = None,
-                 log_formatter: str = '%(message)s',
-                 console_level: int = logging.DEBUG,
-                 file_level: int = logging.DEBUG,
-                 logging_level: int = logging.DEBUG,
-                 root_path: str = None,
-                 log_directory: str = None,
-                 log_config_file_path: str = None,
+    def __init__(self,
+                 name,
+                 app_root_path: str = None,
                  in_separate_process: bool = False,
                  ):
         self.name = name
-        if log_file is not None:
-            self.log_file = log_file
-        else:
-            self.log_file = f"{name}.log"
-        if not hasattr(self, 'client_id'):
-            self.client_id = name
-        self.log_formatter = log_formatter
-        self.console_level = console_level
-        self.file_level = file_level
-        self.logging_level = logging_level
-        self.log_directory = log_directory if log_directory is not None else 'logfiles'
-        self.log_config_file_path = log_config_file_path
+        # TODO: insert client_id here
         self.in_separate_process = in_separate_process
-        if root_path is not None:
-            self.root_path = root_path
+        if app_root_path is not None:
+            self.app_root_path = app_root_path
         else:
-            self.root_path = '/'
+            self.app_root_path = ''
 
-        if self.log_config_file_path is None:
-            config = self.configure_simple_logging()
+        self.log_root_path = os.path.join(self.app_root_path, 'logs')
+        helper.create_dir_when_none(self.log_root_path)
+
+        custom_config_path = os.path.join(self.app_root_path, 'config', 'log_config.json')
+        if os.path.exists(custom_config_path):
+            config = self._configure_logging_with_custom_config_file(custom_config_path)
 
         else:
-            config = self.configure_logging_with_config_file()
+            config = self._configure_default_logging()
 
         if self.in_separate_process:
-            processes_queue, stop_event, listener_process = self.set_logger_in_separate_process(config)
-            self.logger = self.get_process_logging_config(processes_queue, self.name)
+            processes_queue, stop_event, listener_process = self._set_logger_in_separate_process(config)
+            self.logger = self._get_process_logging_config(processes_queue, self.name)
         else:
             logging.config.dictConfig(config)
             self.logger = logging.getLogger(self.name)
 
-    def configure_simple_logging(self):
-        dir_name = f'{self.root_path}{self.log_directory}'
-        if dir_name[0] == '/':
-            dir_name = dir_name[1:]
-        self._create_dir_when_none(dir_name)
-        log_file = f'{dir_name}/{self.log_file}'
-        config = {
-            'version': 1,
-            'disable_existing_loggers': False,
-            'formatters': {
-                "default": {
+    def _configure_default_logging(self):
+        # TODO: add inter service requests logging configuration
+        default_log_config = {
+            "version": 1,
+            "disable_existing_loggers": True,
+            "formatters": {
+                "detailed": {
+                    "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                    "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+                },
+                "simple": {
                     "class": "logging.Formatter",
-                    "format": self.log_formatter
+                    "format": "%(asctime)s %(name)-15s %(levelname)-8s %(message)s"
                 }
             },
-            'handlers': {
-                'console': {
-                    'level': self.console_level,
-                    'formatter': "default",
-                    'class': 'logging.StreamHandler',
-                    'stream': 'ext://sys.stdout',
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "level": "WARNING",
+                    "formatter": "simple",
+                    "stream": "ext://sys.stdout"
                 },
-                'file': {
-                    'class': 'logging.handlers.RotatingFileHandler',
-                    'maxBytes': 2000000,
-                    'backupCount': 20,
-                    'filename': log_file,
-                    'mode': 'a',
-                    'formatter': "default",
-                    'level': self.file_level,
+                "anthill": {
+                    "level": "DEBUG",
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": os.path.join(self.log_root_path, f"anthill.log"),
+                    "mode": "a",
+                    "formatter": "detailed",
+                    "maxBytes": 1000000,
+                    "backupCount": 10,
                 },
+                self.name: {
+                    "level": "DEBUG",
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": os.path.join(self.log_root_path, f"{self.name}.log"),
+                    "mode": "a",
+                    "formatter": "detailed",
+                    "maxBytes": 1000000,
+                    "backupCount": 10
+                },
+                "errors": {
+                    "class": "logging.FileHandler",
+                    "filename": os.path.join(self.log_root_path, f"errors.log"),
+                    "mode": "a",
+                    "level": "ERROR",
+                    "formatter": "detailed"
+                }
             },
             "loggers": {
                 self.name: {
-                    'handlers': ['console', 'file'],
-                    'level': self.logging_level,
+                    "handlers": [self.name]
+                },
+                "anthill": {
+                    "handlers": ["anthill"]
                 }
             },
+            "root": {
+                "level": "DEBUG",
+                "handlers": ["console", "errors"]
+            }
         }
 
-        return config
+        return default_log_config
 
-    def configure_logging_with_config_file(self) -> dict:
+    def _emergency_logging(self) -> None:
+        logging.basicConfig(
+            format='%(asctime)s %(name)s %(levelname)s %(message)s',
+            handlers=[logging.FileHandler(os.path.join(self.log_root_path, 'logging_error.log'), mode='a'),
+                      logging.StreamHandler()],
+            level=logging.DEBUG)
+
+    def _modify_custom_config(self, config):
+        for handler in config['handlers']:
+            if handler == 'console':
+                continue
+
+            if not os.path.isabs(config['handlers'][handler]['filename']):
+                config['handlers'][handler]['filename'] = os.path.join(self.log_root_path,
+                                                                       config['handlers'][handler]['filename'])
+
+            # TODO: add here parsing with regex and selecting phrases as % or $MS_NAME and % or $CLIENT_ID..
+
+    def _configure_logging_with_custom_config_file(self, custom_config_path) -> dict:
         try:
-            default_config_path = os.path.join(self.root_path, self.log_config_file_path)
-            with open(default_config_path, mode='r', encoding='utf-8') as f:
+            with open(custom_config_path, mode='r', encoding='utf-8') as f:
                 config = json.load(f)
 
-            self._create_dir_when_none(os.path.join(self.root_path, self.log_directory))
-
-            for handler in config['handlers']:
-                if handler != 'console' \
-                        and self.log_directory not in config['handlers'][handler]['filename']:
-                    config['handlers'][handler]['filename'] = (f'{self.root_path}{self.log_directory}/'
-                                                               f'{config["handlers"][handler]["filename"]}')
+                self._modify_custom_config(config)
 
             return config
 
         except Exception as e:
+            self._emergency_logging()
             logging.exception(f'Error when loading the logging configuration: {e}')
             raise SystemExit()
 
@@ -152,7 +172,7 @@ class Logger:
         stop_event.wait()
         listener.stop()
 
-    def set_logger_in_separate_process(self, config: dict) -> (Queue, Event, Process):
+    def _set_logger_in_separate_process(self, config: dict) -> (Queue, Event, Process):
         try:
             processes_queue = Queue()
             stop_event = Event()
@@ -162,26 +182,14 @@ class Logger:
             listener_process.start()
 
             return processes_queue, stop_event, listener_process
+
         except Exception as e:
+            self._emergency_logging()
             logging.exception(f'Error when loading the logging configuration: {e}')
             raise SystemExit()
 
     @staticmethod
-    def _create_dir_when_none(dir_name: str):
-        """Check if a directory exist or create one.
-        return: bool."""
-        try:
-            if dir_name[0] == '/':
-                dir_name = dir_name[1:]
-            if not os.path.isdir(dir_name):
-                os.makedirs(dir_name)
-                return False
-            else:
-                return True
-        except OSError as e:
-            pass
-
-    def get_process_logging_config(self, processes_queue: Queue, name: str):
+    def _get_process_logging_config(processes_queue: Queue, name: str):
         config = {
             'version': 1,
             'disable_existing_loggers': True,
@@ -193,7 +201,6 @@ class Logger:
             },
             "root": {
                 'handlers': ['queue'],
-                'level': self.logging_level,
             }
         }
         logging.config.dictConfig(config)
@@ -207,7 +214,6 @@ class Logger:
         log['timestamp'] = datetime.datetime.now().timestamp()
         log['msg'] = str(msg)
         log['level'] = level
-        log['client_id'] = self.client_id
         if level == 'warning':
             self.logger.warning(log)
         elif level == 'error':
@@ -222,36 +228,3 @@ class Logger:
             self.logger.info(log)
         if print_:
             print(msg)
-
-
-class InterServicesRequestLogger(Logger):
-    def __init__(self, name: str,
-                 log_file: str = None,
-                 log_formatter: str = '%(message)s',
-                 console_level: int = logging.DEBUG,
-                 file_level: int = logging.DEBUG,
-                 logging_level: int = logging.DEBUG,
-                 root_path: str = None,
-                 separated_file: bool = False,
-                 ):
-        self.name = name
-        if log_file is not None:
-            self.log_file = log_file
-        else:
-            self.log_file = f"inter_services_requests.log"
-        if not hasattr(self, 'client_id'):
-            self.client_id = name
-        self.log_formatter = log_formatter
-        self.console_level = console_level
-        self.file_level = file_level
-        self.logging_level = logging_level
-        if root_path is not None:
-            self.root_path = root_path
-        else:
-            self.root_path = '/'
-        self.logger = self.create(separate_file=separated_file)
-
-    def isr_log(self, message: str, **kwargs):
-        if not 'from_' in kwargs:
-            kwargs['from_'] = os.environ['CLIENT_ID']
-        self.log(message, **kwargs)
