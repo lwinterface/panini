@@ -7,7 +7,7 @@ import datetime
 import uuid
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger, InterServicesRequestLogger
+from ..logger.logger import Logger
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 

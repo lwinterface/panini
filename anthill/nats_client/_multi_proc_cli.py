@@ -9,7 +9,7 @@ from itertools import cycle
 from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger, InterServicesRequestLogger
+from ..logger.logger import Logger
 from ..utils.helper import start_thread, start_process, is_json
 from ._redis_response import RedisResponse, RedisQueue
 
