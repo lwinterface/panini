@@ -72,6 +72,26 @@ class Logger:
             logging.config.dictConfig(config)
             self.logger = logging.getLogger(self.name)
 
+    @staticmethod
+    def get_logger(name):
+        # TODO: add checking, that logger with @param:name exist
+        return logging.getLogger(name)
+
+    def debug(self, message, **extra):
+        self.logger.debug(message, extra=extra)
+
+    def info(self, message, **extra):
+        self.logger.info(message, extra=extra)
+
+    def warning(self, message, **extra):
+        self.logger.warning(message, extra=extra)
+
+    def error(self, message, **extra):
+        self.logger.error(message, extra=extra)
+
+    def exception(self, message, **extra):
+        self.logger.exception(message, extra=extra)
+
     def _configure_default_logging(self):
         # TODO: add inter service requests logging configuration
         default_log_config = {
@@ -209,26 +229,3 @@ class Logger:
         }
         logging.config.dictConfig(config)
         return logging.getLogger(name)
-
-    def log(self, msg, level: str = 'info', from_: str = None, print_: bool = False, **log):
-        if from_:
-            log['from'] = self.name + '__' + from_
-        else:
-            log['from'] = self.name
-        log['timestamp'] = datetime.datetime.now().timestamp()
-        log['msg'] = str(msg)
-        log['level'] = level
-        if level == 'warning':
-            self.logger.warning(log)
-        elif level == 'error':
-            self.logger.error(log)
-        elif level == 'debug' or level == 'dev':
-            self.logger.debug(log)
-        elif level == 'critical':
-            self.logger.critical(log)
-        elif level == 'exception':
-            self.logger.exception(log)
-        else:
-            self.logger.info(log)
-        if print_:
-            print(msg)
