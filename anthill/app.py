@@ -10,7 +10,7 @@ from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
-from .utils.helper import start_thread
+from .utils.helper import start_thread, get_app_root_path
 
 _app = None
 
@@ -35,15 +35,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  web_host: str = None,
                  web_port: int = None,
                  logger_required: bool = True,
-                 log_file: str = None,
-                 log_formatter: str = '%(message)s',
-                 console_level: int = logging.DEBUG,
-                 file_level: int = logging.INFO,
-                 logging_level: int = logging.INFO,
-                 log_directory: str = None,
-                 log_config_file_path: str = None,
                  log_in_separate_process: bool = False,
-                 root_path: str = '',
                  ):
         """
         :param host: NATS broker host
@@ -68,19 +60,6 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param web_host: str = None,    #TODO
         :param web_port: int = None,    #TODO
         :param logger_required:        #TODO
-        :param log_file:               #TODO
-        :param log_formatter:  #TODO
-        :param console_level:  #TODO
-        :param file_level:     #TODO
-        :param log_directory: name of directory for storing logs.
-        :param log_config_file_path: path (relative from root_path)
-            to advanced log config file (ex. log_config.json.sample)
-            (no other logging features used (except log_directory and log_in_separate_process) if provided).
-        :param log_in_separate_process: do logging in separate process? (with all pros and cons of that - advanced topic).
-        :param logging_level:  #TODO
-        :param logging_level:  #TODO
-        :param logging_level:  #TODO
-        :param root_path:      #TODO
         :param slack_webhook_url_for_logs:     #TODO
         :param telegram_token_for_logs:        #TODO
         :param telegram_chat_for_logs          #TODO
@@ -110,18 +89,12 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             self.listen_topic_only_if_include = listen_topic_only_if_include
             self.subscribe_topics_and_callbacks = subscribe_topics_and_callbacks
 
+            self.app_root_path = get_app_root_path()
             if logger_required:
                 self.logger = Logger(
                     name=client_id,
-                    log_file=log_file if log_file else service_name+'.log',
-                    log_formatter=log_formatter,
-                    console_level=console_level,
-                    file_level=file_level,
-                    logging_level=logging_level,
-                    log_directory=log_directory,
-                    log_config_file_path=log_config_file_path,
                     in_separate_process=log_in_separate_process,
-                    root_path=root_path,
+                    app_root_path=self.app_root_path,
                 )
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")

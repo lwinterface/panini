@@ -44,7 +44,11 @@ class Logger:
                  in_separate_process: bool = False,
                  ):
         self.name = name
-        # TODO: insert client_id here
+        if "CLIENT_ID" in os.environ:
+            self.client_id = os.environ["CLIENT_ID"]
+        else:
+            self.client_id = name
+
         self.in_separate_process = in_separate_process
         if app_root_path is not None:
             self.app_root_path = app_root_path
