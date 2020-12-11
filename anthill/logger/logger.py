@@ -61,7 +61,10 @@ class Logger:
             logging.config.dictConfig(config)
             self.logger = logging.getLogger(self.name)
 
-    def get_logger(self, name):
+    def get_logger(self, name: str = None):
+        """Simply returns current logger, if name is None, or set self.logger as logger with @param:name"""
+        if name is None:
+            return self
         # TODO: add checking, that logger with @param:name exist
         self.logger = logging.getLogger(name)
         return self
@@ -155,8 +158,6 @@ class Logger:
             default_log_config["loggers"][self.name] = {
                 "handlers": [self.name]
             }
-
-        print(default_log_config)
 
         return default_log_config
 
