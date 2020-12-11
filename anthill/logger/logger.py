@@ -30,7 +30,7 @@ class Logger:
     def __init__(self,
                  name: str,
                  app_root_path: str = None,
-                 in_separate_process: bool = False,
+                 in_separate_process: bool = True,
                  ):
         self.name = name
         if "CLIENT_ID" in os.environ:
@@ -87,7 +87,7 @@ class Logger:
     def _configure_default_logging(self):
         default_log_config = {
             "version": 1,
-            "disable_existing_loggers": True,
+            "disable_existing_loggers": False,
             "formatters": {
                 "detailed": {
                     "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
@@ -221,7 +221,7 @@ class Logger:
     def _get_process_logging_config(processes_queue: Queue, name: str):
         config = {
             'version': 1,
-            'disable_existing_loggers': True,
+            'disable_existing_loggers': False,
             'handlers': {
                 'queue': {
                     'class': 'logging.handlers.QueueHandler',

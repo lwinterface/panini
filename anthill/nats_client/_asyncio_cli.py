@@ -11,7 +11,9 @@ from ..logger.logger import Logger
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 
-isr_log = Logger(name='nats_cli').log
+log = Logger(name='nats_cli')
+isr_log = Logger(name='inter_services_request')
+
 
 class _AsyncioNATSClient(object):
     """
@@ -78,12 +80,13 @@ class _AsyncioNATSClient(object):
                     return cb(subject, data)
 
             async def handle_message_with_response(cli, data, reply_to, isr_id):
-                # isr_log(f"3RECIEVED REQUEST msg: isr_id: {isr_id} reply_to:{reply_to} {data}, {subject}")
+                # isr_log.info(f"3RECIEVED REQUEST msg: isr_id: {isr_id} reply_to:{reply_to} {data}, {subject}")
                 reply = await callback(cb, subject, data, reply_to, isr_id)
                 if reply:
                     reply['isr-id'] = isr_id
                     reply = json.dumps(reply)
-                    # isr_log(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {data}, {subject}")
+                    # isr_log.info(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {
+                    # data}, {subject}")
                     await cli.aio_publish(reply, reply_to)
 
             subject = msg.subject
@@ -94,7 +97,7 @@ class _AsyncioNATSClient(object):
             elif 'reply_to' in data:
                 reply_to = data.pop('reply_to')
             else:
-                # isr_log(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
+                # isr_log.info(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
             isr_id = data.get('isr-id', str(uuid.uuid4())[:10])
@@ -103,7 +106,7 @@ class _AsyncioNATSClient(object):
             except EventHandlingError as e:
                 if not 'isr_id' in locals():
                     isr_id = 'Absent or Unknown'
-                isr_log("4SENDING RESPONSE error msg: " + str(e), level='error', topic=subject, isr_id=isr_id)
+                isr_log.error("4SENDING RESPONSE error msg: " + str(e), topic=subject, isr_id=isr_id)
 
         return wrapped_callback
 
@@ -157,11 +160,11 @@ class _AsyncioNATSClient(object):
             message = message.encode()
             response = await self.client.request(topic, message, timeout=timeout)
             response = response.data
-            # isr_log(f'6RESPONSE message: {message}', phase='response', topic=topic)
+            # isr_log.info(f'6RESPONSE message: {message}', phase='response', topic=topic)
             if unpack:
                 response = json.loads(response)
             return response
-        isr_log(f'Invalid message: {message}', level='error', topic=topic)
+        isr_log.error(f'Invalid message: {message}', topic=topic)
 
     async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: bool = False):
         message['isr-id'] = str(uuid.uuid4())[:10]
@@ -171,7 +174,7 @@ class _AsyncioNATSClient(object):
         else:
             message['reply_to'] = reply_to
         message = json.dumps(message)
-        # isr_log(f'1REQUEST_to_another_topic message: {message}', phase='request', topic=topic)
+        # isr_log.info(f'1REQUEST_to_another_topic message: {message}', phase='request', topic=topic)
         await self.aio_publish(message, topic)
 
     def validate_msg(self, message):
@@ -196,23 +199,17 @@ class _AsyncioNATSClient(object):
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
-        log('Disconnected', level='warning')
+        log.warning('Disconnected')
 
     async def aio_disconnect(self):
         await self.client.drain()
-        log('Disconnected', level='warning')
+        log.warning('Disconnected')
 
     def check_connection(self):
         if self.client._status is NATS.CONNECTED:
-            log('NATS Client status: CONNECTED')
+            log.info('NATS Client status: CONNECTED')
             return True
-        log('NATS Client status: DISCONNECTED', level='warning')
-
-
-
-
-
-
+        log.warning('NATS Client status: DISCONNECTED')
 
 
 # for test
@@ -320,7 +317,7 @@ if __name__ == "__main__":
                  range(1000)]
         await asyncio.gather(*tasks)
         duration = f'duration: {datetime.datetime.now().timestamp() - start}'
-        # isr_log(duration)
+        # isr_log.info(duration)
         print(duration)
 
     async def subscribe_handler(msg):

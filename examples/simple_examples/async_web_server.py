@@ -9,39 +9,42 @@ app = ant_app.App(
     web_server=True
 )
 
-log = app.logger.log
+log = app.logger
 
 msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
        'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
+
 
 @app.task()
 async def publish():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
 
+
 @app.timer_task(interval=2)
-async def publish_pereodically():
+async def publish_periodically():
     await app.aio_publish(msg, topic='some.publish.topic')
+
 
 @app.listen('some.publish.topic')
 async def topic_for_requests_listener(topic, message):
-    log(f'got message {message}')
-
-
+    log.warning(f'got message {message}')
 
 
 @app.http.get('/get')
 async def web_endpoint_listener(request):
-    '''
+    """
     Single HTTP endpoint
-    '''
+    """
     return web.Response(text="Hello, world")
 
-@app.http.view('/path/to/rest/endpoinds')
+
+@app.http.view('/path/to/rest/endpoints')
 class MyView(web.View):
-    '''
+    """
     HTTP endpoints for REST schema
-    '''
+    """
+
     async def get(self):
         request = self.request
         return web.Response(text="Hello, REST world")

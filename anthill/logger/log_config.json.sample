@@ -4,11 +4,11 @@
     "formatters": {
         "detailed": {
             "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+            "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
         },
         "simple": {
             "class": "logging.Formatter",
-            "format": "%(asctime)s %(name)-15s %(levelname)-8s %(message)s"
+            "format": "%(created)f %(name)-15s %(levelname)-8s %(message)s"
         }
     },
     "handlers": {

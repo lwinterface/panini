@@ -21,6 +21,7 @@ def create_dir_when_none(dir_name):
     else:
         return True
 
+
 async def run_coro_threadsafe(coro, other_loop, our_loop=None, many=False):
     """Schedules coro in other_loop, awaits until coro has run and returns
     its result.
@@ -30,6 +31,7 @@ async def run_coro_threadsafe(coro, other_loop, our_loop=None, many=False):
     # fut = other_loop.call_soon_threadsafe(coro)
     # set up a threading.Event that fires when the future is finished
     finished = threading.Event()
+
     def fut_finished_cb(_):
         finished.set()
 
@@ -50,6 +52,7 @@ def start_thread(method, args=None, daemon=False):
     thread.start()
     return thread
 
+
 def start_process(method, args=None, kwargs=None, daemon=True):
     proc_kwargs = dict(target=method, daemon=daemon)
     if args is not None:
@@ -60,12 +63,14 @@ def start_process(method, args=None, kwargs=None, daemon=True):
     proc.start()
     return proc
 
+
 def is_json(myjson):
     try:
         json.loads(myjson)
     except Exception:
         return False
     return True
+
 
 def _exec(*command, stdout_on=False, cwd=None):
     if stdout_on:
@@ -76,5 +81,3 @@ def _exec(*command, stdout_on=False, cwd=None):
             subprocess.Popen(command, cwd=cwd)
         else:
             subprocess.Popen(command)
-
-

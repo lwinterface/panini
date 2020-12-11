@@ -14,18 +14,19 @@ from .utils.helper import start_thread, get_app_root_path
 
 _app = None
 
+
 class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def __init__(self,
                  host,
                  port,
-                 service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
+                 service_name: str = 'anthill_microservice_' + str(uuid.uuid4())[:10],
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
                  max_reconnect_attempts: int = 60,
                  reconnecting_time_sleep: int = 2,
                  app_strategy: str = 'asyncio',
-                 num_of_queues: int = 1,    #only for sync strategy
+                 num_of_queues: int = 1,  # only for sync strategy
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
@@ -71,16 +72,16 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
             self.nats_config = {
-                'host':host,
-                'port':port,
-                'client_id':client_id,
-                'listen_topics_callbacks':None,
-                'publish_topics':publish_topics,
-                'allow_reconnect':reconnect,
-                'queue':allocation_quenue_group,
-                'max_reconnect_attempts':max_reconnect_attempts,
-                'reconnecting_time_wait':reconnecting_time_sleep,
-                'client_strategy':app_strategy,
+                'host': host,
+                'port': port,
+                'client_id': client_id,
+                'listen_topics_callbacks': None,
+                'publish_topics': publish_topics,
+                'allow_reconnect': reconnect,
+                'queue': allocation_quenue_group,
+                'max_reconnect_attempts': max_reconnect_attempts,
+                'reconnecting_time_wait': reconnecting_time_sleep,
+                'client_strategy': app_strategy,
             }
             if app_strategy == 'sync':
                 self.nats_config['num_of_queues'] = num_of_queues
@@ -111,13 +112,13 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
-        
+
     def start(self):
         if self.http_server is None:
             self._start()
         else:
             start_thread(self._start())
-            
+
     def _start(self):
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
@@ -138,9 +139,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         self.nats_config['listen_topics_callbacks'] = topics_and_callbacks
 
         NATSClient.__init__(self,
-            **self.nats_config
-        )
-        
+                            **self.nats_config
+                            )
+
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self._start_tasks()
@@ -156,7 +157,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for coro in self.interval_tasks[interval]:
                     if not asyncio.iscoroutinefunction(coro):
-                        raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
+                        raise InitializingIntevalTaskError(
+                            'For asyncio app_strategy only coroutine interval tasks allowed')
                     loop.create_task(coro())
             if self.http_server:
                 self.http_server.start_server()
@@ -170,11 +172,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for task in self.interval_tasks[interval]:
                     if asyncio.iscoroutinefunction(task):
-                        raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
+                        raise InitializingIntevalTaskError(
+                            "For sync app_strategy coroutine interval_task doesn't allowed")
                     start_thread(task)
             if self.http_server:
                 self.http_server.start_server()
-
 
     def _create_client_code_by_hostname(self, name: str):
         return '__'.join([

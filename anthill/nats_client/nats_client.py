@@ -8,25 +8,26 @@ from ..exceptions import InitializingNATSError
 
 message = None
 
+
 class NATSClient:
 
     def __init__(self,
-                client_id: str,
-                host: str,
-                port: int or str,
-                listen_topics_callbacks: dict,
-                allow_reconnect: bool or None,
-                max_reconnect_attempts: int = 60,
-                reconnecting_time_wait: int = 2,
-                publish_topics=[],
-                auth: dict={},
-                queue="",
-                client_strategy='asyncio',  # in_current_process' or in_separate_processes'
-                redis_host='127.0.0.1',
-                redis_port='6379',
-                pending_bytes_limit=65536 * 1024 * 10,
-                num_of_queues=None
-                ):
+                 client_id: str,
+                 host: str,
+                 port: int or str,
+                 listen_topics_callbacks: dict,
+                 allow_reconnect: bool or None,
+                 max_reconnect_attempts: int = 60,
+                 reconnecting_time_wait: int = 2,
+                 publish_topics=[],
+                 auth: dict = {},
+                 queue="",
+                 client_strategy='asyncio',  # in_current_process' or in_separate_processes'
+                 redis_host='127.0.0.1',
+                 redis_port='6379',
+                 pending_bytes_limit=65536 * 1024 * 10,
+                 num_of_queues=None
+                 ):
         """
         :param client_id: instance identificator for NATS, str
         :param broker_ip: '127.0.0.1' for local broker
@@ -38,7 +39,7 @@ class NATSClient:
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-        self.log = Logger(name='nats_cli').log
+        self.log = Logger(name='nats_cli')
         self.connected = False
         self.client_id = client_id
         self.host = host
@@ -56,7 +57,7 @@ class NATSClient:
         self.redis_port = redis_port
         self.num_of_queues = num_of_queues
         self._initialize_sub_class(client_strategy)
-        #TODO: check that connect/sub/pub interface exist
+        # TODO: check that connect/sub/pub interface exist
         global message
         message = self
 
@@ -72,7 +73,7 @@ class NATSClient:
         if self.connector.client.check_connection:
             return True
         else:
-            self.log(f'NATS connection status: {self.connector.client.check_connection}', level='warning')
+            self.log.warning(f'NATS connection status: {self.connector.client.check_connection}')
 
     def subscribe_new_topic(self, topic: str, callback):
         self.connector.subscribe_new_topic(topic, callback)
@@ -87,7 +88,7 @@ class NATSClient:
         return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)
 
     def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
-       self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
+        self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
     async def aio_publish(self, message, topic: str, force: bool = False):
         await self.connector.aio_publish(message, topic, force=force)
@@ -96,13 +97,10 @@ class NATSClient:
         return await self.connector.aio_publish_request(message, topic, timeout, unpack=unpack)
 
     async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
-       await self.connector.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to)
+        await self.connector.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
 
-
-
-
-#for test
+# for test
 if __name__ == "__main__":
 
     def msg_generator():
@@ -123,10 +121,10 @@ if __name__ == "__main__":
 
 
     cli = NATSClient(
-        client_id='client'+str(random.randint(1,100)),
+        client_id='client' + str(random.randint(1, 100)),
         host='127.0.0.1',
         port='4222',
-        listen_topics_callbacks={'topic2.wqe':reciever_msg_handler},
+        listen_topics_callbacks={'topic2.wqe': reciever_msg_handler},
         # publish_topics=['topic2.wqe',],
         allow_reconnect=True,
         max_reconnect_attempts=10,
@@ -138,5 +136,5 @@ if __name__ == "__main__":
 
     while True:
         b = 1
-        for i in range(100000000,10000000000):
-            b = b + (i * random.randint(100000000,10000000000))
+        for i in range(100000000, 10000000000):
+            b = b + (i * random.randint(100000000, 10000000000))

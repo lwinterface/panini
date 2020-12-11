@@ -9,6 +9,7 @@ def create_service_name_from_docker(default: str = None):
             return default
         raise Exception(f'create_service_name error: {str(e)}(also make sure that you have an access to docker socket)')
 
+
 def _get_docker_name():
     import docker
     hostname = os.environ['HOSTNAME']

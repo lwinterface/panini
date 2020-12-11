@@ -323,9 +323,10 @@ app = ant_app.App(  #create app
 
 log = app.logger.log    #create log handler
 
-log("some log")         #write log
-log("some warn log", level='warning')
-log("some error log", level='error')
+log.info("some log")         #write log
+log.warning("some warn log")
+log.error("some error log")
+log.exception("some exception log with automatic traceback logging")
 
 ```
 
@@ -335,9 +336,9 @@ Separated:
 from anthill.logger import Logger
 
 log = Logger('some_logger_name',    #create log handler
-log_file='some_logger_file_name_you_want_to_create')    
+in_separate_process=False)    
 
-log("some log")         #write log
+log.warning("some log")         #write log
 
 ```
 ## Testing

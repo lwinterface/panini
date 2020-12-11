@@ -1,5 +1,6 @@
 from aiohttp import web
 
+
 class HTTPServer:
     def __init__(self, base_app, host: str = None, port: int = None, web_app: web.Application = None):
         self.app = base_app
