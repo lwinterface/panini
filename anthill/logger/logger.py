@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import logging.handlers
@@ -21,19 +20,9 @@ class Handler:
 
 
 class Logger:
-    """Generate logging systems which display any level on the console
-    and starting from INFO into logging file
+    """Generate logging systems which can be simply customized by adding config/log_config.json file to app_root_path
     self.name: string, name of the logger,
-    self.log_file: string, name of the file where to place the log datas.
-    self.log_formatter: string, how the log is formated. See Formatter logging
-        rules.
-    self.console_level: logging object, the logging level to display in the
-        console. Need to be superior to logging_level.
-    self.file_level: logging object, the logging level to put in the
-        logging file. Need to be superior to logging_level.
-    self.logging_level: logging object, optional, the level of logging to catch.
-    self.log_directory: name of directory for storing logs.
-    self.log_config_file_path: path (relative from root_path) to advanced log config file (ex. log_config.json.sample).
+    self.app_root_path: string, path to the app folder with main script
     self.in_separate_process: Do logging in separate process? (with all pros and cons of that - advanced topic).
     return: logging object, contain rules for logging.
     """
@@ -72,10 +61,10 @@ class Logger:
             logging.config.dictConfig(config)
             self.logger = logging.getLogger(self.name)
 
-    @staticmethod
-    def get_logger(name):
+    def get_logger(self, name):
         # TODO: add checking, that logger with @param:name exist
-        return logging.getLogger(name)
+        self.logger = logging.getLogger(name)
+        return self
 
     def debug(self, message, **extra):
         self.logger.debug(message, extra=extra)
@@ -93,7 +82,6 @@ class Logger:
         self.logger.exception(message, extra=extra)
 
     def _configure_default_logging(self):
-        # TODO: add inter service requests logging configuration
         default_log_config = {
             "version": 1,
             "disable_existing_loggers": True,
@@ -118,6 +106,15 @@ class Logger:
                     "level": "DEBUG",
                     "class": "logging.handlers.RotatingFileHandler",
                     "filename": os.path.join(self.log_root_path, f"anthill.log"),
+                    "mode": "a",
+                    "formatter": "detailed",
+                    "maxBytes": 1000000,
+                    "backupCount": 10,
+                },
+                "inter_services_request": {
+                    "level": "DEBUG",
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": os.path.join(self.log_root_path, f"inter_services_request.log"),
                     "mode": "a",
                     "formatter": "detailed",
                     "maxBytes": 1000000,
