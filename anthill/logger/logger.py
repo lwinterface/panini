@@ -28,7 +28,7 @@ class Logger:
     """
 
     def __init__(self,
-                 name,
+                 name: str,
                  app_root_path: str = None,
                  in_separate_process: bool = False,
                  ):
@@ -120,15 +120,6 @@ class Logger:
                     "maxBytes": 1000000,
                     "backupCount": 10,
                 },
-                self.name: {
-                    "level": "DEBUG",
-                    "class": "logging.handlers.RotatingFileHandler",
-                    "filename": os.path.join(self.log_root_path, f"{self.name}.log"),
-                    "mode": "a",
-                    "formatter": "detailed",
-                    "maxBytes": 1000000,
-                    "backupCount": 10
-                },
                 "errors": {
                     "class": "logging.FileHandler",
                     "filename": os.path.join(self.log_root_path, f"errors.log"),
@@ -138,11 +129,11 @@ class Logger:
                 }
             },
             "loggers": {
-                self.name: {
-                    "handlers": [self.name]
-                },
                 "anthill": {
                     "handlers": ["anthill"]
+                },
+                "inter_services_request": {
+                    "handlers": ["inter_services_request"]
                 }
             },
             "root": {
@@ -150,6 +141,22 @@ class Logger:
                 "handlers": ["console", "errors"]
             }
         }
+        if self.name not in ("anthill", "inter_services_request"):
+            default_log_config["handlers"][self.name] = {
+                "level": "DEBUG",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": os.path.join(self.log_root_path, f"{self.name}.log"),
+                "mode": "a",
+                "formatter": "detailed",
+                "maxBytes": 1000000,
+                "backupCount": 10
+            }
+
+            default_log_config["loggers"][self.name] = {
+                "handlers": [self.name]
+            }
+
+        print(default_log_config)
 
         return default_log_config
 
