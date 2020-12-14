@@ -52,7 +52,7 @@ def _get_logger_config(app_root_path: str, logfiles_path: str, ms_name: str, cli
     if os.path.isabs(logfiles_path):
         log_root_path = logfiles_path
     else:
-        log_root_path = os.path.join(app_root_path, 'logs')
+        log_root_path = os.path.join(app_root_path, logfiles_path)
     custom_config_path = os.path.join(app_root_path, 'config', 'log_config.json')
     if os.path.exists(custom_config_path):
         config = _configure_logging_with_custom_config_file(custom_config_path)
