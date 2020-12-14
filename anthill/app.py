@@ -2,16 +2,14 @@ import os
 import time
 import asyncio
 import uuid
-import logging
 import random
 from aiohttp import web
 from .nats_client.nats_client import NATSClient
-from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread, get_app_root_path
-from .logger import logger
+from . import logger
 
 _app = None
 

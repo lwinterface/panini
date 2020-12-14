@@ -1,5 +1,5 @@
 from anthill import app as ant_app
-from anthill.logger.logger import get_logger
+from anthill.logger import get_logger
 
 app = ant_app.App(
     service_name='async_publish',
@@ -22,7 +22,7 @@ async def publish():
         log.warning(f'send message {msg}')
 
 
-@app.timer_task(interval=10)
+@app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')

@@ -1,11 +1,10 @@
 import time
 import random
 from ..utils.helper import start_thread
-from ..logger.logger import Logger
 from ._asyncio_cli import _AsyncioNATSClient
 from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
-from ..logger.logger import get_logger
+from ..logger import get_logger
 
 message = None
 

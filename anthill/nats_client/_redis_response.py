@@ -2,10 +2,10 @@ import os
 import time
 import datetime
 
-from nats.aio.errors import ErrTimeout, NatsError
+from nats.aio.errors import ErrTimeout
 
 from ..utils.redis_queue import RedisQueue
-from ..logger.logger import Logger
+from ..logger import Logger
 
 
 class RedisResponse(RedisQueue):
