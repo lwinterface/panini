@@ -5,6 +5,7 @@ from ..logger.logger import Logger
 from ._asyncio_cli import _AsyncioNATSClient
 from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
+from ..logger.logger import get_logger
 
 message = None
 
@@ -39,7 +40,7 @@ class NATSClient:
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-        self.log = Logger(name='nats_cli')
+        self.log = get_logger('anthill')
         self.connected = False
         self.client_id = client_id
         self.host = host

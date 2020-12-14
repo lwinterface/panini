@@ -1,4 +1,5 @@
 from anthill import app as ant_app
+from anthill.logger.logger import get_logger
 
 app = ant_app.App(
     service_name='async_publish',
@@ -7,6 +8,7 @@ app = ant_app.App(
     app_strategy='asyncio',
 )
 
+# that is equal to get_logger('async_publish')
 log = app.logger
 
 msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
@@ -20,7 +22,7 @@ async def publish():
         log.warning(f'send message {msg}')
 
 
-@app.timer_task(interval=2)
+@app.timer_task(interval=10)
 async def publish_periodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')

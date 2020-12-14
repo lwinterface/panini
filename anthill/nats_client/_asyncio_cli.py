@@ -7,12 +7,12 @@ import datetime
 import uuid
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
+from ..logger.logger import get_logger
 
-log = Logger(name='nats_cli')
-isr_log = Logger(name='inter_services_request')
+log = get_logger('anthill')
+isr_log = get_logger('inter_services_request')
 
 
 class _AsyncioNATSClient(object):

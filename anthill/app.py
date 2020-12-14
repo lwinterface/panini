@@ -11,6 +11,7 @@ from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread, get_app_root_path
+from .logger import logger
 
 _app = None
 
@@ -36,7 +37,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  web_host: str = None,
                  web_port: int = None,
                  logger_required: bool = True,
-                 log_in_separate_process: bool = False,
+                 logfiles_path: str = None,
+                 log_in_separate_process: bool = True,
                  ):
         """
         :param host: NATS broker host
@@ -60,6 +62,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                             if you set this argument client will only run this aiohttp app without handeling
         :param web_host: str = None,    #TODO
         :param web_port: int = None,    #TODO
+        :param logger_required:        #TODO
+        :param logfiles_path: main path for logs
+        :param log_in_separate_process: use log in the same or in different process
         :param logger_required:        #TODO
         :param slack_webhook_url_for_logs:     #TODO
         :param telegram_token_for_logs:        #TODO
@@ -92,11 +97,12 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
             self.app_root_path = get_app_root_path()
             if logger_required:
-                self.logger = Logger(
-                    name=client_id,
-                    in_separate_process=log_in_separate_process,
-                    app_root_path=self.app_root_path,
-                )
+                self.logger = None
+                self.logger_process = None
+                self.log_stop_event = None
+                self.log_listener_queue = None
+                logfiles_path = logfiles_path if logfiles_path else 'logs'
+                self.set_logger(service_name, self.app_root_path, logfiles_path, log_in_separate_process, client_id)
             else:
                 self.logger = lambda *x: Exception("Logger hasn't been connected")
             if web_server:
@@ -112,6 +118,22 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
+
+    def set_logger(self, service_name, app_root_path, logfiles_path, in_separate_process, client_id):
+        if in_separate_process:
+            self.log_listener_queue, self.log_stop_event, self.logger_process = \
+                logger.set_logger(service_name,
+                                  app_root_path,
+                                  logfiles_path,
+                                  in_separate_process,
+                                  client_id)
+        else:
+            logger.set_logger(service_name,
+                              app_root_path,
+                              logfiles_path,
+                              in_separate_process,
+                              client_id)
+        self.logger = logger.get_logger(service_name)
 
     def start(self):
         if self.http_server is None:

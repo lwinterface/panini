@@ -9,11 +9,11 @@ from itertools import cycle
 from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger
+from ..logger.logger import get_logger
 from ..utils.helper import start_thread, start_process, is_json
 from ._redis_response import RedisResponse, RedisQueue
 
-isr_log = Logger(name='inter_services_request')
+isr_log = get_logger('inter_services_request')
 
 LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = os.environ['CLIENT_ID'] if 'CLIENT_ID' in os.environ else str(uuid.uuid4())[
                                                                                               10:] + '__new_subscribtion '
