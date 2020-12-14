@@ -93,7 +93,28 @@ def _modify_config(config, log_root_path, ms_name: str = None, client_id: str = 
     return config
 
 
+def _basic_file_handler_skeleton(name: str):
+    return {
+        "level": "DEBUG",
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": f"{name}.log",
+        "mode": "a",
+        "formatter": "detailed",
+        "maxBytes": 1000000,
+        "backupCount": 10,
+    }
+
+
 def _configure_default_logging(name):
+    basic_file_skeleton = {
+        "level": "DEBUG",
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": f"inter_services_request.log",
+        "mode": "a",
+        "formatter": "detailed",
+        "maxBytes": 1000000,
+        "backupCount": 10,
+    }
     default_log_config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -114,24 +135,8 @@ def _configure_default_logging(name):
                 "formatter": "simple",
                 "stream": "ext://sys.stdout"
             },
-            "anthill": {
-                "level": "DEBUG",
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": f"anthill.log",
-                "mode": "a",
-                "formatter": "detailed",
-                "maxBytes": 1000000,
-                "backupCount": 10,
-            },
-            "inter_services_request": {
-                "level": "DEBUG",
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": f"inter_services_request.log",
-                "mode": "a",
-                "formatter": "detailed",
-                "maxBytes": 1000000,
-                "backupCount": 10,
-            },
+            "anthill": _basic_file_handler_skeleton("anthill"),
+            "inter_services_request": _basic_file_handler_skeleton("inter_services_request"),
             "errors": {
                 "class": "logging.FileHandler",
                 "filename": f"errors.log",
@@ -154,15 +159,7 @@ def _configure_default_logging(name):
         }
     }
     if name not in ("anthill", "inter_services_request"):
-        default_log_config["handlers"][name] = {
-            "level": "DEBUG",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": f"{name}.log",
-            "mode": "a",
-            "formatter": "detailed",
-            "maxBytes": 1000000,
-            "backupCount": 10
-        }
+        default_log_config["handlers"][name] = _basic_file_handler_skeleton(name)
 
         default_log_config["loggers"][name] = {
             "handlers": [name]
@@ -175,6 +172,10 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
     try:
         with open(custom_config_path, mode='r', encoding='utf-8') as f:
             config = json.load(f)
+
+        for basic_config in ('anthill', 'inter_services_request'):
+            if basic_config not in config['handlers']:
+                config['handlers'][basic_config] = _basic_file_handler_skeleton(basic_config)
 
         return config
 
