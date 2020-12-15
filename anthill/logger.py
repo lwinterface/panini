@@ -10,22 +10,6 @@ from multiprocessing import Process, Queue, Event
 from .utils import helper
 
 
-def set_logger(ms_name: str, app_root_path: str, logfiles_path: str, in_separate_process: bool, client_id: str = None):
-    logger_config = _get_logger_config(app_root_path, logfiles_path, ms_name, client_id)
-
-    if in_separate_process:
-        logger_queue, log_stop_event, log_process = _set_log_recorder_process(logger_config)
-        _set_main_logging_config(logger_queue)
-        return logger_queue, log_stop_event, log_process
-    else:
-        logging.config.dictConfig(logger_config)
-        return
-
-
-def get_logger(name):
-    return Logger(logging.getLogger(name))
-
-
 class Logger:
     """Generate logging systems which can be simply customized by adding config/log_config.json file to app_root_path
     self.logger - use built in logging system but with improved interface for logging
@@ -47,6 +31,22 @@ class Logger:
 
     def exception(self, message, **extra):
         self.logger.exception(message, extra=extra)
+
+
+def set_logger(ms_name: str, app_root_path: str, logfiles_path: str, in_separate_process: bool, client_id: str = None):
+    logger_config = _get_logger_config(app_root_path, logfiles_path, ms_name, client_id)
+
+    if in_separate_process:
+        logger_queue, log_stop_event, log_process = _set_log_recorder_process(logger_config)
+        _set_main_logging_config(logger_queue)
+        return logger_queue, log_stop_event, log_process
+    else:
+        logging.config.dictConfig(logger_config)
+        return
+
+
+def get_logger(name) -> Logger:
+    return Logger(logging.getLogger(name))
 
 
 def _get_logger_config(app_root_path: str, logfiles_path: str, ms_name: str, client_id: str = None):
@@ -108,7 +108,7 @@ def _basic_file_handler_skeleton(name: str):
 def _configure_default_logging(name):
     default_log_config = {
         "version": 1,
-        "disable_existing_loggers": False,
+        "disable_existing_loggers": True,
         "formatters": {
             "detailed": {
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
@@ -164,9 +164,17 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
         with open(custom_config_path, mode='r', encoding='utf-8') as f:
             config = json.load(f)
 
+        if 'detailed' not in config['formatters']:
+            config['formatters']['detailed'] = {
+                "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+            },
         for basic_config in ('anthill', 'inter_services_request'):
             if basic_config not in config['handlers']:
                 config['handlers'][basic_config] = _basic_file_handler_skeleton(basic_config)
+                config['loggers'][basic_config] = {
+                    "handlers": [basic_config]
+                }
 
         return config
 
@@ -220,14 +228,14 @@ def _set_log_recorder_process(config: dict) -> (Queue, Event, Process):
         raise SystemExit()
 
 
-def _set_main_logging_config(processes_queue: Queue):
+def _set_main_logging_config(log_listener_queue: Queue):
     config = {
         'version': 1,
-        'disable_existing_loggers': False,
+        'disable_existing_loggers': True,
         'handlers': {
             'queue': {
                 'class': 'logging.handlers.QueueHandler',
-                'queue': processes_queue
+                'queue': log_listener_queue
             }
         },
         "root": {
