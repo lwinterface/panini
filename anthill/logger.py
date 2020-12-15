@@ -168,7 +168,7 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
             config['formatters']['detailed'] = {
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
                 "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
-            },
+            }
         for basic_config in ('anthill', 'inter_services_request'):
             if basic_config not in config['handlers']:
                 config['handlers'][basic_config] = _basic_file_handler_skeleton(basic_config)
