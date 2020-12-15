@@ -51,9 +51,9 @@ class Logger:
 
 def _get_logger_config(app_root_path: str, logfiles_path: str, ms_name: str, client_id: str = None):
     if os.path.isabs(logfiles_path):
-        log_root_path = logfiles_path
+        log_dir_path = logfiles_path
     else:
-        log_root_path = os.path.join(app_root_path, logfiles_path)
+        log_dir_path = os.path.join(app_root_path, logfiles_path)
     custom_config_path = os.path.join(app_root_path, 'config', 'log_config.json')
     if os.path.exists(custom_config_path):
         config = _configure_logging_with_custom_config_file(custom_config_path)
@@ -61,7 +61,7 @@ def _get_logger_config(app_root_path: str, logfiles_path: str, ms_name: str, cli
     else:
         config = _configure_default_logging(ms_name)
 
-    return _modify_config(config, log_root_path, ms_name=ms_name, client_id=client_id)
+    return _modify_config(config, log_dir_path, ms_name=ms_name, client_id=client_id)
 
 
 def _replace_keywords(filename: str, ms_name: str = None, client_id: str = None):
@@ -77,7 +77,7 @@ def _replace_keywords(filename: str, ms_name: str = None, client_id: str = None)
     return filename
 
 
-def _modify_config(config, log_root_path, ms_name: str = None, client_id: str = None):
+def _modify_config(config, log_dir_path, ms_name: str = None, client_id: str = None):
     for handler in config['handlers']:
         if handler == 'console':
             continue
@@ -85,7 +85,7 @@ def _modify_config(config, log_root_path, ms_name: str = None, client_id: str = 
         filename = _replace_keywords(config['handlers'][handler]['filename'], ms_name, client_id)
 
         if not os.path.isabs(filename):
-            filename = os.path.join(log_root_path, filename)
+            filename = os.path.join(log_dir_path, filename)
 
         helper.create_dir_when_none(os.path.dirname(filename))
         config['handlers'][handler]['filename'] = filename
@@ -106,15 +106,6 @@ def _basic_file_handler_skeleton(name: str):
 
 
 def _configure_default_logging(name):
-    basic_file_skeleton = {
-        "level": "DEBUG",
-        "class": "logging.handlers.RotatingFileHandler",
-        "filename": f"inter_services_request.log",
-        "mode": "a",
-        "formatter": "detailed",
-        "maxBytes": 1000000,
-        "backupCount": 10,
-    }
     default_log_config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -200,7 +191,7 @@ class Handler:
 def _emergency_logging() -> None:
     logging.basicConfig(
         format='%(asctime)s %(name)s %(levelname)s %(message)s',
-        handlers=[logging.FileHandler(os.path.join(self.log_root_path, 'logging_error.log'), mode='a'),
+        handlers=[logging.FileHandler('logging_error.log', mode='a'),
                   logging.StreamHandler()],
         level=logging.DEBUG)
 
