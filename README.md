@@ -50,7 +50,7 @@ app = ant_app.App(
         app_strategy='asyncio',
 )
 
-log = app.logger.log
+log = app.logger
 
 msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '2':2, '3':3, '4':4, '5':5}, 'key6':{'subkey1':'1', 'subkey2':2, '3':3, '4':4, '5':5}, 'key7':None}
 
@@ -58,19 +58,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 async def publish():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
-        log(f'send message {msg}')
+        log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 async def publish_pereodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
-        log(f'send message from pereodic task {msg}')
+        log.warning(f'send message from pereodic task {msg}')
 
 
 @app.listen('some.publish.topic')
 async def recieve_messages(topic, message):
-    log(f'got message {message}')
+    log.warning(f'got message {message}')
 
 if __name__ == "__main__":
     app.start()
@@ -99,7 +99,7 @@ app = ant_app.App(
     app_strategy='asyncio',
 )
 
-log = app.logger.log
+log = app.logger
 
 msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
        'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
@@ -108,11 +108,11 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 async def request():
     for _ in range(10):
         result = await app.aio_publish_request(msg, topic='some.request.topic.123')
-        log(f'response: {result}')
+        log.warning(f'response: {result}')
 
 @app.listen('some.request.topic.123')
 async def request_listener(topic, message):
-    log('request has been processed')
+    log.warning('request has been processed')
     return {'success': True, 'data': 'request has been processed'}
 
 
@@ -135,7 +135,7 @@ app = ant_app.App(
     app_strategy='asyncio',
 )
 
-log = app.logger.log
+log = app.logger
 
 msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
        'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
@@ -144,16 +144,16 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 async def request_to_another_topic():
     for _ in range(10):
         await app.aio_publish_request_with_reply_to_another_topic(msg, topic='some.topic.for.request.with.response.to.another.topic', reply_to='reply.to.topic')
-        log('sent request')
+        log.warning('sent request')
 
 @app.listen('some.topic.for.request.with.response.to.another.topic')
 async def request_listener(topic, message):
-    log('request has been processed')
+    log.warning('request has been processed')
     return {'success': True, 'data': 'request has been processed'}
 
 @app.listen('reply.to.topic')
 async def another_topic_listener(topic, message):
-    log(f'recieved response: {topic} {message}')
+    log.warning(f'recieved response: {topic} {message}')
 
 
 if __name__ == "__main__":
@@ -177,7 +177,7 @@ app = ant_app.App(
         app_strategy='asyncio',
 )
 
-log = app.logger.log
+log = app.logger
 
 class SubTestSerializer(Serializer):
     subkey1 = Field(type=str)
@@ -207,7 +207,7 @@ async def publish_pereodically():
 
 @app.listen('some.publish.topic', serializator=TestSerializer)
 async def topic_for_requests_istener(topic, message):
-    log(f'got message {message}')
+    log.warning(f'got message {message}')
 
 
 if __name__ == "__main__":
@@ -235,7 +235,7 @@ app = ant_app.App(
     web_port=8999,
 )
 
-log = app.logger.log
+log = app.logger
 
 @app.http.get('/get')
 async def web_endpoint_listener(request):
@@ -279,7 +279,7 @@ app = ant_app.App(
     port=4222,
     app_strategy='sync',
 )
-log = app.logger.log
+log = app.logger
 
 msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '2':2, '3':3, '4':4, '5':5}, 'key6':{'subkey1':'1', 'subkey2':2, '3':3, '4':4, '5':5}, 'key7':None}
 
@@ -287,19 +287,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 def publish():
     for _ in range(10):
         app.publish(msg, topic='some.publish.topic')
-        log(f'send message {msg}')
+        log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 def publish_pereodically():
     for _ in range(10):
         app.publish(msg, topic='some.publish.topic')
-        log(f'send message from pereodic task {msg}')
+        log.warning(f'send message from pereodic task {msg}')
 
 
 @app.listen('some.publish.topic')
 def topic_for_requests_istener(topic, message):
-    log(f'got message {message}')
+    log.warning(f'got message {message}')
 
 if __name__ == "__main__":
     app.start()
@@ -313,6 +313,7 @@ Anthill creates a logfile folder in the project directory and stores all logs th
 Logging from app object:
 ```python
 from anthill import app as ant_app
+from anthill.logger import get_logger
 
 app = ant_app.App(  #create app
     service_name='ms_template_sync_by_lib',
@@ -321,7 +322,8 @@ app = ant_app.App(  #create app
     app_strategy='sync',
 )
 
-log = app.logger.log    #create log handler
+log = app.logger    # create log handler
+log = get_logger('ms_template_sync_by_lib')  # does exactly the same thing
 
 log.info("some log")         #write log
 log.warning("some warn log")
@@ -330,17 +332,35 @@ log.exception("some exception log with automatic traceback logging")
 
 ```
 
-Separated:
+Separated (after setting at the startup - you can get any registered logger with get_logger funciton):
 
 ```python
-from anthill.logger import Logger
+from anthill.logger import get_logger
 
-log = Logger('some_logger_name',    #create log handler
-in_separate_process=False)    
+log = get_logger('some_logger_name')    
 
 log.warning("some log")         #write log
 
 ```
+
+Anthill uses logging in separate process by default to speed-up app, but you can change it on the app creation:
+```python
+from anthill import app as ant_app
+
+app = ant_app.App( 
+    service_name='ms_template_sync_by_lib',
+    host='127.0.0.1',
+    port=4222,
+    app_strategy='sync',
+    log_in_separate_process=False, # specify this option for logging in main process
+)
+
+```
+
+Anthill let you to choose between default (recommended by developers) and custom logger configurations. If you want to
+use custom logging config - just create `config/log_config.json` file with custom logger configuration at the app root.
+Anthill will automitacally detect and set it. After that you can get your logger with `get_logger` function.
+
 ## Testing
 
 is coming..
