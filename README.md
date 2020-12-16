@@ -62,14 +62,14 @@ async def publish():
 
 
 @app.timer_task(interval=2)
-async def publish_pereodically():
+async def publish_periodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
-        log.warning(f'send message from pereodic task {msg}')
+        log.warning(f'send message from periodic task {msg}')
 
 
 @app.listen('some.publish.topic')
-async def recieve_messages(topic, message):
+async def receive_messages(topic, message):
     log.warning(f'got message {message}')
 
 if __name__ == "__main__":
@@ -153,7 +153,7 @@ async def request_listener(topic, message):
 
 @app.listen('reply.to.topic')
 async def another_topic_listener(topic, message):
-    log.warning(f'recieved response: {topic} {message}')
+    log.warning(f'received response: {topic} {message}')
 
 
 if __name__ == "__main__":
@@ -201,12 +201,12 @@ async def publish():
         await app.aio_publish(msg, topic='some.publish.topic')
 
 @app.timer_task(interval=2)
-async def publish_pereodically():
+async def publish_periodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
 
 @app.listen('some.publish.topic', serializator=TestSerializer)
-async def topic_for_requests_istener(topic, message):
+async def topic_for_requests_listener(topic, message):
     log.warning(f'got message {message}')
 
 
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 ### HTTP server
 
 You must specify web_server=True to activate the web server. [Aiohttp](https://docs.python.org/3/library/asyncio.html) is used as a web server. Accordingly, you can use their syntax.
-Also you can spacify web
+Also you can specify web
 
 ```python
 
@@ -244,7 +244,7 @@ async def web_endpoint_listener(request):
     '''
     return web.Response(text="Hello, world")
 
-@app.http.view('/path/to/rest/endpoinds')
+@app.http.view('/path/to/rest/endpoints')
 class MyView(web.View):
     '''
     HTTP endpoints for REST schema
@@ -291,14 +291,14 @@ def publish():
 
 
 @app.timer_task(interval=2)
-def publish_pereodically():
+def publish_periodically():
     for _ in range(10):
         app.publish(msg, topic='some.publish.topic')
-        log.warning(f'send message from pereodic task {msg}')
+        log.warning(f'send message from periodic task {msg}')
 
 
 @app.listen('some.publish.topic')
-def topic_for_requests_istener(topic, message):
+def topic_for_requests_listener(topic, message):
     log.warning(f'got message {message}')
 
 if __name__ == "__main__":
@@ -311,21 +311,22 @@ Remember, a synchronous app_strategy many times slower than an asynchronous one.
 Anthill creates a logfile folder in the project directory and stores all logs there. There are several ways to store your own logs there.
 
 Logging from app object:
+
 ```python
 from anthill import app as ant_app
-from anthill.logger import get_logger
+from anthill.utils.logger import get_logger
 
-app = ant_app.App(  #create app
+app = ant_app.App(  # create app
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
     app_strategy='sync',
 )
 
-log = app.logger    # create log handler
+log = app.logger  # create log handler
 log = get_logger('ms_template_sync_by_lib')  # does exactly the same thing
 
-log.info("some log")         #write log
+log.info("some log")  # write log
 log.warning("some warn log")
 log.error("some error log")
 log.exception("some exception log with automatic traceback logging")
@@ -335,11 +336,11 @@ log.exception("some exception log with automatic traceback logging")
 Separated (after setting at the startup - you can get any registered logger with get_logger funciton):
 
 ```python
-from anthill.logger import get_logger
+from anthill.utils.logger import get_logger
 
-log = get_logger('some_logger_name')    
+log = get_logger('some_logger_name')
 
-log.warning("some log")         #write log
+log.warning("some log")  # write log
 
 ```
 
@@ -359,15 +360,15 @@ app = ant_app.App(
 
 Anthill let you to choose between default (recommended by developers) and custom logger configurations. If you want to
 use custom logging config - just create `config/log_config.json` file with custom logger configuration at the app root.
-Anthill will automitacally detect and set it. After that you can get your logger with `get_logger` function.
+Anthill will automatically detect and set it. After that you can get your logger with `get_logger` function.
 
 ## Testing
 
 is coming..
  
-## Contibuting
+## Contributing
 
-Welcome contributer! We are looking developers to make Anthill a great project.
+Welcome contributor! We are looking developers to make Anthill a great project.
 
 Working on your first Pull Request? You can learn how from this *free* series, [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github).
 
