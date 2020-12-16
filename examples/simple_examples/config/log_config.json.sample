@@ -1,0 +1,55 @@
+{
+    "version": 1,
+    "disable_existing_loggers": true,
+    "formatters": {
+        "detailed": {
+            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+        },
+        "simple": {
+            "class": "logging.Formatter",
+            "format": "%(created)f %(name)-15s %(levelname)-8s %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 1000000,
+            "backupCount": 10,
+            "filename": "mplog.log",
+            "mode": "a",
+            "formatter": "detailed"
+        },
+        "spam": {
+            "level": "DEBUG",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": "%MS_NAME%.log",
+            "mode": "a",
+            "formatter": "detailed",
+            "maxBytes": 1000000,
+            "backupCount": 10
+        },
+        "errors": {
+            "class": "logging.FileHandler",
+            "filename": "errors.log",
+            "mode": "a",
+            "level": "ERROR",
+            "formatter": "detailed"
+        }
+    },
+    "loggers": {
+        "spam": {
+            "handlers": ["spam"]
+        }
+    },
+    "root": {
+        "level": "DEBUG",
+        "handlers": ["console", "file", "errors"]
+    }
+}

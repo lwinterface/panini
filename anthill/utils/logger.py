@@ -93,13 +93,13 @@ def _modify_config(config, log_dir_path, ms_name: str = None, client_id: str = N
     return config
 
 
-def _basic_file_handler_skeleton(name: str):
+def _basic_file_handler_skeleton(name: str, level="DEBUG", formatter="detailed"):
     return {
-        "level": "DEBUG",
+        "level": level,
         "class": "logging.handlers.RotatingFileHandler",
         "filename": f"{name}.log",
         "mode": "a",
-        "formatter": "detailed",
+        "formatter": formatter,
         "maxBytes": 1000000,
         "backupCount": 10,
     }
@@ -108,11 +108,11 @@ def _basic_file_handler_skeleton(name: str):
 def _configure_default_logging(name):
     default_log_config = {
         "version": 1,
-        "disable_existing_loggers": True,
+        "disable_existing_loggers": False,
         "formatters": {
             "detailed": {
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+                "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
             },
             "simple": {
                 "class": "logging.Formatter",
@@ -184,7 +184,20 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
         raise SystemExit()
 
 
-class Handler:
+class LogHandler:
+    @staticmethod
+    def handle(record) -> None:
+        print(record.name)
+        if record.name == "root":
+            logger = logging.getLogger()
+        else:
+            logger = logging.getLogger(record.name)
+
+        if logger.isEnabledFor(record.levelno):
+            logger.handle(record)
+
+
+class ChangeConfigHandler:
     @staticmethod
     def handle(record) -> None:
         if record.name == "root":
@@ -204,9 +217,11 @@ def _emergency_logging() -> None:
         level=logging.DEBUG)
 
 
-def _dedicated_listener_process(processes_queue: Queue, stop_event: Event, config: dict) -> None:
+def _dedicated_listener_process(log_listener_queue: Queue,
+                                stop_event: Event, config: dict) -> None:
     logging.config.dictConfig(config)
-    listener = logging.handlers.QueueListener(processes_queue, Handler())
+    listener = logging.handlers.QueueListener(log_listener_queue, LogHandler())
+    # change_config_listener = logging.handlers.QueueListener(change_config_listener_queue, ChangeConfigHandler())
     listener.start()
     stop_event.wait()
     listener.stop()
@@ -231,7 +246,7 @@ def _set_log_recorder_process(config: dict) -> (Queue, Event, Process):
 def _set_main_logging_config(log_listener_queue: Queue):
     config = {
         'version': 1,
-        'disable_existing_loggers': True,
+        'disable_existing_loggers': False,
         'handlers': {
             'queue': {
                 'class': 'logging.handlers.QueueHandler',
