@@ -9,7 +9,7 @@ from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
 from .utils.helper import start_thread, get_app_root_path
-from . import logger
+from .utils import logger
 
 _app = None
 
@@ -95,14 +95,15 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
             self.app_root_path = get_app_root_path()
             if logger_required:
-                self.logger = None
+                self.logger: logger.Logger = None
                 self.logger_process = None
                 self.log_stop_event = None
                 self.log_listener_queue = None
+                self.change_log_config_listener_queue = None
                 logfiles_path = logfiles_path if logfiles_path else 'logs'
                 self.set_logger(service_name, self.app_root_path, logfiles_path, log_in_separate_process, client_id)
             else:
-                self.logger = lambda *x: Exception("Logger hasn't been connected")
+                self.logger = logger.EmptyLogger(None)
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
                 if web_app:
@@ -117,9 +118,13 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
 
+    # TODO: implement change logging configuration during runtime to make it work properly
+    def change_log_config(self, new_formatters: dict, new_handlers: dict):
+        self.change_log_config_listener_queue.put({'new_formatters': new_formatters, 'new_handlers': new_handlers})
+
     def set_logger(self, service_name, app_root_path, logfiles_path, in_separate_process, client_id):
         if in_separate_process:
-            self.log_listener_queue, self.log_stop_event, self.logger_process = \
+            self.log_listener_queue, self.log_stop_event, self.logger_process, self.change_log_config_listener_queue = \
                 logger.set_logger(service_name,
                                   app_root_path,
                                   logfiles_path,

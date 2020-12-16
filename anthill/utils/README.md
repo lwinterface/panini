@@ -160,3 +160,8 @@ That will be logged due to your config (or only in the file, as it is done by de
 see %(extra)s argument in the default configuration format. 
 
 *Notice, that extra parameters will be added to your logs only if you add "%(extra)s" to your log config formatter*
+
+# TODO:
+
+- Add ability to change log configuration during runtime (ChangeLogConfigHandler, change_log_config)
+- Add logger config checkers

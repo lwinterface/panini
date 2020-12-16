@@ -4,7 +4,7 @@ from ..utils.helper import start_thread
 from ._asyncio_cli import _AsyncioNATSClient
 from ._multi_proc_cli import _MultiProcNATSClient
 from ..exceptions import InitializingNATSError
-from ..logger import get_logger
+from ..utils.logger import get_logger
 
 message = None
 

@@ -5,7 +5,7 @@ import datetime
 from nats.aio.errors import ErrTimeout
 
 from ..utils.redis_queue import RedisQueue
-from ..logger import Logger
+from ..utils.logger import Logger
 
 
 class RedisResponse(RedisQueue):

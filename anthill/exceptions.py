@@ -1,4 +1,4 @@
-from .logger import Logger
+from .utils.logger import Logger
 from nats.aio.errors import ErrTimeout
 
 app_logger = None

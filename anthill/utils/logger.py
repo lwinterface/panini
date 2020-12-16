@@ -7,7 +7,7 @@ import datetime
 from multiprocessing import Process, Queue, Event
 
 
-from .utils import helper
+from ..utils import helper
 
 
 class Logger:
@@ -18,28 +18,46 @@ class Logger:
         self.logger = logger
 
     def debug(self, message, **extra):
-        self.logger.debug(message, extra=extra)
+        self.logger.debug(message, extra={'extra': extra})
 
     def info(self, message, **extra):
-        self.logger.info(message, extra=extra)
+        self.logger.info(message, extra={'extra': extra})
 
     def warning(self, message, **extra):
-        self.logger.warning(message, extra=extra)
+        self.logger.warning(message, extra={'extra': extra})
 
     def error(self, message, **extra):
-        self.logger.error(message, extra=extra)
+        self.logger.error(message, extra={'extra': extra})
 
     def exception(self, message, **extra):
-        self.logger.exception(message, extra=extra)
+        self.logger.exception(message, extra={'extra': extra})
+
+
+class EmptyLogger(Logger):
+    def debug(self, message, **extra):
+        raise Exception("Logger hasn't been connected")
+
+    def info(self, message, **extra):
+        raise Exception("Logger hasn't been connected")
+
+    def warning(self, message, **extra):
+        raise Exception("Logger hasn't been connected")
+
+    def error(self, message, **extra):
+        raise Exception("Logger hasn't been connected")
+
+    def exception(self, message, **extra):
+        raise Exception("Logger hasn't been connected")
 
 
 def set_logger(ms_name: str, app_root_path: str, logfiles_path: str, in_separate_process: bool, client_id: str = None):
     logger_config = _get_logger_config(app_root_path, logfiles_path, ms_name, client_id)
 
     if in_separate_process:
-        logger_queue, log_stop_event, log_process = _set_log_recorder_process(logger_config)
+        logger_queue, log_stop_event, log_process, change_log_config_listener_queue \
+            = _set_log_recorder_process(logger_config)
         _set_main_logging_config(logger_queue)
-        return logger_queue, log_stop_event, log_process
+        return logger_queue, log_stop_event, log_process, change_log_config_listener_queue
     else:
         logging.config.dictConfig(logger_config)
         return
@@ -60,8 +78,8 @@ def _get_logger_config(app_root_path: str, logfiles_path: str, ms_name: str, cli
 
     else:
         config = _configure_default_logging(ms_name)
-
-    return _modify_config(config, log_dir_path, ms_name=ms_name, client_id=client_id)
+    config['handlers'] = _modify_handlers(config['handlers'], log_dir_path, ms_name=ms_name, client_id=client_id)
+    return config
 
 
 def _replace_keywords(filename: str, ms_name: str = None, client_id: str = None):
@@ -77,20 +95,20 @@ def _replace_keywords(filename: str, ms_name: str = None, client_id: str = None)
     return filename
 
 
-def _modify_config(config, log_dir_path, ms_name: str = None, client_id: str = None):
-    for handler in config['handlers']:
+def _modify_handlers(handlers, log_dir_path, ms_name: str = None, client_id: str = None):
+    for handler in handlers:
         if handler == 'console':
             continue
 
-        filename = _replace_keywords(config['handlers'][handler]['filename'], ms_name, client_id)
+        filename = _replace_keywords(handlers[handler]['filename'], ms_name, client_id)
 
         if not os.path.isabs(filename):
             filename = os.path.join(log_dir_path, filename)
 
         helper.create_dir_when_none(os.path.dirname(filename))
-        config['handlers'][handler]['filename'] = filename
+        handlers[handler]['filename'] = filename
 
-    return config
+    return handlers
 
 
 def _basic_file_handler_skeleton(name: str, level="DEBUG", formatter="detailed"):
@@ -112,7 +130,8 @@ def _configure_default_logging(name):
         "formatters": {
             "detailed": {
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+                # do not remove 'extra' field - that's for extra arguments logging
+                "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s %(extra)s"
             },
             "simple": {
                 "class": "logging.Formatter",
@@ -167,7 +186,7 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
         if 'detailed' not in config['formatters']:
             config['formatters']['detailed'] = {
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s"
+                "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s %(extra)s"
             }
         for basic_config in ('anthill', 'inter_services_request'):
             if basic_config not in config['handlers']:
@@ -187,7 +206,6 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
 class LogHandler:
     @staticmethod
     def handle(record) -> None:
-        print(record.name)
         if record.name == "root":
             logger = logging.getLogger()
         else:
@@ -200,13 +218,8 @@ class LogHandler:
 class ChangeConfigHandler:
     @staticmethod
     def handle(record) -> None:
-        if record.name == "root":
-            logger = logging.getLogger()
-        else:
-            logger = logging.getLogger(record.name)
-
-        if logger.isEnabledFor(record.levelno):
-            logger.handle(record)
+        print(record)
+        # TODO: implement changing logger configuration during runtime
 
 
 def _emergency_logging() -> None:
@@ -218,24 +231,27 @@ def _emergency_logging() -> None:
 
 
 def _dedicated_listener_process(log_listener_queue: Queue,
-                                stop_event: Event, config: dict) -> None:
+                                stop_event: Event, config: dict, change_config_listener_queue: Queue) -> None:
     logging.config.dictConfig(config)
-    listener = logging.handlers.QueueListener(log_listener_queue, LogHandler())
-    # change_config_listener = logging.handlers.QueueListener(change_config_listener_queue, ChangeConfigHandler())
-    listener.start()
+    log_listener = logging.handlers.QueueListener(log_listener_queue, LogHandler())
+    change_log_config_listener = logging.handlers.QueueListener(change_config_listener_queue, ChangeConfigHandler())
+    change_log_config_listener.start()
+    log_listener.start()
     stop_event.wait()
-    listener.stop()
+    log_listener.stop()
+    change_log_config_listener.stop()
 
 
-def _set_log_recorder_process(config: dict) -> (Queue, Event, Process):
+def _set_log_recorder_process(config: dict) -> (Queue, Event, Process, Queue):
     try:
         log_listener_queue = Queue()
+        change_log_config_listener_queue = Queue()
         stop_event = Event()
         listener_process = Process(target=_dedicated_listener_process,
                                    name='listener',
-                                   args=(log_listener_queue, stop_event, config,))
+                                   args=(log_listener_queue, stop_event, config, change_log_config_listener_queue))
         listener_process.start()
-        return log_listener_queue, stop_event, listener_process
+        return log_listener_queue, stop_event, listener_process, change_log_config_listener_queue
 
     except Exception as e:
         _emergency_logging()

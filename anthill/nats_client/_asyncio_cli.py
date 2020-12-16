@@ -9,7 +9,7 @@ from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
-from ..logger import get_logger
+from ..utils.logger import get_logger
 
 log = get_logger('anthill')
 isr_log = get_logger('inter_services_request')

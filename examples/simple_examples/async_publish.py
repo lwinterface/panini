@@ -1,5 +1,5 @@
 from anthill import app as ant_app
-from anthill.logger import get_logger
+from anthill.utils.logger import get_logger
 
 app = ant_app.App(
     service_name='async_publish',
