@@ -7,7 +7,7 @@ import datetime
 import uuid
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger, InterServicesRequestLogger
+from ..logger.logger import Logger
 from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 
@@ -46,25 +46,47 @@ class _AsyncioNATSClient(object):
                 else:
                     for callback in callbacks:
                         await self.aio_subscribe_topic(topic, callback)
-    
+
     def subscribe_topic(self, topic: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_topic(topic, callback))
 
     def unsubscribe_topic(self, topic: str):
         self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
-        
+
     async def aio_subscribe_topic(self, topic: str, callback: CoroutineType):
         wrapped_callback = self.wrap_callback(callback, self)
         ssid = await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
-                                    pending_bytes_limit=self.pending_bytes_limit)
-        self.ssid_map[topic] = ssid
-        self.topics_and_callbacks[topic] = callback
+                                           pending_bytes_limit=self.pending_bytes_limit)
+        if not topic in self.ssid_map:
+            self.ssid_map[topic] = []
+        self.ssid_map[topic].append(ssid)
+        if not topic in self.topics_and_callbacks:
+            self.topics_and_callbacks[topic] = []
+        self.topics_and_callbacks[topic].append(callback)
+        return ssid
 
     async def aio_unsubscribe_topic(self, topic: str):
         if not topic in self.ssid_map:
             raise Exception(f"Topic {topic} hasn't been subscribed")
-        await self.client.unsubscribe(self.ssid_map[topic])
+        for ssid in self.ssid_map[topic]:
+            await self.client.unsubscribe(ssid)
         del self.ssid_map[topic]
+        del self.topics_and_callbacks[topic]
+
+    async def aio_unsubscribe_ssid(self, ssid: int, topic: str = None):
+        if topic and not topic in self.ssid_map:
+            raise Exception(f"Topic {topic} hasn't been subscribed")
+        await self.client.unsubscribe(ssid)
+        if topic:
+            del self.ssid_map[topic]
+            del self.topics_and_callbacks[topic]
+        else:
+            for topic in self.ssid_map:
+                if ssid in self.ssid_map[topic]:
+                    self.ssid_map[topic].remove(ssid)
+            for topic in self.topics_and_callbacks:
+                if ssid in self.topics_and_callbacks[topic]:
+                    self.topics_and_callbacks[topic].remove(ssid)
 
     def get_absorber_topic(self, topic, type='publish'):
         return f'absorber.{self.client_id}.{topic}.{type}.{datetime.datetime.now().timestamp()}'

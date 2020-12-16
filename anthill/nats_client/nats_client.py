@@ -95,10 +95,13 @@ class NATSClient:
        self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
     async def aio_subscribe_topic(self, topic: str, callback):
-        await self.connector.aio_subscribe_topic(topic, callback)
+        return await self.connector.aio_subscribe_topic(topic, callback)
 
     async def aio_unsubscribe_topic(self, topic: str):
         await self.connector.aio_unsubscribe_topic(topic)
+
+    async def aio_unsubscribe_ssid(self, ssid: int):
+        await self.connector.aio_unsubscribe_ssid(ssid)
 
     async def aio_publish(self, message, topic: str, force: bool = False):
         await self.connector.aio_publish(message, topic, force=force)
