@@ -45,7 +45,7 @@ class _AsyncioNATSClient(object):
                     await self.aio_subscribe_topic(topic, callbacks)
                 else:
                     for callback in callbacks:
-                        await self.aio_subscribe_topic(topic, callback)
+                        await self.aio_subscribe_topic(topic, callback, init_subscribtion=True)
 
     def subscribe_topic(self, topic: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_topic(topic, callback))
@@ -53,16 +53,17 @@ class _AsyncioNATSClient(object):
     def unsubscribe_topic(self, topic: str):
         self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
 
-    async def aio_subscribe_topic(self, topic: str, callback: CoroutineType):
+    async def aio_subscribe_topic(self, topic: str, callback: CoroutineType, init_subscribtion=False):
         wrapped_callback = self.wrap_callback(callback, self)
         ssid = await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
                                            pending_bytes_limit=self.pending_bytes_limit)
         if not topic in self.ssid_map:
             self.ssid_map[topic] = []
         self.ssid_map[topic].append(ssid)
-        if not topic in self.topics_and_callbacks:
-            self.topics_and_callbacks[topic] = []
-        self.topics_and_callbacks[topic].append(callback)
+        if init_subscribtion is False:
+            if not topic in self.topics_and_callbacks:
+                self.topics_and_callbacks[topic] = []
+            self.topics_and_callbacks[topic].append(callback)
         return ssid
 
     async def aio_unsubscribe_topic(self, topic: str):
