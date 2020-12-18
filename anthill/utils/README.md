@@ -41,7 +41,7 @@ log.info("some log")  # write log
 # Log Config:
 
 In the logger we use simple default config, that fit majority of logger needs:
-```json
+```json5
 {
   "version": 1,
   // we use False for handling build in errors in our logs
@@ -49,7 +49,7 @@ In the logger we use simple default config, that fit majority of logger needs:
   "formatters": {
     "detailed": {
       "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
-      // do not remove 'extra' field - that's for extra arguments logging
+      // notice 'extra' field - that's for extra arguments logging
       "format": "%(created)f %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s %(extra)s"
     },
     "simple": {
@@ -81,6 +81,16 @@ In the logger we use simple default config, that fit majority of logger needs:
       "formatter": "detailed",
       "maxBytes": 1000000,
       "backupCount": 10,
+    },
+    // root logger, that contains all existing logs
+    "app": {
+        "level": "DEBUG",
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": "app.log",
+        "mode": "a",
+        "formatter": "detailed",
+        "maxBytes": 1000000,
+        "backupCount": 10,
     },
     "errors": {
       "class": "logging.FileHandler",
@@ -123,7 +133,8 @@ In the logger we use simple default config, that fit majority of logger needs:
     "level": "DEBUG",
     "handlers": [
       "console",
-      "errors"
+      "errors",
+      "app"
     ]
   }
 }

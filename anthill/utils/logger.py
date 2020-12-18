@@ -147,6 +147,7 @@ def _configure_default_logging(name):
             },
             "anthill": _basic_file_handler_skeleton("anthill"),
             "inter_services_request": _basic_file_handler_skeleton("inter_services_request"),
+            "app": _basic_file_handler_skeleton("app"),
             "errors": {
                 "class": "logging.FileHandler",
                 "filename": f"errors.log",
@@ -165,7 +166,7 @@ def _configure_default_logging(name):
         },
         "root": {
             "level": "DEBUG",
-            "handlers": ["console", "errors"]
+            "handlers": ["console", "errors", "app"]
         }
     }
     if name not in ("anthill", "inter_services_request"):
