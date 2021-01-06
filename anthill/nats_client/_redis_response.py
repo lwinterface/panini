@@ -5,13 +5,13 @@ import datetime
 from nats.aio.errors import ErrTimeout
 
 from ..utils.redis_queue import RedisQueue
-from ..utils.logger import Logger
+from ..utils.logger import get_logger
 
 
 class RedisResponse(RedisQueue):
 
     def __init__(self, name: str, namespace: str = 'response', host: str = '127.0.0.1', port: int = 6379, db: int = 0, waiting_btwn_check: float = 0.001):
-        self.log = Logger(name='RedisResponse')
+        self.log = get_logger('RedisResponse')
         if 'SERVICE_NAME' in os.environ:
             if '_sender_client' in os.environ['SERVICE_NAME']:
                 service_name = os.environ['SERVICE_NAME'].replace('_sender_client','')
