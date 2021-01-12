@@ -25,7 +25,7 @@ class NATSClient:
                 redis_host='127.0.0.1',
                 redis_port='6379',
                 pending_bytes_limit=65536 * 1024 * 10,
-                num_of_queues=None
+                num_of_queues=1,
                 ):
         """
         :param client_id: instance identificator for NATS, str
@@ -80,8 +80,8 @@ class NATSClient:
     def disconnect(self):
         self.connector.client.disconnect()
 
-    def publish(self, message, topic: str, reply_to: str = None):
-        self.connector.publish(message, topic, reply_to=reply_to)
+    def publish(self, message, topic: str):
+        self.connector.publish(message, topic)
 
     def publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):
         return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)
