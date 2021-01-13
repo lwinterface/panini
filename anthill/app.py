@@ -6,13 +6,14 @@ import logging
 import random
 import argparse
 from aiohttp import web
+
+from .emulator.storage_handler import StorageHandler
 from .nats_client.nats_client import NATSClient
 from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
-from .debugger.absorber import run_absorber
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
-from .utils.helper import start_thread
+from .utils.helper import start_thread, start_process
 
 _app = None
 
@@ -45,11 +46,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  file_level: int = logging.INFO,
                  logging_level: int = logging.INFO,
                  root_path: str = '',
-                 data_absorbing: bool = False,
-                 data_absorbing_frequency: int = None,
-                 data_absorbing_num_executors: int = 1,
-                 data_absorbing_arctic_host: str = 'localhost',
-                 data_absorbing_arctic_port: int = 27017,
+                 store: bool = False
                  ):
         """
         :param host: NATS broker host
@@ -93,17 +90,17 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
             self.run_mode, work_session, start_timestamp = self._get_runmode_from_arguments()
-            self.data_absorbing = data_absorbing
-            if self.run_mode == 'main_mode' and self.data_absorbing:
-                self.data_absorbing_config = {
-                    'client_id':client_id,
-                    'num_executors':data_absorbing_num_executors,
-                    'nats_host': host,
-                    'nats_port': port,
-                    'arctic_host': data_absorbing_arctic_host,
-                    'arctic_port':data_absorbing_arctic_port
-                }
-
+            self.store = store
+            self.client_id = client_id
+            self.service_name = service_name
+            if self.run_mode == 'main_mode' and self.store:
+                # self.data_absorbing_config = {
+                #     'client_id':client_id,
+                #     'num_executors':data_absorbing_num_executors,
+                #     'nats_host': host,
+                #     'nats_port': port,
+                # }
+                pass
             elif self.run_mode == 'backtest':
                 self.topic_prefix = '.'.join(['reproducer',client_id])
                 # TODO: run reproducer
@@ -124,7 +121,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 'max_reconnect_attempts': max_reconnect_attempts,
                 'reconnecting_time_wait': reconnecting_time_sleep,
                 'client_strategy': app_strategy,
-                'data_absorbing': data_absorbing,
+                'store': store,
             }
             if app_strategy == 'sync':
                 self.nats_config['num_of_queues'] = num_of_queues
@@ -188,6 +185,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             raise Exception(f'Too many arguments: {args}')
 
     def start(self, uvicorn_app_target: str = None):
+        print('start')
+        if self.store:
+            start_process(StorageHandler(self.client_id, self.service_name, "storage_queue").run)
         # if self.run_mode == 'main_mode' and self.data_absorbing:
         #     run_absorber(**self.data_absorbing_config)
         if self.http_server is None:
@@ -199,8 +199,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         else:
             start_thread(self._start())
 
+
+
             
     def _start(self):
+        print('_start')
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
             topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
@@ -220,6 +223,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
         self.nats_config['listen_topics_callbacks'] = topics_and_callbacks
         self.connector = None
+        print("init nats")
         NATSClient.__init__(self,
             **self.nats_config
         )

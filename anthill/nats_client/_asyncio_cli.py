@@ -53,6 +53,9 @@ class _AsyncioNATSClient(object):
     def unsubscribe_topic(self, topic: str):
         self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
 
+    def unsubscribe_topic(self, ssid: int):
+        self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid))
+
     async def aio_subscribe_topic(self, topic: str, callback: CoroutineType, init_subscribtion=False):
         wrapped_callback = self.wrap_callback(callback, self)
         ssid = await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
@@ -89,12 +92,9 @@ class _AsyncioNATSClient(object):
                 if ssid in self.topics_and_callbacks[topic]:
                     self.topics_and_callbacks[topic].remove(ssid)
 
-    def get_absorber_topic(self, topic, type='publish'):
-        return f'absorber.{self.client_id}.{topic}.{type}.{datetime.datetime.now().timestamp()}'
-
-    async def push_to_absorber(self, topic, message, type='publish'):
-        absorber_topic = self.get_absorber_topic(topic, type=type)
-        await self.client.publish(absorber_topic, message)
+    async def push_to_storage(self, topic, message, message_type):
+        print("publish:", f"storage.{self.service_name}.{message_type}.{topic}")
+        await self.aio_publish(message, f"storage.{self.service_name}.{message_type}.{topic}")
 
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
@@ -107,8 +107,10 @@ class _AsyncioNATSClient(object):
                                 if reply is None:
                                     return
                                 reply['isr-id'] = isr_id
-                                reply = json.dumps(reply)
+                                # reply = json.dumps(reply)
                                 await cli.aio_publish(reply, reply_to)
+                                if cli.store:
+                                    await cli.push_to_storage(subject, reply, "publish_response")
                         except EventHandlingError as e:
                             if not 'reply' in locals():
                                 reply = ""
@@ -127,22 +129,32 @@ class _AsyncioNATSClient(object):
                 reply = await callback(cb, subject, data, reply_to, isr_id)
                 if reply:
                     reply['isr-id'] = isr_id
-                    reply = json.dumps(reply)
+                    # reply = json.dumps(reply)
                     # isr_log(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {data}, {subject}")
                     await cli.aio_publish(reply, reply_to)
+                # if self.store:
+                #     self.push_to_storage(subject, reply, "response")
 
             subject = msg.subject
             raw_data = msg.data.decode()
             data = json.loads(raw_data)
             if not msg.reply == '':
                 reply_to = msg.reply
-                if cli.data_absorbing:
-                    await cli.push_to_absorber(msg.subject, msg.data, type='request')
+
+                ###
+                if cli.store:
+                    await cli.push_to_storage(msg.subject, msg.data, "listen")
+                ###
+
             elif 'reply_to' in data:
                 reply_to = data.pop('reply_to')
             else:
-                if cli.data_absorbing:
-                    await cli.push_to_absorber(msg.subject, msg.data, type='publish')
+
+                ###
+                if cli.store:
+                    await cli.push_to_storage(msg.subject, msg.data, "listen")
+                ###
+
                 # isr_log(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
@@ -199,17 +211,21 @@ class _AsyncioNATSClient(object):
     async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = False):
         if type(message) == str:
             message = json.loads(message)
+
         if self.validate_msg(message):
             if not 'isr-id' in message:
                 isr_id = str(uuid.uuid4())
-                message = self.register_msg(message, isr_id)
+                dumped_message = self.register_msg(message, isr_id)
             else:
-                message = json.dumps(message)
-            message = message.encode()
-            response = await self.client.request(topic, message, timeout=timeout)
+                dumped_message = json.dumps(message)
+            encoded_message = dumped_message.encode()
+            response = await self.client.request(topic, encoded_message, timeout=timeout)
             response = response.data
-            if self.data_absorbing:
-                await self.push_to_absorber(topic, message, type='response')
+
+            if self.store:
+                await self.push_to_storage(topic, message, "publish")
+                await self.push_to_storage(topic, response, "response")
+
             # isr_log(f'6RESPONSE message: {message}', phase='response', topic=topic)
             if unpack:
                 response = json.loads(response)
