@@ -1,5 +1,6 @@
 import time
 import asyncio
+
 from . import exceptions
 from typing import Callable
 from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError, BaseError
@@ -11,7 +12,8 @@ class _EventManager:
     """
     SUBSCRIPTIONS = {}
 
-    def listen(self, topic: list or str, serializator: type = None, dynamic_subscription=False):
+    def listen(self, topic: list or str, serializator: type = None,
+               dynamic_subscription: bool = False, non_store: bool = False):
         def wrapper(function):
             function = _EventManager.wrap_function_by_serializer(function, serializator)
             if type(topic) is list:
