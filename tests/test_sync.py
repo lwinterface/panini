@@ -6,18 +6,26 @@ app = ant_app.App(
     service_name='test_listen',
     host='127.0.0.1',
     port=4222,
-    app_strategy='asyncio',
+    app_strategy='sync',
 )
 
 
 @app.listen('foo')
-async def topic_for_requests(_, message):
+def topic_for_requests(_, message):
     return {'data': message['data'] + 1}
 
 
 @app.listen('foo.*.bar')
-async def composite_topic_for_requests(topic, message):
+def composite_topic_for_requests(topic, message):
     return {'data': topic + str(message['data'])}
+
+
+def foo_handler(topic, message):
+    global_object.public_variable = message['data']
+
+listen_topics_callbacks = {
+    'foo': [foo_handler]
+}
 
 
 sandbox = Sandbox(app)
