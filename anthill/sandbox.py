@@ -1,9 +1,16 @@
 from .nats_client.nats_client import NATSClient
+from anthill.app import App
 from anthill.utils.helper import start_process
 
 
 class Sandbox(NATSClient):
     def __init__(self, app):
+        # super(Sandbox, self).__init__(
+        #     host='127.0.0.1',
+        #     port=4222,
+        #     client_id='sandbox',
+        #     app_strategy='sync',
+        # )
         self.nats_config = {
             'host': '127.0.0.1',
             'port': 4222,
