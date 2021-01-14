@@ -1,30 +1,59 @@
-from .nats_client.nats_client import NATSClient
+import json
+from typing import Callable, Optional
+
+from pynats import NATSClient, NATSMessage
 from anthill.utils.helper import start_process
 
 
-class Sandbox(NATSClient):
-    def __init__(self, app, listen_topics_callbacks=None):
-        if listen_topics_callbacks is None:
-            listen_topics_callbacks = {}
+class Sandbox:
+    def __init__(self, app):
+        start_process(app.start)
+        self.nats_client = NATSClient()
+        self.nats_client.connect()
 
-        self.nats_config = {
-            'host': '127.0.0.1',
-            'port': 4222,
-            'client_id': 'sandbox',
-            'listen_topics_callbacks': listen_topics_callbacks,
-            'publish_topics': [],
-            'allow_reconnect': False,
-            'queue': '',
-            'max_reconnect_attempts': 60,
-            'reconnecting_time_wait': 2,
-            'client_strategy': 'sync',
-        }
+    @staticmethod
+    def _dict_to_bytes(message: dict) -> bytes:
+        return json.dumps(message).encode('utf-8')
 
-        NATSClient.__init__(
-            self,
-            **self.nats_config
+    @staticmethod
+    def _bytes_to_dict(payload: bytes) -> dict:
+        return json.loads(payload)
+
+    def publish(self, topic: str, message: dict, reply: str = "") -> None:
+        self.nats_client.publish(subject=topic, payload=self._dict_to_bytes(message), reply=reply)
+
+    def request(self, topic: str, message: dict) -> dict:
+        return self._bytes_to_dict(
+            self.nats_client.request(subject=topic, payload=self._dict_to_bytes(message)).payload
         )
 
-        start_process(app.start)
+    def subscribe(
+            self,
+            topic: str,
+            callback: Callable,
+            queue: str = "",
+            max_messages: Optional[int] = None,
+    ):
+        return self.nats_client.subscribe(
+            subject=topic,
+            callback=callback,
+            queue=queue,
+            max_messages=max_messages,
+        )
+
+    def wait(self, count: int) -> None:
+        self.nats_client.wait(count=count)
+
+    def handler(self, func):
+        def wrapper(response):
+            assert isinstance(response, NATSMessage)
+            func(topic=response.subject, message=self._bytes_to_dict(response.payload))
+
+        return wrapper
+
+
+
+
+
 
 
