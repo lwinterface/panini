@@ -1,6 +1,6 @@
 import time
 
-from anthill.sandbox import Sandbox
+from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
@@ -27,20 +27,21 @@ def run_anthill():
 global_object = Global()
 
 
-sandbox = Sandbox()
+client = TestClient()
 
 
-@sandbox.handler('foo')
+@client.listen('foo')
 def foo_handler(topic, message):
     global_object.public_variable = message['data'] + 1
 
 
 start_process(run_anthill)
+time.sleep(0.1)
 
 
 def test_task():
     assert global_object.public_variable == 0
-    sandbox.wait(1)
+    client.wait(1)
     assert global_object.public_variable == 2
 
 

@@ -1,6 +1,6 @@
 import time
 
-from anthill.sandbox import Sandbox
+from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
@@ -27,27 +27,28 @@ def run_anthill():
 global_object = Global()
 
 
-sandbox = Sandbox()
+client = TestClient()
 
 
-@sandbox.handler('bar')
+@client.listen('bar')
 def bar_handler1(topic, message):
     global_object.public_variable = message['data']
 
 
-@sandbox.handler('bar')
+@client.listen('bar')
 def bar_handler2(topic, message):
     global_object.another_variable = message['data'] + 1
 
 
-# should be placed after sandbox.handler
+# should be placed after client.listen
 start_process(run_anthill)
+time.sleep(0.1)
 
 
 def test_publish_no_message():
     assert global_object.public_variable == 0
     assert global_object.another_variable == 0
-    sandbox.publish('foo', {})
-    sandbox.wait(2)  # wait for 2 messages
+    client.publish('foo', {})
+    client.wait(2)  # wait for 2 messages
     assert global_object.public_variable == 1
     assert global_object.another_variable == 2

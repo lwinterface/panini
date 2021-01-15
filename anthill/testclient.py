@@ -5,17 +5,20 @@ from typing import Callable, Optional
 from pynats import NATSClient, NATSMessage
 
 
-class Sandbox:
+class TestClient:
+    __test__ = False
+
     def __init__(self, url: str = 'nats://127.0.0.1:4222',
                  socket_timeout: int = 2,
                  name: str = '__'.join(
-                     ['sandbox', str(random.randint(1, 10000000)), str(random.randint(1, 10000000))]
+                     ['test_client', str(random.randint(1, 10000000)), str(random.randint(1, 10000000))]
                  )):
         self.nats_client = NATSClient(
             url=url,
             name=name,
             socket_timeout=socket_timeout,
         )
+        self.http_session = None
         self.nats_client.connect()
 
     @staticmethod
@@ -51,7 +54,7 @@ class Sandbox:
     def wait(self, count: int) -> None:
         self.nats_client.wait(count=count)
 
-    def handler(self, topic: str):
+    def listen(self, topic: str):
         def decorator(func):
             assert isinstance(topic, str)
 
@@ -68,10 +71,3 @@ class Sandbox:
 
             return wrapper
         return decorator
-
-
-
-
-
-
-

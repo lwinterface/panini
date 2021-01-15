@@ -1,19 +1,19 @@
-from anthill.sandbox import Sandbox
+from anthill.testclient import TestClient
 from tests.global_object import Global
 
 
-sandbox = Sandbox()
+client = TestClient()
 
 
 global_object = Global()
 
 
-@sandbox.handler('foo')
+@client.listen('foo')
 def foo_handler(topic, message):
     return {'data': message['data'] + 5}
 
 
-def test_sandbox_response_handler():
-    response = sandbox.request('foo', {'data': 1})
+def test_client_response_handler():
+    response = client.request('foo', {'data': 1})
 
     assert response['data'] == 6

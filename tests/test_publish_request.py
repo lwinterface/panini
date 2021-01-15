@@ -1,4 +1,6 @@
-from anthill.sandbox import Sandbox
+import time
+
+from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from anthill.utils.helper import start_process
@@ -20,19 +22,20 @@ def run_anthill():
     app.start()
 
 
-sandbox = Sandbox()
+client = TestClient()
 
 
-@sandbox.handler('foo')
+@client.listen('foo')
 def foo_handler(topic, message):
     message['data'] += 1
     return message
 
 
-# should be placed after sandbox.handler
+# should be placed after client.listen
 start_process(run_anthill)
+time.sleep(0.1)  # time for initializing anthill app
 
 
 def test_publish_request():
-    response = sandbox.request('start', {})
+    response = client.request('start', {})
     assert response['data'] == 2

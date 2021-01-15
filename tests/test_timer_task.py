@@ -1,6 +1,6 @@
 import time
 
-from anthill.sandbox import Sandbox
+from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
@@ -27,22 +27,23 @@ def run_anthill():
 global_object = Global()
 
 
-sandbox = Sandbox()
+client = TestClient()
 
 
-@sandbox.handler('foo')
+@client.listen('foo')
 def foo_handler(topic, message):
     global_object.another_variable += 2
 
 
 start_process(run_anthill)
+time.sleep(0.1)
 
 
 def test_timer_task():
     assert global_object.another_variable == 0
-    sandbox.wait(5)
+    client.wait(5)
     start_time = time.time()
     assert global_object.another_variable == 10
-    sandbox.wait(5)
+    client.wait(5)
     assert global_object.another_variable == 20
-    assert time.time() - start_time >= 0.5
+    assert time.time() - start_time >= 0.4
