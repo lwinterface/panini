@@ -27,7 +27,7 @@ def run_anthill():
 global_object = Global()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
 
 @client.listen('foo')
@@ -35,8 +35,7 @@ def foo_handler(topic, message):
     global_object.public_variable = message['data'] + 1
 
 
-start_process(run_anthill)
-time.sleep(0.1)
+client.start()
 
 
 def test_task():

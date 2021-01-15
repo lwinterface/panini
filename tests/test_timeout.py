@@ -22,10 +22,9 @@ def run_anthill():
     app.start()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
-start_process(run_anthill)
-time.sleep(0.1)
+client.start()
 
 
 def test_publish_request_timeout():

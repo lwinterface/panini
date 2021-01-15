@@ -25,11 +25,9 @@ def run_anthill():
     app.start()
 
 
-# run app as separate process - for testing it
-start_process(run_anthill)
-time.sleep(0.1)
+client = TestClient(run_anthill)
 
-client = TestClient()
+client.start()
 
 
 def test_listen_simple_topic_with_response():

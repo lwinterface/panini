@@ -22,7 +22,7 @@ def run_anthill():
     app.start()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
 
 @client.listen('foo')
@@ -32,8 +32,7 @@ def foo_handler(topic, message):
 
 
 # should be placed after client.listen
-start_process(run_anthill)
-time.sleep(0.1)  # time for initializing anthill app
+client.start()
 
 
 def test_publish_request():

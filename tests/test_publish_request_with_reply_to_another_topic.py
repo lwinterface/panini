@@ -28,7 +28,7 @@ def run_anthill():
     app.start()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
 global_object = Global()
 
@@ -39,8 +39,7 @@ def bar_handler(topic, message):
 
 
 # should be placed after client.listen
-start_process(run_anthill)
-time.sleep(0.1)
+client.start()
 
 
 def test_publish_request():

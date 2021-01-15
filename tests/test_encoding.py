@@ -4,8 +4,6 @@ import pytest
 from anthill.testclient import TestClient
 from anthill import app as ant_app
 
-from anthill.utils.helper import start_process
-
 
 def run_anthill():
     app = ant_app.App(
@@ -45,10 +43,9 @@ def run_anthill():
     app.start()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
-start_process(run_anthill)
-time.sleep(0.1)
+client.start()
 
 
 def test_encoding():

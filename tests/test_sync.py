@@ -53,7 +53,7 @@ def run_anthill():
     app.start()
 
 
-client = TestClient()
+client = TestClient(run_anthill)
 
 global_object = Global()
 
@@ -73,9 +73,7 @@ def publish_request_reply_handler(topic, message):
     global_object.additional_variable = message['data'] + 1
 
 
-# sync app creates more subprocesses, so it must not be daemon
-process = start_process(run_anthill, daemon=False)
-time.sleep(4)  # wait for sync app to setup
+client.start(is_sync=True)
 
 
 def test_listen_simple_topic_with_response():
@@ -111,5 +109,5 @@ def test_publish_request_reply():
     client.publish('publish.request.reply', {'data': 0})
     client.wait(1)
     assert global_object.additional_variable == 4
-    process.terminate()  # kill the app process in the last unittest
+    client.anthill_process.terminate()  # kill the app process in the last unittest
     # TODO: bug with 2 processes
