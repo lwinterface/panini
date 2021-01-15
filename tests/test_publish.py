@@ -6,33 +6,48 @@ from anthill import app as ant_app
 from tests.global_object import Global
 
 
-app = ant_app.App(
-    service_name='test_publish',
-    host='127.0.0.1',
-    port=4222,
-    app_strategy='asyncio',
-)
+from anthill.utils.helper import start_process
 
 
-@app.listen('foo')
-async def publish(topic, message):
-    await app.aio_publish({'data': 1}, topic='bar')
+def run_anthill():
+    app = ant_app.App(
+        service_name='test_publish',
+        host='127.0.0.1',
+        port=4222,
+        app_strategy='asyncio',
+    )
+
+    @app.listen('foo')
+    async def publish(topic, message):
+        await app.aio_publish({'data': 1}, topic='bar')
+
+    app.start()
 
 
 global_object = Global()
 
 
-sandbox = Sandbox(app)
+sandbox = Sandbox()
 
 
-@sandbox.handler
-def bar_handler(topic, message):
+@sandbox.handler('bar')
+def bar_handler1(topic, message):
     global_object.public_variable = message['data']
 
 
-def test_publish():
+@sandbox.handler('bar')
+def bar_handler2(topic, message):
+    global_object.another_variable = message['data'] + 1
+
+
+# should be placed after sandbox.handler
+start_process(run_anthill)
+
+
+def test_publish_no_message():
     assert global_object.public_variable == 0
-    sandbox.subscribe(topic='bar', callback=bar_handler)
+    assert global_object.another_variable == 0
     sandbox.publish('foo', {})
-    sandbox.wait(1)
+    sandbox.wait(2)  # wait for 2 messages
     assert global_object.public_variable == 1
+    assert global_object.another_variable == 2

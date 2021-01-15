@@ -1,14 +1,21 @@
 import json
+import random
 from typing import Callable, Optional
 
 from pynats import NATSClient, NATSMessage
-from anthill.utils.helper import start_process
 
 
 class Sandbox:
-    def __init__(self, app):
-        start_process(app.start)
-        self.nats_client = NATSClient()
+    def __init__(self, url: str = 'nats://127.0.0.1:4222',
+                 socket_timeout: int = 2,
+                 name: str = '__'.join(
+                     ['sandbox', str(random.randint(1, 10000000)), str(random.randint(1, 10000000))]
+                 )):
+        self.nats_client = NATSClient(
+            url=url,
+            name=name,
+            socket_timeout=socket_timeout,
+        )
         self.nats_client.connect()
 
     @staticmethod
@@ -44,12 +51,23 @@ class Sandbox:
     def wait(self, count: int) -> None:
         self.nats_client.wait(count=count)
 
-    def handler(self, func):
-        def wrapper(response):
-            assert isinstance(response, NATSMessage)
-            func(topic=response.subject, message=self._bytes_to_dict(response.payload))
+    def handler(self, topic: str):
+        def decorator(func):
+            assert isinstance(topic, str)
 
-        return wrapper
+            def wrapper(incoming_response):
+                assert isinstance(incoming_response, NATSMessage)
+                wrapper_response = func(topic=incoming_response.subject,
+                                        message=self._bytes_to_dict(incoming_response.payload))
+                if wrapper_response is not None and incoming_response.reply != "":
+                    self.publish(topic=incoming_response.reply,
+                                 message=wrapper_response)
+                    self.wait(count=1)
+
+            self.subscribe(topic, wrapper)
+
+            return wrapper
+        return decorator
 
 
 

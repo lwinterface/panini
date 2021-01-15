@@ -1,27 +1,32 @@
+from anthill.utils.helper import start_process
+
 from anthill.sandbox import Sandbox
 from anthill import app as ant_app
 
 
-app = ant_app.App(
-    service_name='test_listen',
-    host='127.0.0.1',
-    port=4222,
-    app_strategy='asyncio',
-)
+def run_anthill():
+    app = ant_app.App(
+        service_name='test_listen',
+        host='127.0.0.1',
+        port=4222,
+        app_strategy='asyncio',
+    )
+
+    @app.listen('foo')
+    async def topic_for_requests(topic, message):
+        return {'data': message['data'] + 1}
+
+    @app.listen('foo.*.bar')
+    async def composite_topic_for_requests(topic, message):
+        return {'data': topic + str(message['data'])}
+
+    app.start()
 
 
-@app.listen('foo')
-async def topic_for_requests(topic, message):
-    app.logger.log(message)
-    return {'data': message['data'] + 1}
+# run app as separate process - for testing it
+start_process(run_anthill)
 
-
-@app.listen('foo.*.bar')
-async def composite_topic_for_requests(topic, message):
-    return {'data': topic + str(message['data'])}
-
-
-sandbox = Sandbox(app)
+sandbox = Sandbox()
 
 
 def test_listen_simple_topic_with_response():

@@ -1,0 +1,47 @@
+import time
+
+from anthill.sandbox import Sandbox
+from anthill import app as ant_app
+
+from tests.global_object import Global
+
+
+from anthill.utils.helper import start_process
+
+
+def run_anthill():
+    app = ant_app.App(
+        service_name='test_task',
+        host='127.0.0.1',
+        port=4222,
+        app_strategy='asyncio',
+    )
+
+    @app.task()
+    async def publish():
+        await app.aio_publish({'data': 1}, topic='foo')
+
+    app.start()
+
+
+global_object = Global()
+
+
+sandbox = Sandbox()
+
+
+@sandbox.handler('foo')
+def foo_handler(topic, message):
+    global_object.public_variable = message['data'] + 1
+
+
+start_process(run_anthill)
+
+
+def test_task():
+    assert global_object.public_variable == 0
+    sandbox.wait(1)
+    assert global_object.public_variable == 2
+
+
+
