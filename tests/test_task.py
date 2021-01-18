@@ -1,12 +1,7 @@
-import time
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
-
-
-from anthill.utils.helper import start_process
 
 
 def run_anthill():
@@ -31,7 +26,7 @@ client = TestClient(run_anthill)
 
 
 @client.listen('foo')
-def foo_handler(topic, message):
+def foo_listener(topic, message):
     global_object.public_variable = message['data'] + 1
 
 

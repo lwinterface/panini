@@ -1,12 +1,7 @@
-import time
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
-
-
-from anthill.utils.helper import start_process
 
 
 def run_anthill():
@@ -31,16 +26,16 @@ client = TestClient(run_anthill)
 
 
 @client.listen('bar')
-def bar_handler1(topic, message):
+def bar_listener1(topic, message):
     global_object.public_variable = message['data']
 
 
 @client.listen('bar')
-def bar_handler2(topic, message):
+def bar_listener2(topic, message):
     global_object.another_variable = message['data'] + 1
 
 
-# should be placed after client.listen
+# should be placed after all @client.listen
 client.start()
 
 

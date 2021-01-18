@@ -40,6 +40,7 @@ class TestClient:
         is_daemon = False if is_sync else True
         self.anthill_process = start_process(self.run_anthill, daemon=is_daemon)
         time.sleep(4) if is_sync else time.sleep(0.1)
+        return self
 
     def publish(self, topic: str, message: dict, reply: str = "") -> None:
         self.nats_client.publish(subject=topic, payload=self._dict_to_bytes(message), reply=reply)

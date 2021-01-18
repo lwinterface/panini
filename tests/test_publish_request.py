@@ -1,9 +1,5 @@
-import time
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
-
-from anthill.utils.helper import start_process
 
 
 def run_anthill():
@@ -26,12 +22,12 @@ client = TestClient(run_anthill)
 
 
 @client.listen('foo')
-def foo_handler(topic, message):
+def foo_listener(topic, message):
     message['data'] += 1
     return message
 
 
-# should be placed after client.listen
+# should be placed after all @client.listen
 client.start()
 
 

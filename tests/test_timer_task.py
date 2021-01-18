@@ -6,9 +6,6 @@ from anthill import app as ant_app
 from tests.global_object import Global
 
 
-from anthill.utils.helper import start_process
-
-
 def run_anthill():
     app = ant_app.App(
         service_name='test_timer_task',
@@ -31,7 +28,7 @@ client = TestClient(run_anthill)
 
 
 @client.listen('foo')
-def foo_handler(topic, message):
+def foo_listener(topic, message):
     global_object.another_variable += 2
 
 

@@ -1,9 +1,5 @@
-import time
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
-
-from anthill.utils.helper import start_process
 
 from tests.global_object import Global
 
@@ -34,16 +30,16 @@ global_object = Global()
 
 
 @client.listen('bar')
-def bar_handler(topic, message):
+def bar_listener(topic, message):
     global_object.public_variable = message['data'] + 3
 
 
-# should be placed after client.listen
+# should be placed after all @client.listen
 client.start()
 
 
 def test_publish_request():
     assert global_object.public_variable == 0
     client.publish('start', {})
-    client.wait(1)  # wait for bar_handler call
+    client.wait(1)  # wait for bar_listener call
     assert global_object.public_variable == 6

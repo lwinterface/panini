@@ -1,7 +1,3 @@
-import time
-
-from anthill.utils.helper import start_process
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
 
@@ -25,9 +21,8 @@ def run_anthill():
     app.start()
 
 
-client = TestClient(run_anthill)
-
-client.start()
+# if no @client.listen are registered - you can run .start() just simply in chain
+client = TestClient(run_anthill).start()
 
 
 def test_listen_simple_topic_with_response():

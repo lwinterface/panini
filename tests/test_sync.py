@@ -1,6 +1,3 @@
-import time
-from anthill.utils.helper import start_process
-
 from anthill.testclient import TestClient
 from anthill import app as ant_app
 
@@ -25,12 +22,12 @@ def run_anthill():
 
     @app.listen('publish')
     def publish(topic, message):
-        app.publish(topic='publish.handler', message={'data': message['data'] + 1})
+        app.publish(topic='publish.listener', message={'data': message['data'] + 1})
 
     @app.listen('publish.request')
     def publish_request(topic, message):
         response = app.publish_request(topic='publish.request.helper', message={'data': message['data'] + 1})
-        app.publish(topic='publish.request.handler', message={'data': response['data'] + 3})
+        app.publish(topic='publish.request.listener', message={'data': response['data'] + 3})
 
     @app.listen('publish.request.helper')
     def publish_request_helper(topic, message):
@@ -48,7 +45,7 @@ def run_anthill():
 
     @app.listen('publish.request.reply.replier')
     def publish_request_helper(topic, message):
-        app.publish(topic='publish.request.reply.handler', message={'data': message['data'] + 1})
+        app.publish(topic='publish.request.reply.listener', message={'data': message['data'] + 1})
 
     app.start()
 
@@ -58,18 +55,18 @@ client = TestClient(run_anthill)
 global_object = Global()
 
 
-@client.listen('publish.handler')
-def publish_handler(topic, message):
+@client.listen('publish.listener')
+def publish_listener(topic, message):
     global_object.public_variable = message['data'] + 1
 
 
-@client.listen('publish.request.handler')
-def publish_request_handler(topic, message):
+@client.listen('publish.request.listener')
+def publish_request_listener(topic, message):
     global_object.another_variable = message['data'] + 4
 
 
-@client.listen('publish.request.reply.handler')
-def publish_request_reply_handler(topic, message):
+@client.listen('publish.request.reply.listener')
+def publish_request_reply_listener(topic, message):
     global_object.additional_variable = message['data'] + 1
 
 

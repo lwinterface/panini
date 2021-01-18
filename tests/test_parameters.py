@@ -1,10 +1,7 @@
-import time
 import pytest
 
 from anthill.testclient import TestClient
 from anthill import app as ant_app
-
-from anthill.utils.helper import start_process
 
 
 def run_anthill():
@@ -31,9 +28,7 @@ def run_anthill():
     app.start()
 
 
-client = TestClient(run_anthill)
-
-client.start()
+client = TestClient(run_anthill).start()
 
 
 def test_listen_topic_only_if_include():
