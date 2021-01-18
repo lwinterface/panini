@@ -6,7 +6,7 @@ from anthill import app as ant_app
 
 def run_anthill():
     app = ant_app.App(
-        service_name='test_publish_request',
+        service_name='test_listen_topic_only_if_include',
         host='127.0.0.1',
         port=4222,
         listen_topic_only_if_include=['foo', 'bar'],

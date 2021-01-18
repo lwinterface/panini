@@ -6,7 +6,7 @@ from anthill import app as ant_app
 
 def run_anthill():
     app = ant_app.App(
-        service_name='test_timer_task',
+        service_name='test_encoding',
         host='127.0.0.1',
         port=4222,
         app_strategy='asyncio',

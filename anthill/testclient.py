@@ -36,10 +36,13 @@ class TestClient:
     def _bytes_to_dict(payload: bytes) -> dict:
         return json.loads(payload)
 
-    def start(self, is_sync=False):
+    def start(self, is_sync: bool = False, sleep_time: float = None):
         is_daemon = False if is_sync else True
         self.anthill_process = start_process(self.run_anthill, daemon=is_daemon)
-        time.sleep(4) if is_sync else time.sleep(0.1)
+        if sleep_time is None:
+            time.sleep(4) if is_sync else time.sleep(0.1)
+        else:
+            time.sleep(sleep_time)
         return self
 
     def publish(self, topic: str, message: dict, reply: str = "") -> None:
