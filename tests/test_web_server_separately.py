@@ -4,7 +4,7 @@ import json
 import pytest
 from aiohttp import web
 from anthill import app as ant_app
-from anthill.testclient import HTTPSessionTestClient
+from anthill.test_client import HTTPSessionTestClient
 from anthill.utils.helper import start_process
 
 

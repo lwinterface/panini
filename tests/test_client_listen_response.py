@@ -1,4 +1,4 @@
-from anthill.testclient import TestClient
+from anthill.test_client import TestClient
 from tests.global_object import Global
 
 # no need to run anthill

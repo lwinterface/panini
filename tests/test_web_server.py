@@ -2,7 +2,7 @@ import json
 
 from aiohttp import web
 from anthill import app as ant_app
-from anthill.testclient import TestClient
+from anthill.test_client import TestClient
 
 
 def run_anthill():

@@ -1,6 +1,6 @@
 import time
 
-from anthill.testclient import TestClient
+from anthill.test_client import TestClient
 from anthill import app as ant_app
 
 from tests.global_object import Global
