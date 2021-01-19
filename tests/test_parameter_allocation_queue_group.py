@@ -14,6 +14,7 @@ def run_anthill1():
         port=4222,
         allocation_quenue_group="group1",
         app_strategy='asyncio',
+        logger_required=False,
     )
 
     @app.listen('foo')
@@ -30,6 +31,7 @@ def run_anthill2():
         port=4222,
         allocation_quenue_group="group1",
         app_strategy='asyncio',
+        logger_required=False,
     )
 
     @app.listen('foo')

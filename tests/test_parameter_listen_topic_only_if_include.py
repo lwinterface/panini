@@ -11,6 +11,7 @@ def run_anthill():
         port=4222,
         listen_topic_only_if_include=['foo', 'bar'],
         app_strategy='asyncio',
+        logger_required=False,
     )
 
     @app.listen('start')
