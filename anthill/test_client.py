@@ -97,6 +97,13 @@ class TestClient:
 
         self.anthill_process = None
 
+    def __del__(self):
+        self.nats_client.close()
+        if self.anthill_process:
+            self.anthill_process.kill()
+        if hasattr(self, 'http_session'):
+            self.http_session.close()
+
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
         return json.dumps(message).encode('utf-8')
