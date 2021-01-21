@@ -79,14 +79,14 @@ class TestClient:
                  run_anthill: typing.Callable = lambda *args, **kwargs: None,
                  use_web_server: bool = False,
                  base_web_server_url: str = 'http://127.0.0.1:8080',
-                 url: str = 'nats://127.0.0.1:4222',
+                 base_nats_url: str = 'nats://127.0.0.1:4222',
                  socket_timeout: int = 2,
                  name: str = '__'.join(
                      ['test_client', str(random.randint(1, 10000000)), str(random.randint(1, 10000000))]
                  )):
         self.run_anthill = run_anthill
         self.nats_client = NATSClient(
-            url=url,
+            url=base_nats_url,
             name=name,
             socket_timeout=socket_timeout,
         )
