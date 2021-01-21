@@ -13,7 +13,7 @@ def run_anthill():
         port=4222,
         app_strategy='asyncio',
         web_server=True,
-        logger_required = False,
+        logger_required=False,
     )
 
     @app.listen('foo')
