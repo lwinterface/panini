@@ -232,7 +232,7 @@ class _ListenerProc():
                 redis_response = RedisResponse(reply)
                 response = redis_response.return_response_when_appeared(topic=base_topic)
                 try:
-                    await cli.publish(reply_to, response)
+                    await cli.run_publish_queue(reply_to, response)
                 except Exception as e:
                     isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
             else:
@@ -240,7 +240,7 @@ class _ListenerProc():
                 redis_response = RedisResponse(reply)
                 response = redis_response.return_response_when_appeared(topic=base_topic)
                 try:
-                    await cli.publish(reply, response)
+                    await cli.run_publish_queue(reply, response)
                 except Exception as e:
                     isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
         return wrapped_callback

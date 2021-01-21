@@ -57,6 +57,7 @@ class _EventManager:
 
         async def wrapper_async(topic, message):
             message = serialize_message(topic, message)
+            print(function, function.__dict__)
             return await function(topic, message)
 
         if asyncio.iscoroutinefunction(function):

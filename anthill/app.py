@@ -22,20 +22,20 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def __init__(self,
                  host,
                  port,
-                 service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
+                 service_name: str = 'anthill_microservice_' + str(uuid.uuid4())[:10],
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
                  max_reconnect_attempts: int = 60,
                  reconnecting_time_sleep: int = 2,
                  app_strategy: str = 'asyncio',
-                 num_of_queues: int = 1,    #only for sync strategy
+                 num_of_queues: int = 1,  # only for sync strategy
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
                  listen_topic_only_if_include: list = None,
                  web_server=False,
-                 web_app = None,
+                 web_app=None,
                  web_host: str = None,
                  web_port: int = None,
                  web_framework: str = None,
@@ -46,8 +46,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  file_level: int = logging.INFO,
                  logging_level: int = logging.INFO,
                  root_path: str = '',
-                 store: bool = False
-                 ):
+                 store: bool = False):
         """
         :param host: NATS broker host
         :param port: NATS broker port
@@ -90,25 +89,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
             self.run_mode, work_session, start_timestamp = self._get_runmode_from_arguments()
-            self.store = store
             self.client_id = client_id
             self.service_name = service_name
-            if self.run_mode == 'main_mode' and self.store:
-                # self.data_absorbing_config = {
-                #     'client_id':client_id,
-                #     'num_executors':data_absorbing_num_executors,
-                #     'nats_host': host,
-                #     'nats_port': port,
-                # }
-                pass
-            elif self.run_mode == 'backtest':
-                self.topic_prefix = '.'.join(['reproducer',client_id])
-                # TODO: run reproducer
-                # TODO: change topics to reproducer's topics with client_id
-                # TODO: upload state
-                # TODO: put state
-                # TODO: send start message when microservice ready
-                pass
+            self.store = store
 
             self.nats_config = {
                 'host': host,
@@ -133,7 +116,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             if logger_required:
                 self.logger = Logger(
                     name=client_id,
-                    log_file=log_file if log_file else service_name+'.log',
+                    log_file=log_file if log_file else service_name + '.log',
                     log_formatter=log_formatter,
                     console_level=console_level,
                     file_level=file_level,
@@ -148,13 +131,15 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                     if web_app:
                         self.http_server = HTTPServer(base_app=self, web_app=web_app, web_framework=web_framework)
                     else:
-                        self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port, web_framework=web_framework)
+                        self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port,
+                                                      web_framework=web_framework)
                 elif self.web_framework == 'fastapi':
                     # start_thread(self._start())
                     if web_app:
                         self.http_server = HTTPServer(base_app=self, web_app=web_app, web_framework=web_framework)
                     else:
-                        self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port, web_framework=web_framework)
+                        self.http_server = HTTPServer(base_app=self, host=web_host, port=web_port,
+                                                      web_framework=web_framework)
                     self.http = self.http_server.web_app
             else:
                 self.http_server = None
@@ -167,10 +152,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def _get_runmode_from_arguments(self):
         parser = argparse.ArgumentParser(description='Run microservice\nUsage: python [module name] [mode] [timestamp]')
         parser.add_argument('args', type=str, nargs='*')
-        args = parser.parse_args().args
+        # args = parser.parse_args().args
+        args = []  # parser.parse_args().args
         if args == []:
             return 'main_mode', None, None
-        elif not args[0] == 'backtest':
+        elif not args[0] == 'testutils':
             raise Exception(f'Unexpected arguments: {args}')
         elif len(args) == 1:
             return args[0], None, None
@@ -185,11 +171,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             raise Exception(f'Too many arguments: {args}')
 
     def start(self, uvicorn_app_target: str = None):
-        print('start')
         if self.store:
             start_process(StorageHandler(self.client_id, self.service_name, "storage_queue").run)
-        # if self.run_mode == 'main_mode' and self.data_absorbing:
-        #     run_absorber(**self.data_absorbing_config)
+
         if self.http_server is None:
             self._start()
         elif self.web_framework == 'fastapi':
@@ -197,13 +181,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             with self.http_server.server.run_in_thread():
                 self._start()
         else:
-            start_thread(self._start())
+            start_thread(self._start)
 
-
-
-            
     def _start(self):
-        print('_start')
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
             topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
@@ -223,10 +203,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
         self.nats_config['listen_topics_callbacks'] = topics_and_callbacks
         self.connector = None
-        print("init nats")
         NATSClient.__init__(self,
-            **self.nats_config
-        )
+                            **self.nats_config
+                            )
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self._start_tasks()
@@ -242,7 +221,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for coro in self.interval_tasks[interval]:
                     if not asyncio.iscoroutinefunction(coro):
-                        raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
+                        raise InitializingIntevalTaskError(
+                            'For asyncio app_strategy only coroutine interval tasks allowed')
                     loop.create_task(coro())
             if self.web_framework == 'aiohttp':
                 self.http_server.start_server()
@@ -256,7 +236,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for task in self.interval_tasks[interval]:
                     if asyncio.iscoroutinefunction(task):
-                        raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
+                        raise InitializingIntevalTaskError(
+                            "For sync app_strategy coroutine interval_task doesn't allowed")
                     start_thread(task)
             if self.web_framework == 'aiohttp':
                 self.http_server.start_server()
@@ -267,3 +248,10 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             os.environ['HOSTNAME'] if 'HOSTNAME' in os.environ else 'non_docker_env_' + str(random.randint(1, 1000000)),
             str(random.randint(1, 1000000))
         ])
+
+    def close(self):
+        if self.app_strategy == 'asyncio':
+            loop = asyncio.get_event_loop()
+            loop.stop()
+            loop.close()
+            print("asyncio has been stopped")

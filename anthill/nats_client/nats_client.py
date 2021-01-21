@@ -101,6 +101,9 @@ class NATSClient:
     def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
         self.connector.publish_request_with_reply_to_another_topic(message, topic, reply_to)
 
+    def close(self):
+        self.connector.close()
+
     async def aio_subscribe_topic(self, topic: str, callback):
         return await self.connector.aio_subscribe_topic(topic, callback)
 

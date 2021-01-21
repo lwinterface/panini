@@ -48,13 +48,19 @@ class _AsyncioNATSClient(object):
                         await self.aio_subscribe_topic(topic, callback, init_subscribtion=True)
 
     def subscribe_topic(self, topic: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.aio_subscribe_topic(topic, callback))
+        if self.loop.is_running():
+            self.loop.create_task(self.aio_subscribe_topic(topic, callback))
+        else:
+            self.loop.run_until_complete(self.aio_subscribe_topic(topic, callback))
 
     def unsubscribe_topic(self, topic: str):
-        self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
+        if self.loop.is_running():
+            self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
+        else:
+            self.loop.run_until_complete(self.aio_unsubscribe_topic(topic))
 
-    def unsubscribe_topic(self, ssid: int):
-        self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid))
+    # def unsubscribe_topic(self, ssid: int):
+    #     self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid))
 
     async def aio_subscribe_topic(self, topic: str, callback: CoroutineType, init_subscribtion=False):
         wrapped_callback = self.wrap_callback(callback, self)
@@ -93,8 +99,7 @@ class _AsyncioNATSClient(object):
                     self.topics_and_callbacks[topic].remove(ssid)
 
     async def push_to_storage(self, topic, message, message_type):
-        print("publish:", f"storage.{self.service_name}.{message_type}.{topic}")
-        await self.aio_publish(message, f"storage.{self.service_name}.{message_type}.{topic}")
+        await self.aio_publish(message, f"storage.{self.service_name}.{message_type}.{topic}", disable_storing=True)
 
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
@@ -131,9 +136,9 @@ class _AsyncioNATSClient(object):
                     reply['isr-id'] = isr_id
                     # reply = json.dumps(reply)
                     # isr_log(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {data}, {subject}")
-                    await cli.aio_publish(reply, reply_to)
-                # if self.store:
-                #     self.push_to_storage(subject, reply, "response")
+                    await cli.aio_publish(reply, reply_to, disable_storing=True)
+                    if self.store:
+                        await self.push_to_storage(subject, reply, "request")
 
             subject = msg.subject
             raw_data = msg.data.decode()
@@ -143,7 +148,7 @@ class _AsyncioNATSClient(object):
 
                 ###
                 if cli.store:
-                    await cli.push_to_storage(msg.subject, msg.data, "listen")
+                    await cli.push_to_storage(msg.subject, msg.data, "listen_request")
                 ###
 
             elif 'reply_to' in data:
@@ -184,7 +189,8 @@ class _AsyncioNATSClient(object):
         coro = self.aio_publish_request(message, topic, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
-    async def aio_publish(self, message, topic: str, force: bool = False, nonjson: bool = False):
+    async def aio_publish(self, message, topic: str, force: bool = False, nonjson: bool = False,
+                          disable_storing: bool = False):
         if type(message) is dict and nonjson is False:
             message = json.dumps(message)
             message = message.encode()
@@ -195,6 +201,9 @@ class _AsyncioNATSClient(object):
         await self.client.publish(topic, message)
         if force:
             await self.client.flush(timeout=1)
+
+        if self.store and not disable_storing:
+            await self.push_to_storage(topic, message, "publish")
 
     async def flush(self, timeout=1):
         await self.client.flush(timeout=1)
@@ -223,7 +232,7 @@ class _AsyncioNATSClient(object):
             response = response.data
 
             if self.store:
-                await self.push_to_storage(topic, message, "publish")
+                await self.push_to_storage(topic, message, "publish_response")
                 await self.push_to_storage(topic, response, "response")
 
             # isr_log(f'6RESPONSE message: {message}', phase='response', topic=topic)
@@ -275,12 +284,8 @@ class _AsyncioNATSClient(object):
             return True
         isr_log('NATS Client status: DISCONNECTED', level='warning')
 
-
-
-
-
-
-
+    def close(self):
+        self.client.close()
 
 # for test
 if __name__ == "__main__":
