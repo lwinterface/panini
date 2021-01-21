@@ -206,7 +206,7 @@ class _AsyncioNATSClient(object):
             await self.push_to_storage(topic, message, "publish")
 
     async def flush(self, timeout=1):
-        await self.client.flush(timeout=1)
+        await self.client.flush(timeout=timeout)
 
     async def aio_publish_soon(self, message, topic: str):
         if is_json(message) is False:
