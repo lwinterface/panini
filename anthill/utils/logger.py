@@ -17,36 +17,36 @@ class Logger:
     def __init__(self, logger: logging.Logger):
         self.logger = logger
 
-    def debug(self, message, **extra):
-        self.logger.debug(message, extra={'extra': extra})
+    def debug(self, msg, **extra):
+        self.logger.debug(msg, extra={'extra': extra})
 
-    def info(self, message, **extra):
-        self.logger.info(message, extra={'extra': extra})
+    def info(self, msg, **extra):
+        self.logger.info(msg, extra={'extra': extra})
 
-    def warning(self, message, **extra):
-        self.logger.warning(message, extra={'extra': extra})
+    def warning(self, msg, **extra):
+        self.logger.warning(msg, extra={'extra': extra})
 
-    def error(self, message, **extra):
-        self.logger.error(message, extra={'extra': extra})
+    def error(self, msg, **extra):
+        self.logger.error(msg, extra={'extra': extra})
 
-    def exception(self, message, **extra):
-        self.logger.exception(message, extra={'extra': extra})
+    def exception(self, msg, **extra):
+        self.logger.exception(msg, extra={'extra': extra})
 
 
 class EmptyLogger(Logger):
-    def debug(self, message, **extra):
+    def debug(self, msg, **extra):
         raise Exception("Logger hasn't been connected")
 
-    def info(self, message, **extra):
+    def info(self, msg, **extra):
         raise Exception("Logger hasn't been connected")
 
-    def warning(self, message, **extra):
+    def warning(self, msg, **extra):
         raise Exception("Logger hasn't been connected")
 
-    def error(self, message, **extra):
+    def error(self, msg, **extra):
         raise Exception("Logger hasn't been connected")
 
-    def exception(self, message, **extra):
+    def exception(self, msg, **extra):
         raise Exception("Logger hasn't been connected")
 
 
