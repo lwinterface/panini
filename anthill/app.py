@@ -2,30 +2,30 @@ import os
 import time
 import asyncio
 import uuid
-import logging
 import random
 from aiohttp import web
 from .nats_client.nats_client import NATSClient
-from .logger.logger import Logger
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import InitializingEventManagerError, InitializingTaskError, InitializingIntevalTaskError
-from .utils.helper import start_thread
+from .utils.helper import start_thread, get_app_root_path
+from .utils import logger
 
 _app = None
+
 
 class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     def __init__(self,
                  host,
                  port,
-                 service_name: str = 'anthill_microservice_'+str(uuid.uuid4())[:10],
+                 service_name: str = 'anthill_microservice_' + str(uuid.uuid4())[:10],
                  client_id: str = None,
                  tasks: list = [],
                  reconnect: bool = False,
                  max_reconnect_attempts: int = 60,
                  reconnecting_time_sleep: int = 2,
                  app_strategy: str = 'asyncio',
-                 num_of_queues: int = 1,    #only for sync strategy
+                 num_of_queues: int = 1,  # only for sync strategy
                  subscribe_topics_and_callbacks: dict = {},
                  publish_topics: list = [],
                  allocation_quenue_group: str = "",
@@ -35,12 +35,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                  web_host: str = None,
                  web_port: int = None,
                  logger_required: bool = True,
-                 log_file: str = None,
-                 log_formatter: str = '%(message)s',
-                 console_level: int = logging.DEBUG,
-                 file_level: int = logging.INFO,
-                 logging_level: int = logging.INFO,
-                 root_path: str = '',
+                 logfiles_path: str = None,
+                 log_in_separate_process: bool = True,
                  ):
         """
         :param host: NATS broker host
@@ -65,12 +61,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param web_host: str = None,    #TODO
         :param web_port: int = None,    #TODO
         :param logger_required:        #TODO
-        :param log_file:               #TODO
-        :param log_formatter:  #TODO
-        :param console_level:  #TODO
-        :param file_level:     #TODO
-        :param logging_level:  #TODO
-        :param root_path:      #TODO
+        :param logfiles_path: main path for logs
+        :param log_in_separate_process: use log in the same or in different process
+        :param logger_required:        #TODO
         :param slack_webhook_url_for_logs:     #TODO
         :param telegram_token_for_logs:        #TODO
         :param telegram_chat_for_logs          #TODO
@@ -82,16 +75,16 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
             self.nats_config = {
-                'host':host,
-                'port':port,
-                'client_id':client_id,
-                'listen_topics_callbacks':None,
-                'publish_topics':publish_topics,
-                'allow_reconnect':reconnect,
-                'queue':allocation_quenue_group,
-                'max_reconnect_attempts':max_reconnect_attempts,
-                'reconnecting_time_wait':reconnecting_time_sleep,
-                'client_strategy':app_strategy,
+                'host': host,
+                'port': port,
+                'client_id': client_id,
+                'listen_topics_callbacks': None,
+                'publish_topics': publish_topics,
+                'allow_reconnect': reconnect,
+                'queue': allocation_quenue_group,
+                'max_reconnect_attempts': max_reconnect_attempts,
+                'reconnecting_time_wait': reconnecting_time_sleep,
+                'client_strategy': app_strategy,
             }
             if app_strategy == 'sync':
                 self.nats_config['num_of_queues'] = num_of_queues
@@ -100,18 +93,17 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             self.listen_topic_only_if_include = listen_topic_only_if_include
             self.subscribe_topics_and_callbacks = subscribe_topics_and_callbacks
 
+            self.app_root_path = get_app_root_path()
             if logger_required:
-                self.logger = Logger(
-                    name=client_id,
-                    log_file=log_file if log_file else service_name+'.log',
-                    log_formatter=log_formatter,
-                    console_level=console_level,
-                    file_level=file_level,
-                    logging_level=logging_level,
-                    root_path=root_path,
-                )
+                self.logger: logger.Logger = None
+                self.logger_process = None
+                self.log_stop_event = None
+                self.log_listener_queue = None
+                self.change_log_config_listener_queue = None
+                logfiles_path = logfiles_path if logfiles_path else 'logs'
+                self.set_logger(service_name, self.app_root_path, logfiles_path, log_in_separate_process, client_id)
             else:
-                self.logger = lambda *x: Exception("Logger hasn't been connected")
+                self.logger = logger.EmptyLogger(None)
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
                 if web_app:
@@ -125,13 +117,33 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         except InitializingEventManagerError as e:
             error = f'App.event_registrator critical error: {str(e)}'
             raise InitializingEventManagerError(error)
-        
+
+    # TODO: implement change logging configuration during runtime to make it work properly
+    def change_log_config(self, new_formatters: dict, new_handlers: dict):
+        self.change_log_config_listener_queue.put({'new_formatters': new_formatters, 'new_handlers': new_handlers})
+
+    def set_logger(self, service_name, app_root_path, logfiles_path, in_separate_process, client_id):
+        if in_separate_process:
+            self.log_listener_queue, self.log_stop_event, self.logger_process, self.change_log_config_listener_queue = \
+                logger.set_logger(service_name,
+                                  app_root_path,
+                                  logfiles_path,
+                                  in_separate_process,
+                                  client_id)
+        else:
+            logger.set_logger(service_name,
+                              app_root_path,
+                              logfiles_path,
+                              in_separate_process,
+                              client_id)
+        self.logger = logger.get_logger(service_name)
+
     def start(self):
         if self.http_server:
             self._start()
         else:
             start_thread(self._start())
-            
+
     def _start(self):
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
@@ -152,9 +164,9 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         self.nats_config['listen_topics_callbacks'] = topics_and_callbacks
 
         NATSClient.__init__(self,
-            **self.nats_config
-        )
-        
+                            **self.nats_config
+                            )
+
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self._start_tasks()
@@ -170,7 +182,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for coro in self.interval_tasks[interval]:
                     if not asyncio.iscoroutinefunction(coro):
-                        raise InitializingIntevalTaskError('For asyncio app_strategy only coroutine interval tasks allowed')
+                        raise InitializingIntevalTaskError(
+                            'For asyncio app_strategy only coroutine interval tasks allowed')
                     loop.create_task(coro())
             if self.http_server:
                 self.http_server.start_server()
@@ -184,11 +197,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for task in self.interval_tasks[interval]:
                     if asyncio.iscoroutinefunction(task):
-                        raise InitializingIntevalTaskError("For sync app_strategy coroutine interval_task doesn't allowed")
+                        raise InitializingIntevalTaskError(
+                            "For sync app_strategy coroutine interval_task doesn't allowed")
                     start_thread(task)
             if self.http_server:
                 self.http_server.start_server()
-
 
     def _create_client_code_by_hostname(self, name: str):
         return '__'.join([

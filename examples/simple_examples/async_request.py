@@ -5,12 +5,10 @@ app = ant_app.App(
     host='127.0.0.1',
     port=4222,
     app_strategy='asyncio',
+    log_in_separate_process=False,
 )
 
-log = app.logger.log
-
-
-
+log = app.logger
 
 msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
        'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
@@ -20,8 +18,7 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 async def request():
     for _ in range(10):
         result = await app.aio_publish_request(msg, topic='some.request.topic.123')
-        log(result)
-
+        log.warning(result)
 
 
 @app.listen('some.request.topic.123')

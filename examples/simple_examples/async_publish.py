@@ -1,4 +1,5 @@
 from anthill import app as ant_app
+from anthill.utils.logger import get_logger
 
 app = ant_app.App(
     service_name='async_publish',
@@ -7,27 +8,31 @@ app = ant_app.App(
     app_strategy='asyncio',
 )
 
-log = app.logger.log
+# that is equal to get_logger('async_publish')
+log = app.logger
 
-msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '2':2, '3':3, '4':4, '5':5}, 'key6':{'subkey1':'1', 'subkey2':2, '3':3, '4':4, '5':5}, 'key7':None}
+msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {'1': 1, '2': 2, '3': 3, '4': 4, '5': 5},
+       'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
+
 
 @app.task()
 async def publish():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
-        log(f'send message {msg}')
+        log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
-async def publish_pereodically():
+async def publish_periodically():
     for _ in range(10):
         await app.aio_publish(msg, topic='some.publish.topic')
-        log(f'send message from pereodic task {msg}')
+        log.warning(f'send message from periodic task {msg}')
 
 
 @app.listen('some.publish.topic')
-async def recieve_messages(topic, message):
-    log(f'got message {message}')
+async def receive_messages(topic, message):
+    log.warning(f'got message {message}')
+
 
 if __name__ == "__main__":
     app.start()

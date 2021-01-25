@@ -1,4 +1,4 @@
-import sys, os
+import os
 import json
 import uuid
 import time
@@ -9,16 +9,17 @@ from itertools import cycle
 from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..logger.logger import Logger, InterServicesRequestLogger
+from ..utils.logger import get_logger
 from ..utils.helper import start_thread, start_process, is_json
 from ._redis_response import RedisResponse, RedisQueue
 
-isr_log = Logger(name='nats_cli').log
+isr_log = get_logger('inter_services_request')
 
-LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = os.environ['CLIENT_ID'] if 'CLIENT_ID' in os.environ else str(uuid.uuid4())[10:] + '__new_subscribtion'
+LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = os.environ['CLIENT_ID'] if 'CLIENT_ID' in os.environ else str(uuid.uuid4())[
+                                                                                              10:] + '__new_subscribtion '
 
 
-def transform_topic(topic, client_id=None,keyword=''):
+def transform_topic(topic, client_id=None, keyword=''):
     return ".".join([client_id if client_id else os.environ['CLIENT_ID'], topic.split('.')[-1], keyword])
 
 
@@ -28,16 +29,20 @@ class _MultiProcNATSClient(object):
     """
 
     def __init__(self, child_obj):
-        #TODO: check that all cls attr exists
+        # TODO: check that all cls attr exists
         self.__dict__ = child_obj.__dict__
         self.listen_message_queue = {}
         # [self.listen_message_queue.update({topic: multiprocessing.Queue()}) for topic in self.listen_topics_callbacks]
-        [self.listen_message_queue.update({topic: RedisQueue(transform_topic(topic, self.client_id, 'listener'))}) for topic in self.listen_topics_callbacks]
+        [self.listen_message_queue.update({topic: RedisQueue(transform_topic(topic, self.client_id, 'listener'))}) for
+         topic in self.listen_topics_callbacks]
         self.publish_message_queue = {}
-        [self.publish_message_queue.update({transform_topic('queue'+str(i), self.client_id, 'publisher'): RedisResponse(transform_topic('queue'+str(i), self.client_id, 'publisher'))}) for i in range(self.num_of_queues)]
+        [self.publish_message_queue.update({transform_topic('queue' + str(i), self.client_id,
+                                                            'publisher'): RedisResponse(
+            transform_topic('queue' + str(i), self.client_id, 'publisher'))}) for i in range(self.num_of_queues)]
         self.publish_queue_circle = cycle(list(self.publish_message_queue.values()))
         global LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC
-        LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = self.client_id if hasattr(self, 'client_id') else str(uuid.uuid4())[10:] + '__new_subscribtion'
+        LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC = self.client_id if hasattr(self, 'client_id') else str(uuid.uuid4())[
+                                                                                              10:] + '__new_subscribtion'
         self.new_listen_topics_redis_queue = RedisQueue(transform_topic(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC))
         self.forced_closure = False
         self._launch()
@@ -64,13 +69,13 @@ class _MultiProcNATSClient(object):
     def _launch_listener(self):
         listen_queue_topics = list(self.listen_message_queue.keys())
         start_process(_ListenerProc, kwargs={
-            'client_id':self.client_id,
-            'host':self.host,
-            'port':self.port,
-            'listen_queue_topics':listen_queue_topics,
-            'allow_reconnect':self.allow_reconnect,
-            'max_reconnect_attempts':self.max_reconnect_attempts,
-            'reconnecting_time_wait':self.reconnecting_time_wait
+            'client_id': self.client_id,
+            'host': self.host,
+            'port': self.port,
+            'listen_queue_topics': listen_queue_topics,
+            'allow_reconnect': self.allow_reconnect,
+            'max_reconnect_attempts': self.max_reconnect_attempts,
+            'reconnecting_time_wait': self.reconnecting_time_wait
         }, daemon=False)
 
     def _launch_sender(self):
@@ -97,7 +102,7 @@ class _MultiProcNATSClient(object):
                 base_topic = new_msg.pop('base_topic')
                 if 'reply' in new_msg:
                     reply_key = new_msg.pop('reply')
-                    # isr_log(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_topic}")
+                    # isr_log.info(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_topic}")
                 callbacks = self.listen_topics_callbacks[base_topic]
                 for callback in callbacks:
                     reply = callback(**new_msg)
@@ -106,7 +111,7 @@ class _MultiProcNATSClient(object):
                             reply = json.dumps(reply)
                         else:
                             reply = str(reply)
-                        # isr_log(f"4SENDING RESPONSE msg: {new_msg['message']} {base_topic}")
+                        # isr_log.info(f"4SENDING RESPONSE msg: {new_msg['message']} {base_topic}")
                         RedisResponse(reply_key).put(str(reply))
             except Empty:
                 pass
@@ -116,7 +121,7 @@ class _MultiProcNATSClient(object):
                 if not 'new_msg' in locals():
                     new_msg = "hasn't handeled"
                 error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
-                isr_log(error, level='error', slack=True)
+                isr_log.error(error, slack=True)
 
     def publish(self, message, topic: str, reply_to: str = None):
         if reply_to:
@@ -126,7 +131,7 @@ class _MultiProcNATSClient(object):
         message['topic'] = topic
         message = json.dumps(message)
         q = self.publish_queue_circle.__next__()
-        # isr_log(f'1BPUBLISH', topic=topic,
+        # isr_log.info(f'1BPUBLISH', topic=topic,
         #         redis_topic=transform_topic(topic))
         q.put(message)
 
@@ -141,15 +146,17 @@ class _MultiProcNATSClient(object):
                 message = json.loads(message)
                 message['reply'] = reply
                 message['timeout'] = timeout
-            # isr_log(f'1BRREQUEST reply {reply} timeout {timeout}', phase='request', topic=topic, redis_topic=transform_topic(topic))
+            # isr_log.info(f'1BRREQUEST reply {reply} timeout {timeout}', phase='request', topic=topic,
+            # redis_topic=transform_topic(topic))
             self.publish(message, topic)
             response = redis_response.return_response_when_appeared(topic=reply, timeout=timeout)
-            # isr_log(f'6ARREQUEST reply {reply}', phase='response', topic=topic)
+            # isr_log.info(f'6ARREQUEST reply {reply}', phase='response', topic=topic)
             if unpack:
                 return json.loads(response.decode())
             return response.decode()
         except Exception as e:
-            isr_log(f"6ERROR reply {reply} "+str(e), level='error', from_='PublishClientInterface.publish_request', topic=topic, request=str(message))
+            isr_log.error(f"6ERROR reply {reply} " + str(e), from_='PublishClientInterface.publish_request',
+                          topic=topic, request=str(message))
 
     def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
         if is_json(message):
@@ -174,23 +181,25 @@ class _MultiProcNATSClient(object):
     def close(self):
         self.close()
 
-class _ListenerProc():
+
+class _ListenerProc:
     def __init__(self,
-              client_id: str,
-              host: str,
-              port: int,
-              listen_queue_topics: list,
-              allow_reconnect: bool,
-              max_reconnect_attempts: int,
-              reconnecting_time_wait: int):
+                 client_id: str,
+                 host: str,
+                 port: int,
+                 listen_queue_topics: list,
+                 allow_reconnect: bool,
+                 max_reconnect_attempts: int,
+                 reconnecting_time_wait: int):
         self.client_id = client_id
         self.role = 'listener'
         self.listen_queue_topics = listen_queue_topics
         self.loop = asyncio.get_event_loop()
         self.client = NATS()
-        self.loop.run_until_complete(self.client.connect(host+':'+str(port), loop=self.loop, name=self.client_id + '__' + self.role))
+        self.loop.run_until_complete(
+            self.client.connect(host + ':' + str(port), loop=self.loop, name=self.client_id + '__' + self.role))
         self.connected = True
-        isr_log('connected ' + self.role)
+        isr_log.info('connected ' + self.role)
         self.loop.run_until_complete(self.subscribe_all())
         self.loop.create_task(self.listen_for_new_subscribtion(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC))
         self.loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(self.loop)))
@@ -217,7 +226,7 @@ class _ListenerProc():
                 new_topic = new_topic_raw.decode()
                 await self.subscribe(new_topic)
         except Exception as e:
-            isr_log(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e), level='error')
+            isr_log.error(f"_handle_topic_queue_forever error {os.environ['SERVICE_NAME']}: " + str(e))
 
     def wrap_callback(self, base_topic: str, q: RedisQueue, cli):
         async def wrapped_callback(msg):
@@ -234,7 +243,7 @@ class _ListenerProc():
                 try:
                     await cli.publish(reply_to, response)
                 except Exception as e:
-                    isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
+                    isr_log.error(f'ERROR: {str(e)}, message: {data}', slack=True)
             else:
                 q.put(json.dumps(dict(base_topic=base_topic, topic=subject, message=data, reply=reply)))
                 redis_response = RedisResponse(reply)
@@ -242,18 +251,20 @@ class _ListenerProc():
                 try:
                     await cli.publish(reply, response)
                 except Exception as e:
-                    isr_log(f'ERROR: {str(e)}, message: {data}', slack=True, level='error')
+                    isr_log.error(f'ERROR: {str(e)}, message: {data}', slack=True)
+
         return wrapped_callback
+
 
 class _SenderProc():
     def __init__(self,
-               client_id: str,
-               host: str,
-               port: int,
-               publish_queue_topics: list,
-               allow_reconnect: bool,
-               max_reconnect_attempts: int,
-               reconnecting_time_wait: int):
+                 client_id: str,
+                 host: str,
+                 port: int,
+                 publish_queue_topics: list,
+                 allow_reconnect: bool,
+                 max_reconnect_attempts: int,
+                 reconnecting_time_wait: int):
         self.client_id = client_id
         self.role = 'publisher'
         self.client = NATS()
@@ -265,7 +276,7 @@ class _SenderProc():
                                 allow_reconnect=allow_reconnect,
                                 max_reconnect_attempts=max_reconnect_attempts,
                                 reconnect_time_wait=reconnecting_time_wait))
-        isr_log('connected ' + self.role)
+        isr_log.info('connected ' + self.role)
         self.connected = True
         self.run_publish_handlers(publish_queue_topics)
 
@@ -282,7 +293,7 @@ class _SenderProc():
             blocking_tasks = [self._handle_topic_queue_forever(rt) for rt in redis_topics]
             await asyncio.wait(blocking_tasks)
         except Exception as e:
-            isr_log(f"ERROR _run_publish_handlers {os.environ['SERVICE_NAME']}: {str(e)}")
+            isr_log.error(f"ERROR _run_publish_handlers {os.environ['SERVICE_NAME']}: {str(e)}")
 
     async def _handle_topic_queue_forever(self, redis_queue_name: str):
         try:
@@ -295,7 +306,7 @@ class _SenderProc():
                 message = message.decode()
                 await self._send(redis_queue_name, message)
         except Exception as e:
-            isr_log(f"_handle_topic_queue_forever error {self.client_id}: " + str(e), level='error')
+            isr_log.error(f"_handle_topic_queue_forever error {self.client_id}: " + str(e))
 
     async def _send(self, redis_queue_name: str, message):
         try:
@@ -313,7 +324,7 @@ class _SenderProc():
                                 await self.client.publish(topic, message.encode())
                                 return
                             except Exception as e:
-                                isr_log(f'sending NATS error: {str(e)}', level='error', phase='request',
+                                isr_log.error(f'sending NATS error: {str(e)}', phase='request',
                                         topic=topic, redis_topic=redis_queue_name)
                         timeout = message.pop('timeout', 10)
                         isr_id = reply
@@ -324,8 +335,8 @@ class _SenderProc():
                         r.put(response.data)
                     except Exception as e:
                         if 'isr_log' in locals():
-                            isr_log(f"4ERROR isr_id: {isr_id} {message}", level='error')
-                        isr_log(f'Invalid message: {message}, error: {str(e)}', level='error', phase='request',
+                            isr_log.error(f"4ERROR isr_id: {isr_id} {message}")
+                        isr_log.error(f'Invalid message: {message}, error: {str(e)}', phase='request',
                                 redis_topic=redis_queue_name,
                                 slack=True)
                 else:
@@ -333,9 +344,9 @@ class _SenderProc():
                     # self.loop.call_soon(self.client.publish(topic, json.dumps(message).encode()))
                     await self.client.publish(topic, json.dumps(message).encode())
             else:
-                isr_log(f'Invalid message: {message}', level='error', phase='request', redis_topic=redis_topic)
+                isr_log.error(f'Invalid message: {message}', phase='request', redis_topic=redis_topic)
         except Exception as e:
-            isr_log('Request error :' + str(e), slack=True)
+            isr_log.exception('Request error :' + str(e), slack=True)
 
     def validate_msg(self, message):
         if type(message) is dict:
@@ -363,6 +374,7 @@ if __name__ == "__main__":
     client_id = 'NATSMPCli' + str(random.randint(1, 100))
     os.environ['CLIENT_ID'] = client_id
 
+
     def trades(topic, message):
         try:
             sent = json.loads(message)['sent']
@@ -389,10 +401,9 @@ if __name__ == "__main__":
     cli.connect()
     time.sleep(3)
 
-
     # while True:
     #     time.sleep(100)
-        # import random
-        # b = 1
-        # for i in range(100000000,10000000000):
-        #     b = b + (i * random.randint(100000000,10000000000))
+    # import random
+    # b = 1
+    # for i in range(100000000,10000000000):
+    #     b = b + (i * random.randint(100000000,10000000000))
