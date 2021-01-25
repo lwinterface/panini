@@ -12,22 +12,22 @@ message = None
 class NATSClient:
 
     def __init__(self,
-                 client_id: str,
-                 host: str,
-                 port: int or str,
-                 listen_topics_callbacks: dict,
-                 allow_reconnect: bool or None,
-                 max_reconnect_attempts: int = 60,
-                 reconnecting_time_wait: int = 2,
-                 publish_topics=[],
-                 auth: dict = {},
-                 queue="",
-                 client_strategy='asyncio',  # in_current_process' or in_separate_processes'
-                 redis_host='127.0.0.1',
-                 redis_port='6379',
-                 pending_bytes_limit=65536 * 1024 * 10,
-                 num_of_queues=None
-                 ):
+            client_id: str,
+            host: str,
+            port: int or str,
+            listen_topics_callbacks: dict,
+            allow_reconnect: bool or None,
+            max_reconnect_attempts: int = 60,
+            reconnecting_time_wait: int = 2,
+            publish_topics=[],
+            auth: dict={},
+            queue="",
+            client_strategy='asyncio',  # in_current_process' or in_separate_processes'
+            redis_host='127.0.0.1',
+            redis_port='6379',
+            pending_bytes_limit=65536 * 1024 * 10,
+            num_of_queues=1,
+        ):
         """
         :param client_id: instance identificator for NATS, str
         :param broker_ip: '127.0.0.1' for local broker
@@ -81,8 +81,8 @@ class NATSClient:
     def disconnect(self):
         self.connector.client.disconnect()
 
-    def publish(self, message, topic: str, reply_to: str = None):
-        self.connector.publish(message, topic, reply_to=reply_to)
+    def publish(self, message, topic: str):
+        self.connector.publish(message, topic)
 
     def publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = True):
         return self.connector.publish_request(message, topic, timeout=timeout, unpack=unpack)

@@ -139,7 +139,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         self.logger = logger.get_logger(service_name)
 
     def start(self):
-        if self.http_server is None:
+        if self.http_server:
             self._start()
         else:
             start_thread(self._start())
