@@ -271,6 +271,7 @@ def _set_main_logging_config(log_listener_queue: Queue):
             }
         },
         "root": {
+            'level': 'DEBUG',
             'handlers': ['queue'],
         }
     }

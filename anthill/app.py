@@ -121,6 +121,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
     # TODO: implement change logging configuration during runtime to make it work properly
     def change_log_config(self, new_formatters: dict, new_handlers: dict):
         self.change_log_config_listener_queue.put({'new_formatters': new_formatters, 'new_handlers': new_handlers})
+        raise NotImplementedError
 
     def set_logger(self, service_name, app_root_path, logfiles_path, in_separate_process, client_id):
         if in_separate_process:
