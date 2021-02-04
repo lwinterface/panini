@@ -1,17 +1,17 @@
 # Logger:
 
 Logger has 2 important parameters:
-- logfiles_path - the path to the log folder - can be absolute or relative (will relate to the app root path):
-  
+- logger_files_path - the path to the log folder - can be absolute or relative (will relate to the app root path):
+
 ```python
 from anthill import app as ant_app
 
-app = ant_app.App(  
+app = ant_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
     app_strategy='sync',
-    logfiles_path='some/relative/path',  # put here absolute or relative path
+    logger_files_path='some/relative/path',  # put here absolute or relative path
 )
 
 log = app.logger
@@ -20,16 +20,17 @@ log.info("some log")  # write log
 
 ```
 - in_separate_process - specify, if you want logger to be as separate process or to log in main process:
+
 ```python
 from anthill import app as ant_app
 
-app = ant_app.App(  
+app = ant_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
     app_strategy='sync',
-    log_in_separate_process=True,  #  by default and more efficient
-    # log_in_separate_process=False  # less efficient but more intuitive
+    logger_in_separate_process=True,  # by default and more efficient
+    # logger_in_separate_process=False  # less efficient but more intuitive
 )
 
 log = app.logger

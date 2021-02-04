@@ -28,28 +28,28 @@ AuthType = typing.Union[
 class HTTPSessionTestClient(requests.Session):
     __test__ = False
 
-    def __init__(self, base_url: str = 'http://127.0.0.1:8080'):
+    def __init__(self, base_url: str = "http://127.0.0.1:8080"):
         super(HTTPSessionTestClient, self).__init__()
         self.base_url = base_url
 
     def request(  # type: ignore
-            self,
-            method: str,
-            url: str,
-            params: Params = None,
-            data: DataType = None,
-            headers: typing.MutableMapping[str, str] = None,
-            cookies: Cookies = None,
-            files: FileType = None,
-            auth: AuthType = None,
-            timeout: TimeOut = None,
-            allow_redirects: bool = None,
-            proxies: typing.MutableMapping[str, str] = None,
-            hooks: typing.Any = None,
-            stream: bool = None,
-            verify: typing.Union[bool, str] = None,
-            cert: typing.Union[str, typing.Tuple[str, str]] = None,
-            json: typing.Any = None,
+        self,
+        method: str,
+        url: str,
+        params: Params = None,
+        data: DataType = None,
+        headers: typing.MutableMapping[str, str] = None,
+        cookies: Cookies = None,
+        files: FileType = None,
+        auth: AuthType = None,
+        timeout: TimeOut = None,
+        allow_redirects: bool = None,
+        proxies: typing.MutableMapping[str, str] = None,
+        hooks: typing.Any = None,
+        stream: bool = None,
+        verify: typing.Union[bool, str] = None,
+        cert: typing.Union[str, typing.Tuple[str, str]] = None,
+        json: typing.Any = None,
     ) -> requests.Response:
         url = urljoin(self.base_url, url)
         return super().request(
@@ -75,15 +75,21 @@ class HTTPSessionTestClient(requests.Session):
 class TestClient:
     __test__ = False
 
-    def __init__(self,
-                 run_anthill: typing.Callable = lambda *args, **kwargs: None,
-                 use_web_server: bool = False,
-                 base_web_server_url: str = 'http://127.0.0.1:8080',
-                 base_nats_url: str = 'nats://127.0.0.1:4222',
-                 socket_timeout: int = 2,
-                 name: str = '__'.join(
-                     ['test_client', str(random.randint(1, 10000000)), str(random.randint(1, 10000000))]
-                 )):
+    def __init__(
+        self,
+        run_anthill: typing.Callable = lambda *args, **kwargs: None,
+        use_web_server: bool = False,
+        base_web_server_url: str = "http://127.0.0.1:8080",
+        base_nats_url: str = "nats://127.0.0.1:4222",
+        socket_timeout: int = 2,
+        name: str = "__".join(
+            [
+                "test_client",
+                str(random.randint(1, 10000000)),
+                str(random.randint(1, 10000000)),
+            ]
+        ),
+    ):
         self.run_anthill = run_anthill
         self.nats_client = NATSClient(
             url=base_nats_url,
@@ -101,18 +107,20 @@ class TestClient:
         self.nats_client.close()
         if self.anthill_process:
             self.anthill_process.kill()
-        if hasattr(self, 'http_session'):
+        if hasattr(self, "http_session"):
             self.http_session.close()
 
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
-        return json.dumps(message).encode('utf-8')
+        return json.dumps(message).encode("utf-8")
 
     @staticmethod
     def _bytes_to_dict(payload: bytes) -> dict:
         return json.loads(payload)
 
-    def start(self, is_sync: bool = False, sleep_time: float = None, is_daemon: bool = None):
+    def start(
+        self, is_sync: bool = False, sleep_time: float = None, is_daemon: bool = None
+    ):
         if is_daemon is None:
             is_daemon = False if is_sync else True
 
@@ -124,19 +132,23 @@ class TestClient:
         return self
 
     def publish(self, topic: str, message: dict, reply: str = "") -> None:
-        self.nats_client.publish(subject=topic, payload=self._dict_to_bytes(message), reply=reply)
+        self.nats_client.publish(
+            subject=topic, payload=self._dict_to_bytes(message), reply=reply
+        )
 
     def request(self, topic: str, message: dict) -> dict:
         return self._bytes_to_dict(
-            self.nats_client.request(subject=topic, payload=self._dict_to_bytes(message)).payload
+            self.nats_client.request(
+                subject=topic, payload=self._dict_to_bytes(message)
+            ).payload
         )
 
     def subscribe(
-            self,
-            topic: str,
-            callback: typing.Callable,
-            queue: str = "",
-            max_messages: typing.Optional[int] = None,
+        self,
+        topic: str,
+        callback: typing.Callable,
+        queue: str = "",
+        max_messages: typing.Optional[int] = None,
     ):
         return self.nats_client.subscribe(
             subject=topic,
@@ -154,14 +166,18 @@ class TestClient:
 
             def wrapper(incoming_response):
                 assert isinstance(incoming_response, NATSMessage)
-                wrapper_response = func(topic=incoming_response.subject,
-                                        message=self._bytes_to_dict(incoming_response.payload))
+                wrapper_response = func(
+                    topic=incoming_response.subject,
+                    message=self._bytes_to_dict(incoming_response.payload),
+                )
                 if wrapper_response is not None and incoming_response.reply != "":
-                    self.publish(topic=incoming_response.reply,
-                                 message=wrapper_response)
+                    self.publish(
+                        topic=incoming_response.reply, message=wrapper_response
+                    )
                     self.wait(count=1)
 
             self.subscribe(topic, wrapper)
 
             return wrapper
+
         return decorator

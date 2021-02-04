@@ -1,10 +1,13 @@
-import os, sys
-import json
 import asyncio
-import threading
+import json
+import os
 import subprocess
-from threading import Thread
+import sys
+import threading
+import random
+
 from multiprocessing import Process
+from threading import Thread
 
 
 def get_app_root_path():
@@ -45,7 +48,7 @@ async def run_coro_threadsafe(coro, other_loop, our_loop=None, many=False):
 def start_thread(method, args=None, daemon=False):
     kwargs = dict(target=method)
     if args is not None:
-        kwargs['args'] = args
+        kwargs["args"] = args
     thread = Thread(**kwargs)
     if daemon:
         thread.setDaemon(True)
@@ -56,9 +59,9 @@ def start_thread(method, args=None, daemon=False):
 def start_process(method, args=None, kwargs=None, daemon=True):
     proc_kwargs = dict(target=method, daemon=daemon)
     if args is not None:
-        proc_kwargs['args'] = args
+        proc_kwargs["args"] = args
     if kwargs is not None:
-        proc_kwargs['kwargs'] = kwargs
+        proc_kwargs["kwargs"] = kwargs
     proc = Process(**proc_kwargs)
     proc.start()
     return proc
@@ -74,10 +77,22 @@ def is_json(myjson):
 
 def _exec(*command, stdout_on=False, cwd=None):
     if stdout_on:
-        result = subprocess.check_output(command).decode('utf-8')
+        result = subprocess.check_output(command).decode("utf-8")
         return result
     else:
         if cwd:
             subprocess.Popen(command, cwd=cwd)
         else:
             subprocess.Popen(command)
+
+
+def create_client_code_by_hostname(name: str):
+    return "__".join(
+        [
+            name,
+            os.environ["HOSTNAME"]
+            if "HOSTNAME" in os.environ
+            else "non_docker_env_" + str(random.randint(1, 1000000)),
+            str(random.randint(1, 1000000)),
+        ]
+    )

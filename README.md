@@ -345,15 +345,16 @@ log.warning("some log")  # write log
 ```
 
 Anthill uses logging in separate process by default to speed-up app, but you can change it on the app creation:
+
 ```python
 from anthill import app as ant_app
 
-app = ant_app.App( 
+app = ant_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
     app_strategy='sync',
-    log_in_separate_process=False, # specify this option for logging in main process
+    logger_in_separate_process=False,  # specify this option for logging in main process
 )
 
 ```

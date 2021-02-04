@@ -9,34 +9,34 @@ from anthill.utils.helper import start_process
 
 def run_anthill1():
     app = ant_app.App(
-        service_name='test_allocation_queue_group1',
-        host='127.0.0.1',
+        service_name="test_allocation_queue_group1",
+        host="127.0.0.1",
         port=4222,
-        allocation_quenue_group="group1",
-        app_strategy='asyncio',
+        allocation_queue_group="group1",
+        app_strategy="asyncio",
         logger_required=False,
     )
 
-    @app.listen('foo')
+    @app.listen("foo")
     async def foo(topic, message):
-        return {'data': 1}
+        return {"data": 1}
 
     app.start()
 
 
 def run_anthill2():
     app = ant_app.App(
-        service_name='test_allocation_queue_group2',
-        host='127.0.0.1',
+        service_name="test_allocation_queue_group2",
+        host="127.0.0.1",
         port=4222,
-        allocation_quenue_group="group1",
-        app_strategy='asyncio',
+        allocation_queue_group="group1",
+        app_strategy="asyncio",
         logger_required=False,
     )
 
-    @app.listen('foo')
+    @app.listen("foo")
     async def foo(topic, message):
-        return {'data': 2}
+        return {"data": 2}
 
     app.start()
 
@@ -53,12 +53,12 @@ client = TestClient()
 
 
 def test_listen_topic_only_if_include_one_request():
-    response = client.request('foo', {})
-    assert response['data'] in (1, 2)
+    response = client.request("foo", {})
+    assert response["data"] in (1, 2)
 
 
 def test_listen_topic_only_if_include_multiple_requests():
     """Tests that some requests are handled by first anthill app and some by second"""
-    results = set(client.request('foo', {})['data'] for _ in range(10))
+    results = set(client.request("foo", {})["data"] for _ in range(10))
     assert 1 in results
     assert 2 in results

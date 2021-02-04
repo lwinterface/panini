@@ -8,16 +8,16 @@ from tests.global_object import Global
 
 def run_anthill():
     app = ant_app.App(
-        service_name='test_timer_task',
-        host='127.0.0.1',
+        service_name="test_timer_task",
+        host="127.0.0.1",
         port=4222,
-        app_strategy='asyncio',
+        app_strategy="asyncio",
         logger_required=False,
     )
 
     @app.timer_task(0.1)
     async def publish_periodically():
-        await app.aio_publish({}, topic='foo')
+        await app.aio_publish({}, topic="foo")
 
     app.start()
 
@@ -28,7 +28,7 @@ global_object = Global()
 client = TestClient(run_anthill)
 
 
-@client.listen('foo')
+@client.listen("foo")
 def foo_listener(topic, message):
     global_object.another_variable += 2
 

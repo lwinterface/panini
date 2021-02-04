@@ -9,17 +9,24 @@ from ..utils.logger import get_logger
 
 
 class RedisResponse(RedisQueue):
-
-    def __init__(self, name: str, namespace: str = 'response', host: str = '127.0.0.1', port: int = 6379, db: int = 0, waiting_btwn_check: float = 0.001):
-        self.log = get_logger('RedisResponse')
-        if 'SERVICE_NAME' in os.environ:
-            if '_sender_client' in os.environ['SERVICE_NAME']:
-                service_name = os.environ['SERVICE_NAME'].replace('_sender_client','')
+    def __init__(
+        self,
+        name: str,
+        namespace: str = "response",
+        host: str = "127.0.0.1",
+        port: int = 6379,
+        db: int = 0,
+        waiting_btwn_check: float = 0.001,
+    ):
+        self.log = get_logger("RedisResponse")
+        if "SERVICE_NAME" in os.environ:
+            if "_sender_client" in os.environ["SERVICE_NAME"]:
+                service_name = os.environ["SERVICE_NAME"].replace("_sender_client", "")
             else:
-                service_name = os.environ['SERVICE_NAME']
-            self._name = '_'.join([service_name, name])
+                service_name = os.environ["SERVICE_NAME"]
+            self._name = "_".join([service_name, name])
         else:
-            self._name = '_'.join(['Unknown', name])
+            self._name = "_".join(["Unknown", name])
         super().__init__(name, namespace, host, port, db)
         self.waiting_btwn_check = waiting_btwn_check
 
@@ -32,7 +39,7 @@ class RedisResponse(RedisQueue):
                     continue
                 return self.get()
             except Exception as e:
-                self.log.exception('RedisResponse error: ', str(e))
-        msg = 'Nats client timeout'
+                self.log.exception("RedisResponse error: ", str(e))
+        msg = "Nats client timeout"
         self.log.error(f"Waiting for response from redis ERROR: {msg}, topic: {topic}")
         raise ErrTimeout(msg)

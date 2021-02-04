@@ -2,9 +2,9 @@ import redis
 
 
 class RedisQueue:
-    def __init__(self, name, namespace='queue', host='127.0.0.1', port=6379, db=0):
+    def __init__(self, name, namespace="queue", host="127.0.0.1", port=6379, db=0):
         self.__db = redis.Redis(host=host, port=port, db=db)
-        self.key = '%s:%s' % (namespace, name)
+        self.key = "%s:%s" % (namespace, name)
 
     def qsize(self):
         return self.__db.llen(self.key)
@@ -26,7 +26,7 @@ class RedisQueue:
         return item
 
     def get_all(self):
-        return self.__db.lrange(self.key, 0, self.qsize()-1)
+        return self.__db.lrange(self.key, 0, self.qsize() - 1)
 
     def delete_all(self):
         return self.__db.delete(self.key)

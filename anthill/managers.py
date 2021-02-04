@@ -2,16 +2,24 @@ import time
 import asyncio
 from . import exceptions
 from typing import Callable
-from .exceptions import SerializationError, InitializingIntevalTaskError, NotReadyError, BaseError
+from .exceptions import (
+    SerializationError,
+    InitializingIntevalTaskError,
+    NotReadyError,
+    BaseError,
+)
 
 
 class _EventManager:
     """
     Collect all functions from each module wrapped by @app.subscription or @EventManager.subscribe
     """
+
     SUBSCRIPTIONS = {}
 
-    def listen(self, topic: list or str, serializator: type = None, dynamic_subscription=False):
+    def listen(
+        self, topic: list or str, serializator: type = None, dynamic_subscription=False
+    ):
         def wrapper(function):
             function = _EventManager.wrap_function_by_serializer(function, serializator)
             if type(topic) is list:
@@ -22,6 +30,7 @@ class _EventManager:
                 _EventManager._check_subscription(topic)
                 _EventManager.SUBSCRIPTIONS[topic].append(function)
             return function
+
         if dynamic_subscription:
             if type(topic) is list:
                 for t in topic:
@@ -31,10 +40,11 @@ class _EventManager:
         return wrapper
 
     def _subscribe(self, topic, function):
-        if not hasattr(self, 'connector') or self.connector.check_connection is False:
-            raise NotReadyError('Something wrong. NATS client should be connected first')
+        if not hasattr(self, "connector") or self.connector.check_connection is False:
+            raise NotReadyError(
+                "Something wrong. NATS client should be connected first"
+            )
         self.subscribe_new_topic(topic, function)
-
 
     @staticmethod
     def wrap_function_by_serializer(function, serializator):
@@ -43,8 +53,8 @@ class _EventManager:
                 if serializator is not None:
                     message = serializator.validated_message(message)
             except exceptions.SerializationError as se:
-                error = f'topic: {topic} error: {str(se)}'
-                return {'success':False, 'error':error}
+                error = f"topic: {topic} error: {str(se)}"
+                return {"success": False, "error": error}
             except Exception as e:
                 raise SerializationError(e)
             return message
@@ -72,6 +82,7 @@ class _TaskManager:
     """
     Collect all functions from each module wrapped by @app.task or @TaskManager.task
     """
+
     TASKS = []
 
     @staticmethod
@@ -80,11 +91,12 @@ class _TaskManager:
             _TaskManager._check_task(task)
             _TaskManager.TASKS.append(task)
             return task
+
         return wrapper
 
     @staticmethod
     def _check_task(task):
-        #TODO
+        # TODO
         pass
 
 
@@ -92,6 +104,7 @@ class _IntervalTaskManager:
     """
     Collect all functions from each module wrapped by @app.task or @TaskManager.task
     """
+
     INTERVAL_TASKS = {}
 
     @staticmethod
@@ -99,13 +112,18 @@ class _IntervalTaskManager:
         def wrapper(interval_task: Callable):
             _IntervalTaskManager._check_timer_task(interval, interval_task)
             if asyncio.iscoroutinefunction(interval_task):
-                interval_task = _IntervalTaskManager.wrap_coro_by_interval(interval, interval_task)
+                interval_task = _IntervalTaskManager.wrap_coro_by_interval(
+                    interval, interval_task
+                )
             else:
-                interval_task = _IntervalTaskManager.wrap_function_by_interval(interval, interval_task)
+                interval_task = _IntervalTaskManager.wrap_function_by_interval(
+                    interval, interval_task
+                )
             if not interval in _IntervalTaskManager.INTERVAL_TASKS:
                 _IntervalTaskManager.INTERVAL_TASKS[interval] = []
             _IntervalTaskManager.INTERVAL_TASKS[interval].append(interval_task)
             return interval_task
+
         return wrapper
 
     @staticmethod
@@ -116,8 +134,9 @@ class _IntervalTaskManager:
                     await interval_task(**kwargs)
                     await asyncio.sleep(interval)
                 except InitializingIntevalTaskError as e:
-                    #TODO: warning log
+                    # TODO: warning log
                     pass
+
         return wrapper
 
     @staticmethod
@@ -128,11 +147,12 @@ class _IntervalTaskManager:
                     interval_task(**kwargs)
                     time.sleep(interval)
                 except InitializingIntevalTaskError as e:
-                    #TODO: warning log
+                    # TODO: warning log
                     pass
+
         return wrapper
 
     @staticmethod
     def _check_timer_task(interval, interval_task):
-        #TODO
+        # TODO
         pass

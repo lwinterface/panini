@@ -31,9 +31,9 @@ received = 0
 
 async def main(loop, loop_type):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--iterations', default=DEFAULT_ITERATIONS, type=int)
-    parser.add_argument('-S', '--subject', default='test')
-    parser.add_argument('--servers', default=[], action='append')
+    parser.add_argument("-n", "--iterations", default=DEFAULT_ITERATIONS, type=int)
+    parser.add_argument("-S", "--subject", default="test")
+    parser.add_argument("--servers", default=[], action="append")
     args = parser.parse_args()
 
     servers = args.servers
@@ -50,7 +50,7 @@ async def main(loop, loop_type):
         show_usage_and_die()
 
     async def handler(msg):
-        await nc.publish(msg.reply, b'')
+        await nc.publish(msg.reply, b"")
 
     await nc.subscribe(args.subject, cb=handler)
     await nc.flush()
@@ -59,15 +59,14 @@ async def main(loop, loop_type):
     to_send = args.iterations
     failures = 0
 
-    print("Sending {} request/responses on [{}]".format(
-        args.iterations, args.subject))
+    print("Sending {} request/responses on [{}]".format(args.iterations, args.subject))
     while to_send > 0:
         to_send -= 1
         if to_send == 0:
             break
 
         try:
-            response = await nc.request(args.subject, b'', timeout=0.5)
+            response = await nc.request(args.subject, b"", timeout=0.5)
         except ErrTimeout:
             failures += 1
 
@@ -77,19 +76,22 @@ async def main(loop, loop_type):
 
     duration = time.monotonic() - start
     ms = "%.2f" % ((duration / args.iterations) * 1000)
-    print(f"\n{loop_type} test completed : {ms} ms avg request/response latency (failures={failures})")
+    print(
+        f"\n{loop_type} test completed : {ms} ms avg request/response latency (failures={failures})"
+    )
     await nc.close()
 
 
-if __name__ == '__main__':
-    print('Default loop')
+if __name__ == "__main__":
+    print("Default loop")
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(loop, 'Default loop'))
+    loop.run_until_complete(main(loop, "Default loop"))
     loop.close()
-    print('\n')
-    print('Uvloop')
+    print("\n")
+    print("Uvloop")
     import uvloop
+
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(loop, 'Uvloop'))
+    loop.run_until_complete(main(loop, "Uvloop"))
     loop.close()

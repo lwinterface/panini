@@ -11,8 +11,8 @@ from ..utils.helper import is_json, run_coro_threadsafe
 from ..exceptions import EventHandlingError
 from ..utils.logger import get_logger
 
-log = get_logger('anthill')
-isr_log = get_logger('inter_services_request')
+log = get_logger("anthill")
+isr_log = get_logger("inter_services_request")
 
 
 class _AsyncioNATSClient(object):
@@ -22,21 +22,21 @@ class _AsyncioNATSClient(object):
 
     def __init__(self, base_obj):
         self.__dict__ = base_obj.__dict__
-        #TODO: check that all cls attr exists
+        # TODO: check that all cls attr exists
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
 
     async def _establish_connection(self):
         # TODO: authorization
         self.client = NATS()
-        self.server = self.host + ':' + str(self.port)
-        kwargs = {'servers': self.server, 'loop': self.loop, 'name': self.client_id}
+        self.server = self.host + ":" + str(self.port)
+        kwargs = {"servers": self.server, "loop": self.loop, "name": self.client_id}
         if self.allow_reconnect:
-            kwargs['allow_reconnect'] = self.allow_reconnect
+            kwargs["allow_reconnect"] = self.allow_reconnect
         if self.max_reconnect_attempts:
-            kwargs['max_reconnect_attempts'] = self.max_reconnect_attempts
+            kwargs["max_reconnect_attempts"] = self.max_reconnect_attempts
         if self.reconnecting_time_wait:
-            kwargs['reconnect_time_wait'] = self.reconnecting_time_wait
+            kwargs["reconnect_time_wait"] = self.reconnecting_time_wait
         kwargs.update(self.auth)
         await self.client.connect(**kwargs)
         if self.client.is_connected:
@@ -44,35 +44,44 @@ class _AsyncioNATSClient(object):
             for topic, callbacks in listen_topics_callbacks.items():
                 for callback in callbacks:
                     await self.aio_subscribe_new_topic(topic, callback)
-    
+
     def subscribe_new_topic(self, topic: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_topic(topic, callback))
-        
+
     async def aio_subscribe_new_topic(self, topic: str, callback: CoroutineType):
         wrapped_callback = self.wrap_callback(callback, self)
-        await self.client.subscribe(topic, queue=self.queue, cb=wrapped_callback,
-                                    pending_bytes_limit=self.pending_bytes_limit)
+        await self.client.subscribe(
+            topic,
+            queue=self.queue,
+            cb=wrapped_callback,
+            pending_bytes_limit=self.pending_bytes_limit,
+        )
 
     def wrap_callback(self, cb, cli):
         async def wrapped_callback(msg):
             async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
                 if asyncio.iscoroutinefunction(cb):
+
                     async def coro_callback_with_reply(subject, data, reply_to, isr_id):
                         try:
                             reply = await cb(subject, data)
                             if reply_to:
                                 if reply is None:
                                     return
-                                reply['isr-id'] = isr_id
+                                reply["isr-id"] = isr_id
                                 reply = json.dumps(reply)
                                 await cli.aio_publish(reply, reply_to)
                         except EventHandlingError as e:
-                            if not 'reply' in locals():
+                            if not "reply" in locals():
                                 reply = ""
                             raise EventHandlingError(
-                                f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}")
+                                f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}"
+                            )
+
                     try:
-                        asyncio.ensure_future(coro_callback_with_reply(subject, data, reply_to, isr_id))
+                        asyncio.ensure_future(
+                            coro_callback_with_reply(subject, data, reply_to, isr_id)
+                        )
                         # await coro_callback_with_reply(subject, data, reply_to, isr_id)
                     except EventHandlingError as e:
                         raise Exception(f"callback ERROR: {str(e)}")
@@ -83,7 +92,7 @@ class _AsyncioNATSClient(object):
                 # isr_log.info(f"3RECIEVED REQUEST msg: isr_id: {isr_id} reply_to:{reply_to} {data}, {subject}")
                 reply = await callback(cb, subject, data, reply_to, isr_id)
                 if reply:
-                    reply['isr-id'] = isr_id
+                    reply["isr-id"] = isr_id
                     reply = json.dumps(reply)
                     # isr_log.info(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {
                     # data}, {subject}")
@@ -92,41 +101,62 @@ class _AsyncioNATSClient(object):
             subject = msg.subject
             raw_data = msg.data.decode()
             data = json.loads(raw_data)
-            if not msg.reply == '':
+            if not msg.reply == "":
                 reply_to = msg.reply
-            elif 'reply_to' in data:
-                reply_to = data.pop('reply_to')
+            elif "reply_to" in data:
+                reply_to = data.pop("reply_to")
             else:
                 # isr_log.info(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
-            isr_id = data.get('isr-id', str(uuid.uuid4())[:10])
+            isr_id = data.get("isr-id", str(uuid.uuid4())[:10])
             try:
                 await handle_message_with_response(cli, data, reply_to, isr_id)
             except EventHandlingError as e:
-                if not 'isr_id' in locals():
-                    isr_id = 'Absent or Unknown'
-                isr_log.error("4SENDING RESPONSE error msg: " + str(e), topic=subject, isr_id=isr_id)
+                if not "isr_id" in locals():
+                    isr_id = "Absent or Unknown"
+                isr_log.error(
+                    "4SENDING RESPONSE error msg: " + str(e),
+                    topic=subject,
+                    isr_id=isr_id,
+                )
 
         return wrapped_callback
 
     def publish(self, message, topic: str):
         asyncio.ensure_future(self.aio_publish(message, topic))
 
-    def publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: str = None):
-        asyncio.ensure_future(self.aio_publish_request_with_reply_to_another_topic(message, topic, reply_to))
+    def publish_request_with_reply_to_another_topic(
+        self, message, topic: str, reply_to: str = None
+    ):
+        asyncio.ensure_future(
+            self.aio_publish_request_with_reply_to_another_topic(
+                message, topic, reply_to
+            )
+        )
 
     def publish_from_another_thread(self, message, topic: str):
         self.loop.call_soon_threadsafe(self.publish, message, topic)
 
-    def publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = False):
+    def publish_request(
+        self, message, topic: str, timeout: int = 10, unpack: bool = False
+    ):
         asyncio.ensure_future(self.aio_publish_request(message, topic, timeout, unpack))
 
-    def publish_request_from_another_thread(self, message, topic: str, loop: asyncio.unix_events._UnixSelectorEventLoop, timeout: int = 10, unpack: bool = False):
+    def publish_request_from_another_thread(
+        self,
+        message,
+        topic: str,
+        loop: asyncio.unix_events._UnixSelectorEventLoop,
+        timeout: int = 10,
+        unpack: bool = False,
+    ):
         coro = self.aio_publish_request(message, topic, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
-    async def aio_publish(self, message, topic: str, force: bool = False, nonjson: bool = False):
+    async def aio_publish(
+        self, message, topic: str, force: bool = False, nonjson: bool = False
+    ):
         if type(message) is dict and nonjson is False:
             message = json.dumps(message)
             message = message.encode()
@@ -148,11 +178,13 @@ class _AsyncioNATSClient(object):
     async def aio_publish_force(self, message, topic):
         raise NotImplementedError
 
-    async def aio_publish_request(self, message, topic: str, timeout: int = 10, unpack: bool = False):
+    async def aio_publish_request(
+        self, message, topic: str, timeout: int = 10, unpack: bool = False
+    ):
         if type(message) == str:
             message = json.loads(message)
         if self.validate_msg(message):
-            if not 'isr-id' in message:
+            if not "isr-id" in message:
                 isr_id = str(uuid.uuid4())
                 message = self.register_msg(message, isr_id)
             else:
@@ -164,15 +196,17 @@ class _AsyncioNATSClient(object):
             if unpack:
                 response = json.loads(response)
             return response
-        isr_log.error(f'Invalid message: {message}', topic=topic)
+        isr_log.error(f"Invalid message: {message}", topic=topic)
 
-    async def aio_publish_request_with_reply_to_another_topic(self, message, topic: str, reply_to: bool = False):
-        message['isr-id'] = str(uuid.uuid4())[:10]
+    async def aio_publish_request_with_reply_to_another_topic(
+        self, message, topic: str, reply_to: bool = False
+    ):
+        message["isr-id"] = str(uuid.uuid4())[:10]
         if is_json(message):
             message = json.loads(message)
-            message['reply_to'] = reply_to
+            message["reply_to"] = reply_to
         else:
-            message['reply_to'] = reply_to
+            message["reply_to"] = reply_to
         message = json.dumps(message)
         # isr_log.info(f'1REQUEST_to_another_topic message: {message}', phase='request', topic=topic)
         await self.aio_publish(message, topic)
@@ -190,48 +224,48 @@ class _AsyncioNATSClient(object):
         return json.dumps(self.add_isr_id_if_absent(message, isr_id))
 
     def add_isr_id_if_absent(self, message, isr_id: str = None):
-        if not 'isr-id' in message:
+        if not "isr-id" in message:
             if isr_id is None:
-                message['isr-id'] = str(uuid.uuid4())
+                message["isr-id"] = str(uuid.uuid4())
             else:
-                message['isr-id'] = isr_id
+                message["isr-id"] = isr_id
         return message
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
-        log.warning('Disconnected')
+        log.warning("Disconnected")
 
     async def aio_disconnect(self):
         await self.client.drain()
-        log.warning('Disconnected')
+        log.warning("Disconnected")
 
     def check_connection(self):
         if self.client._status is NATS.CONNECTED:
-            log.info('NATS Client status: CONNECTED')
+            log.info("NATS Client status: CONNECTED")
             return True
-        log.warning('NATS Client status: DISCONNECTED')
+        log.warning("NATS Client status: DISCONNECTED")
 
 
 # for test
 if __name__ == "__main__":
-    os.environ['SERVICE_NAME'] = 'NATSAIOCli'
+    os.environ["SERVICE_NAME"] = "NATSAIOCli"
 
     def msg_generator():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         is_msgs_required = True
         time.sleep(5)
-        print('msg_generator started')
+        print("msg_generator started")
         while True:
             if is_msgs_required:
                 n = 0
                 start = datetime.datetime.now().timestamp()
                 for i in range(1000):
-                    msg = f' =======>>>>>>some message number {str(n)}'
-                    cli.publish_from_another_thread(msg, 'topic2.wqe', loop)
+                    msg = f" =======>>>>>>some message number {str(n)}"
+                    cli.publish_from_another_thread(msg, "topic2.wqe", loop)
                     print(f"SENT ==> topic: 'topic2.wqe', msg: {msg}")
                     n += 1
-                print(f'duration: {datetime.datetime.now().timestamp() - start}')
+                print(f"duration: {datetime.datetime.now().timestamp() - start}")
                 time.sleep(1)
                 return
 
@@ -240,83 +274,90 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
         is_msgs_required = True
         time.sleep(5)
-        print('msg_generator started')
+        print("msg_generator started")
         while True:
             if is_msgs_required:
                 n = 0
                 start = datetime.datetime.now().timestamp()
                 for i in range(1000):
-                    msg = {'data': f' =======>>>>>>some message number {str(i)}'}
-                    result = cli.publish_request_from_another_thread(msg, 'topic2.wqe', loop)
+                    msg = {"data": f" =======>>>>>>some message number {str(i)}"}
+                    result = cli.publish_request_from_another_thread(
+                        msg, "topic2.wqe", loop
+                    )
                     print(f"SENT ==> topic: 'topic2.wqe', result: {result}")
                     n += 1
-                print(f'duration: {datetime.datetime.now().timestamp() - start}')
+                print(f"duration: {datetime.datetime.now().timestamp() - start}")
                 time.sleep(1)
                 return
 
     async def amsg_generator(cli):
         is_msgs_required = True
         time.sleep(5)
-        print('amsg_generator started')
+        print("amsg_generator started")
         while True:
             if is_msgs_required:
                 n = 0
                 start = datetime.datetime.now().timestamp()
                 for i in range(1000):
-                    msg = f' =======>>>>>>some message number {str(n)}'
-                    await cli.aio_publish(msg, 'topic2.wqe')
+                    msg = f" =======>>>>>>some message number {str(n)}"
+                    await cli.aio_publish(msg, "topic2.wqe")
                     # cli.publish(msg, 'topic2.wqe')
                     print(f"SENT ==> topic: 'topic2.wqe', msg: {msg}")
                     n += 1
-                print(f'duration: {datetime.datetime.now().timestamp() - start}')
+                print(f"duration: {datetime.datetime.now().timestamp() - start}")
                 time.sleep(1)
                 return
 
     async def amsg_req_generator(cli):
         is_msgs_required = True
         time.sleep(5)
-        print('amsg_generator started')
+        print("amsg_generator started")
         while True:
             if is_msgs_required:
                 n = 0
                 start = datetime.datetime.now().timestamp()
                 for i in range(1000):
-                    msg = {'data': f' =======>>>>>>some message number {str(n)}'}
-                    response = await cli.aio_publish_request(msg, 'topic2.wqe')
+                    msg = {"data": f" =======>>>>>>some message number {str(n)}"}
+                    response = await cli.aio_publish_request(msg, "topic2.wqe")
                     # response = cli.publish_request(msg, 'topic2.wqe')
                     # cli.publish(msg, 'topic2.wqe')
                     print(f"SENT ==> topic: 'topic2.wqe', response: {response}")
                     n += 1
-                print(f'duration: {datetime.datetime.now().timestamp() - start}')
+                print(f"duration: {datetime.datetime.now().timestamp() - start}")
                 time.sleep(1)
                 return
 
     async def amsg_req_generator_v2(cli):
         time.sleep(5)
-        print('amsg_generator started')
+        print("amsg_generator started")
 
         async def request(i):
-            result = await cli.aio_publish_request({'data': f' =======>>>>>>some request number {str(i)}'},
-                                                   'topic2.wqe', timeout=60)
+            result = await cli.aio_publish_request(
+                {"data": f" =======>>>>>>some request number {str(i)}"},
+                "topic2.wqe",
+                timeout=60,
+            )
             print(result)
             return result
 
         start = datetime.datetime.now().timestamp()
         tasks = [request(str(i)) for i in range(1000)]
         await asyncio.gather(*tasks)
-        print(f'duration: {datetime.datetime.now().timestamp() - start}')
+        print(f"duration: {datetime.datetime.now().timestamp() - start}")
         time.sleep(1)
         return
 
     async def amsg_generator_v2(cli):
         is_msgs_required = True
         time.sleep(5)
-        print('amsg_generator started')
+        print("amsg_generator started")
         start = datetime.datetime.now().timestamp()
-        tasks = [cli.aio_publish(f' =======>>>>>>some message number {str(i)}', 'topic2.wqe') for i in
-                 range(1000)]
+        tasks = [
+            cli.aio_publish(f" =======>>>>>>some message number {str(i)}", "topic2.wqe")
+            for i in range(1000)
+        ]
         await asyncio.gather(*tasks)
-        duration = f'duration: {datetime.datetime.now().timestamp() - start}'
+        duration = f"duration: {datetime.datetime.now().timestamp() - start}"
         # isr_log.info(duration)
         print(duration)
 
@@ -329,16 +370,16 @@ if __name__ == "__main__":
         await asyncio.sleep(1)
         return response
 
-    print('start')
+    print("start")
     cli = _AsyncioNATSClient()
-    cli.client_id = 'client' + str(random.randint(1, 100))
-    cli.host = '127.0.0.1'
+    cli.client_id = "client" + str(random.randint(1, 100))
+    cli.host = "127.0.0.1"
     cli.port = "4222"
-    cli.listen_topics_callbacks = {'topic2.wqe': [reciever_msg_handler]}
+    cli.listen_topics_callbacks = {"topic2.wqe": [reciever_msg_handler]}
     cli.allow_reconnect = True
     cli.max_reconnect_attempts = 10
     cli.reconnecting_time_wait = 10
-    cli.queue = ''
+    cli.queue = ""
     cli.pending_bytes_limit = 65536 * 1024 * 10
     cli.connect()
     time.sleep(3)
@@ -352,4 +393,4 @@ if __name__ == "__main__":
     tasks = asyncio.all_tasks(loop)
     loop.run_until_complete(asyncio.gather(*tasks))
     loop.run_forever()
-    print('finish')
+    print("finish")
