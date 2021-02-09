@@ -42,13 +42,13 @@ msg = {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.aio_publish(msg, topic="some.publish.topic")
+        await app.publish(topic="some.publish.topic", message=msg)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.aio_publish(msg, topic="some.publish.topic")
+        await app.publish(topic="some.publish.topic", message=msg)
 
 
 @app.listen("some.publish.topic", serializator=TestSerializer)

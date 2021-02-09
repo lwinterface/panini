@@ -7,22 +7,55 @@ import datetime
 import uuid
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..utils.helper import is_json, run_coro_threadsafe
+from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
 from ..exceptions import EventHandlingError
 from ..utils.logger import get_logger
+from ._nats_client_interface import NATSClientInterface
 
 log = get_logger("anthill")
 isr_log = get_logger("inter_services_request")
 
 
-class _AsyncioNATSClient(object):
+class _AsyncioNATSClient(NATSClientInterface):
     """
-    Subinterface for NATSClient, create asyncio NATS connection for sending and listening
+    Sub interface for NATSClient, create asyncio NATS connection for sending and listening
     """
 
-    def __init__(self, base_obj):
-        self.__dict__ = base_obj.__dict__
-        # TODO: check that all cls attr exists
+    def __init__(
+        self,
+        client_id: str,
+        host: str,
+        port: int or str,
+        listen_topics_callbacks: dict,
+        allow_reconnect: bool or None,
+        max_reconnect_attempts: int = 60,
+        reconnecting_time_wait: int = 2,
+        publish_topics=[],
+        auth: dict = {},
+        queue="",
+        client_strategy="asyncio",  # in_current_process' or in_separate_processes'
+        redis_host="127.0.0.1",
+        redis_port="6379",
+        pending_bytes_limit=65536 * 1024 * 10,
+        num_of_queues=1,
+    ):
+        super().__init__(
+            client_id,
+            host,
+            port,
+            listen_topics_callbacks,
+            allow_reconnect,
+            max_reconnect_attempts,
+            reconnecting_time_wait,
+            publish_topics,
+            auth,
+            queue,
+            client_strategy,
+            redis_host,
+            redis_port,
+            pending_bytes_limit,
+            num_of_queues,
+        )
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
 
@@ -57,7 +90,8 @@ class _AsyncioNATSClient(object):
             pending_bytes_limit=self.pending_bytes_limit,
         )
 
-    def wrap_callback(self, cb, cli):
+    @staticmethod
+    def wrap_callback(cb, cli):
         async def wrapped_callback(msg):
             async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
                 if asyncio.iscoroutinefunction(cb):
@@ -70,7 +104,7 @@ class _AsyncioNATSClient(object):
                                     return
                                 reply["isr-id"] = isr_id
                                 reply = json.dumps(reply)
-                                await cli.aio_publish(reply, reply_to)
+                                await cli.publish(reply_to, reply)
                         except EventHandlingError as e:
                             if not "reply" in locals():
                                 reply = ""
@@ -89,14 +123,11 @@ class _AsyncioNATSClient(object):
                     return cb(subject, data)
 
             async def handle_message_with_response(cli, data, reply_to, isr_id):
-                # isr_log.info(f"3RECIEVED REQUEST msg: isr_id: {isr_id} reply_to:{reply_to} {data}, {subject}")
                 reply = await callback(cb, subject, data, reply_to, isr_id)
                 if reply:
                     reply["isr-id"] = isr_id
                     reply = json.dumps(reply)
-                    # isr_log.info(f"4SENDING-RESPONSE msg: isr_id: {isr_id} reply_to:{reply_to}({type(reply_to)}) {
-                    # data}, {subject}")
-                    await cli.aio_publish(reply, reply_to)
+                    await cli.publish(reply_to, reply)
 
             subject = msg.subject
             raw_data = msg.data.decode()
@@ -106,7 +137,6 @@ class _AsyncioNATSClient(object):
             elif "reply_to" in data:
                 reply_to = data.pop("reply_to")
             else:
-                # isr_log.info(f"3RECIEVED PUBL msg: {data[:150] if len(data) < 150 else data}, {subject}")
                 await callback(cb, subject, data)
                 return
             isr_id = data.get("isr-id", str(uuid.uuid4())[:10])
@@ -123,40 +153,55 @@ class _AsyncioNATSClient(object):
 
         return wrapped_callback
 
-    def publish(self, message, topic: str):
-        asyncio.ensure_future(self.aio_publish(message, topic))
+    def publish_sync(self, topic: str, message: dict, reply_to: str = None):
+        if reply_to is not None:
+            return self._publish_request_with_reply_to_another_topic(
+                topic, message, reply_to
+            )
 
-    def publish_request_with_reply_to_another_topic(
-        self, message, topic: str, reply_to: str = None
+        asyncio.ensure_future(self.publish(topic, message, reply_to))
+
+    def _publish_request_with_reply_to_another_topic(
+        self, topic: str, message: dict, reply_to: str = None
     ):
         asyncio.ensure_future(
-            self.aio_publish_request_with_reply_to_another_topic(
-                message, topic, reply_to
+            self._aio_publish_request_with_reply_to_another_topic(
+                topic, message, reply_to
             )
         )
 
-    def publish_from_another_thread(self, message, topic: str):
-        self.loop.call_soon_threadsafe(self.publish, message, topic)
+    def publish_from_another_thread(self, topic: str, message: dict):
+        self.loop.call_soon_threadsafe(self.publish, topic, message)
 
-    def publish_request(
-        self, message, topic: str, timeout: int = 10, unpack: bool = False
+    def request_sync(
+        self, topic: str, message: dict, timeout: int = 10, unpack: bool = False
     ):
-        asyncio.ensure_future(self.aio_publish_request(message, topic, timeout, unpack))
+        asyncio.ensure_future(self.request(topic, message, timeout, unpack))
 
-    def publish_request_from_another_thread(
+    def request_from_another_thread(
         self,
-        message,
         topic: str,
+        message,
         loop: asyncio.unix_events._UnixSelectorEventLoop,
         timeout: int = 10,
         unpack: bool = False,
     ):
-        coro = self.aio_publish_request(message, topic, timeout, unpack)
+        coro = self.request(topic, message, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
-    async def aio_publish(
-        self, message, topic: str, force: bool = False, nonjson: bool = False
+    async def publish(
+        self,
+        topic: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        nonjson: bool = False,
     ):
+        if reply_to is not None:
+            return await self._aio_publish_request_with_reply_to_another_topic(
+                topic, message, reply_to
+            )
+
         if type(message) is dict and nonjson is False:
             message = json.dumps(message)
             message = message.encode()
@@ -169,37 +214,27 @@ class _AsyncioNATSClient(object):
         else:
             raise NotImplementedError
 
-    async def aio_publish_soon(self, message, topic: str):
-        if is_json(message) is False:
-            message = json.dumps(message)
-        message = message.encode()
-        await self.client.publish(topic, message)
-
-    async def aio_publish_force(self, message, topic):
-        raise NotImplementedError
-
-    async def aio_publish_request(
-        self, message, topic: str, timeout: int = 10, unpack: bool = False
+    async def request(
+        self, topic: str, message: dict, timeout: int = 10, unpack: bool = False
     ):
         if type(message) == str:
             message = json.loads(message)
-        if self.validate_msg(message):
-            if not "isr-id" in message:
+        if validate_msg(message):
+            if "isr-id" not in message:
                 isr_id = str(uuid.uuid4())
-                message = self.register_msg(message, isr_id)
+                message = register_msg(message, isr_id)
             else:
                 message = json.dumps(message)
             message = message.encode()
             response = await self.client.request(topic, message, timeout=timeout)
             response = response.data
-            # isr_log.info(f'6RESPONSE message: {message}', phase='response', topic=topic)
             if unpack:
                 response = json.loads(response)
             return response
         isr_log.error(f"Invalid message: {message}", topic=topic)
 
-    async def aio_publish_request_with_reply_to_another_topic(
-        self, message, topic: str, reply_to: bool = False
+    async def _aio_publish_request_with_reply_to_another_topic(
+        self, topic: str, message, reply_to: str = None
     ):
         message["isr-id"] = str(uuid.uuid4())[:10]
         if is_json(message):
@@ -208,28 +243,7 @@ class _AsyncioNATSClient(object):
         else:
             message["reply_to"] = reply_to
         message = json.dumps(message)
-        # isr_log.info(f'1REQUEST_to_another_topic message: {message}', phase='request', topic=topic)
-        await self.aio_publish(message, topic)
-
-    def validate_msg(self, message):
-        if type(message) is dict:
-            return True
-        elif type(message) is str and is_json(message):
-            return True
-        return False
-
-    def register_msg(self, message, isr_id: str = None):
-        if type(message) is str and is_json(message):
-            message = json.loads(message)
-        return json.dumps(self.add_isr_id_if_absent(message, isr_id))
-
-    def add_isr_id_if_absent(self, message, isr_id: str = None):
-        if not "isr-id" in message:
-            if isr_id is None:
-                message["isr-id"] = str(uuid.uuid4())
-            else:
-                message["isr-id"] = isr_id
-        return message
+        await self.publish(topic, message)
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
@@ -244,153 +258,3 @@ class _AsyncioNATSClient(object):
             log.info("NATS Client status: CONNECTED")
             return True
         log.warning("NATS Client status: DISCONNECTED")
-
-
-# for test
-if __name__ == "__main__":
-    os.environ["SERVICE_NAME"] = "NATSAIOCli"
-
-    def msg_generator():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        is_msgs_required = True
-        time.sleep(5)
-        print("msg_generator started")
-        while True:
-            if is_msgs_required:
-                n = 0
-                start = datetime.datetime.now().timestamp()
-                for i in range(1000):
-                    msg = f" =======>>>>>>some message number {str(n)}"
-                    cli.publish_from_another_thread(msg, "topic2.wqe", loop)
-                    print(f"SENT ==> topic: 'topic2.wqe', msg: {msg}")
-                    n += 1
-                print(f"duration: {datetime.datetime.now().timestamp() - start}")
-                time.sleep(1)
-                return
-
-    def msg_req_generator():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        is_msgs_required = True
-        time.sleep(5)
-        print("msg_generator started")
-        while True:
-            if is_msgs_required:
-                n = 0
-                start = datetime.datetime.now().timestamp()
-                for i in range(1000):
-                    msg = {"data": f" =======>>>>>>some message number {str(i)}"}
-                    result = cli.publish_request_from_another_thread(
-                        msg, "topic2.wqe", loop
-                    )
-                    print(f"SENT ==> topic: 'topic2.wqe', result: {result}")
-                    n += 1
-                print(f"duration: {datetime.datetime.now().timestamp() - start}")
-                time.sleep(1)
-                return
-
-    async def amsg_generator(cli):
-        is_msgs_required = True
-        time.sleep(5)
-        print("amsg_generator started")
-        while True:
-            if is_msgs_required:
-                n = 0
-                start = datetime.datetime.now().timestamp()
-                for i in range(1000):
-                    msg = f" =======>>>>>>some message number {str(n)}"
-                    await cli.aio_publish(msg, "topic2.wqe")
-                    # cli.publish(msg, 'topic2.wqe')
-                    print(f"SENT ==> topic: 'topic2.wqe', msg: {msg}")
-                    n += 1
-                print(f"duration: {datetime.datetime.now().timestamp() - start}")
-                time.sleep(1)
-                return
-
-    async def amsg_req_generator(cli):
-        is_msgs_required = True
-        time.sleep(5)
-        print("amsg_generator started")
-        while True:
-            if is_msgs_required:
-                n = 0
-                start = datetime.datetime.now().timestamp()
-                for i in range(1000):
-                    msg = {"data": f" =======>>>>>>some message number {str(n)}"}
-                    response = await cli.aio_publish_request(msg, "topic2.wqe")
-                    # response = cli.publish_request(msg, 'topic2.wqe')
-                    # cli.publish(msg, 'topic2.wqe')
-                    print(f"SENT ==> topic: 'topic2.wqe', response: {response}")
-                    n += 1
-                print(f"duration: {datetime.datetime.now().timestamp() - start}")
-                time.sleep(1)
-                return
-
-    async def amsg_req_generator_v2(cli):
-        time.sleep(5)
-        print("amsg_generator started")
-
-        async def request(i):
-            result = await cli.aio_publish_request(
-                {"data": f" =======>>>>>>some request number {str(i)}"},
-                "topic2.wqe",
-                timeout=60,
-            )
-            print(result)
-            return result
-
-        start = datetime.datetime.now().timestamp()
-        tasks = [request(str(i)) for i in range(1000)]
-        await asyncio.gather(*tasks)
-        print(f"duration: {datetime.datetime.now().timestamp() - start}")
-        time.sleep(1)
-        return
-
-    async def amsg_generator_v2(cli):
-        is_msgs_required = True
-        time.sleep(5)
-        print("amsg_generator started")
-        start = datetime.datetime.now().timestamp()
-        tasks = [
-            cli.aio_publish(f" =======>>>>>>some message number {str(i)}", "topic2.wqe")
-            for i in range(1000)
-        ]
-        await asyncio.gather(*tasks)
-        duration = f"duration: {datetime.datetime.now().timestamp() - start}"
-        # isr_log.info(duration)
-        print(duration)
-
-    async def subscribe_handler(msg):
-        print("Got message: ", msg.subject, msg.reply, msg.data)
-
-    async def reciever_msg_handler(topic, msg):
-        response = {"success": True, "data": f"RECIEVED ==> topic: {topic}, msg: {msg}"}
-        print(f"yau! {msg}")
-        await asyncio.sleep(1)
-        return response
-
-    print("start")
-    cli = _AsyncioNATSClient()
-    cli.client_id = "client" + str(random.randint(1, 100))
-    cli.host = "127.0.0.1"
-    cli.port = "4222"
-    cli.listen_topics_callbacks = {"topic2.wqe": [reciever_msg_handler]}
-    cli.allow_reconnect = True
-    cli.max_reconnect_attempts = 10
-    cli.reconnecting_time_wait = 10
-    cli.queue = ""
-    cli.pending_bytes_limit = 65536 * 1024 * 10
-    cli.connect()
-    time.sleep(3)
-    # start_thread(msg_generator)
-    # start_thread(msg_req_generator)
-    loop = asyncio.get_event_loop()
-    # loop.create_task(job(cli.client))
-    # loop.create_task(amsg_generator_v2(cli))
-    # loop.create_task(amsg_req_generator(cli))
-    # loop.create_task(amsg_req_generator_v2(cli))
-    tasks = asyncio.all_tasks(loop)
-    loop.run_until_complete(asyncio.gather(*tasks))
-    loop.run_forever()
-    print("finish")

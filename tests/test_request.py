@@ -4,7 +4,7 @@ from anthill import app as ant_app
 
 def run_anthill():
     app = ant_app.App(
-        service_name="test_publish_request",
+        service_name="test_request",
         host="127.0.0.1",
         port=4222,
         app_strategy="asyncio",
@@ -13,7 +13,7 @@ def run_anthill():
 
     @app.listen("start")
     async def publish_request(topic, message):
-        response = await app.aio_publish_request({"data": 1}, topic="foo")
+        response = await app.request(topic="foo", message={"data": 1})
         return response
 
     app.start()

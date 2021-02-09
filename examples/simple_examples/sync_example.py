@@ -23,20 +23,29 @@ msg = {
 @app.task()
 def publish():
     for _ in range(10):
-        app.publish(msg, topic="some.publish.topic")
+        # app.publish_sync(topic="some.publish.topic", message=msg)
+        app.publish_sync(topic="some.request.topic", message=msg, reply_to="some.publish.topic")
+        # data = app.request_sync(topic="some.request.topic", message=msg)
+        # log.warning(f"data from request: {data}")
         log.warning(f"send message {msg}")
 
 
-@app.timer_task(interval=2)
-def publish_periodically():
-    for _ in range(10):
-        app.publish(msg, topic="some.publish.topic")
-        log.warning(f"send message from periodic task {msg}")
+# @app.timer_task(interval=2)
+# def publish_periodically():
+#     for _ in range(10):
+#         app.publish_sync(topic="some.publish.topic", message=msg)
+#         log.warning(f"send message from periodic task {msg}")
 
 
 @app.listen("some.publish.topic")
 def topic_for_requests_listener(topic, message):
     log.warning(f"got message {message}")
+
+
+@app.listen("some.request.topic")
+def topic_for_requests(topic, message):
+    log.warning(f"got request {message}")
+    return {"data": 1}
 
 
 if __name__ == "__main__":

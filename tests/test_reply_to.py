@@ -6,7 +6,7 @@ from tests.global_object import Global
 
 def run_anthill():
     app = ant_app.App(
-        service_name="test_publish_request_with_reply_to_another_topic",
+        service_name="test_reply_to",
         host="127.0.0.1",
         port=4222,
         app_strategy="asyncio",
@@ -14,13 +14,13 @@ def run_anthill():
     )
 
     @app.listen("start")
-    async def publish_request(topic, message):
-        await app.aio_publish_request_with_reply_to_another_topic(
+    async def reply_to(topic, message):
+        await app.publish(
             message={"data": 1}, topic="foo", reply_to="bar"
         )
 
     @app.listen("foo")
-    async def publish_request(topic, message):
+    async def helper(topic, message):
         message["data"] += 2
         return message
 
@@ -41,7 +41,7 @@ def bar_listener(topic, message):
 client.start()
 
 
-def test_publish_request():
+def test_reply_to():
     assert global_object.public_variable == 0
     client.publish("start", {})
     client.wait(1)  # wait for bar_listener call

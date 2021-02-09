@@ -15,7 +15,7 @@ def run_anthill():
 
     @app.task()
     async def publish():
-        await app.aio_publish({"data": 1}, topic="foo")
+        await app.publish(topic="foo", message={"data": 1})
 
     app.start()
 

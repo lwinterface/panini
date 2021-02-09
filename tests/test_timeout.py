@@ -15,7 +15,7 @@ def run_anthill():
 
     @app.listen("publish.request.not.existing.topic")
     async def publish_request(topic, message):
-        return await app.aio_publish_request({"data": 1}, topic="not-existing-topic")
+        return await app.request(topic="not-existing-topic", message={"data": 1})
 
     app.start()
 

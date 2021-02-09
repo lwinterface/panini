@@ -17,7 +17,7 @@ def run_anthill():
 
     @app.timer_task(0.1)
     async def publish_periodically():
-        await app.aio_publish({}, topic="foo")
+        await app.publish(topic="foo", message={})
 
     app.start()
 

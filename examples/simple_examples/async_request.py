@@ -24,7 +24,7 @@ msg = {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.aio_publish_request(msg, topic="some.request.topic.123")
+        result = await app.request(topic="some.request.topic.123", message=msg)
         log.warning(result)
 
 

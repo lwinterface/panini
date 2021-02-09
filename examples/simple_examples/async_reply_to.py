@@ -23,9 +23,9 @@ msg = {
 @app.task()
 async def request_to_another_topic():
     for _ in range(10):
-        await app.aio_publish_request_with_reply_to_another_topic(
-            msg,
+        await app.publish(
             topic="some.topic.for.request.with.response.to" ".another.topic",
+            message=msg,
             reply_to="reply.to.topic",
         )
         log.warning("sent request")

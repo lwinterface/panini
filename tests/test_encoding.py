@@ -27,21 +27,21 @@ def run_anthill():
 
     @app.listen("message.incorrect")
     async def bar(topic, message):
-        await app.aio_publish_request(
+        await app.request(
             topic="helper.correct", message="message not dict"
         )
         return {"success": True}
 
     @app.listen("message.correct")
     async def bar(topic, message):
-        await app.aio_publish_request(
+        await app.request(
             topic="helper.incorrect", message={"data": "some data"}
         )
         return {"success": True}
 
     @app.listen("correct")
     async def bar(topic, message):
-        await app.aio_publish_request(
+        await app.request(
             topic="helper.correct", message={"data": "some data"}
         )
         return {"success": True}

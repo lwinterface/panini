@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import uuid
 import subprocess
 import sys
 import threading
@@ -96,3 +97,26 @@ def create_client_code_by_hostname(name: str):
             str(random.randint(1, 1000000)),
         ]
     )
+
+
+def validate_msg(message):
+    if type(message) is dict:
+        return True
+    elif type(message) is str and is_json(message):
+        return True
+    return False
+
+
+def add_isr_id_if_absent(message, isr_id: str = None):
+    if "isr-id" not in message:
+        if isr_id is None:
+            message["isr-id"] = str(uuid.uuid4())
+        else:
+            message["isr-id"] = isr_id
+    return message
+
+
+def register_msg(message, isr_id: str = None):
+    if type(message) is str and is_json(message):
+        message = json.loads(message)
+    return json.dumps(add_isr_id_if_absent(message, isr_id))

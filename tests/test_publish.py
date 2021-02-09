@@ -10,12 +10,12 @@ def run_anthill():
         host="127.0.0.1",
         port=4222,
         app_strategy="asyncio",
-        logger_required=False,
+        logger_required=False
     )
 
     @app.listen("foo")
     async def publish(topic, message):
-        await app.aio_publish({"data": 1}, topic="bar")
+        await app.publish(topic="bar", message={"data": 1})
 
     app.start()
 
@@ -28,11 +28,13 @@ client = TestClient(run_anthill)
 
 @client.listen("bar")
 def bar_listener1(topic, message):
+    print("Got response")
     global_object.public_variable = message["data"]
 
 
 @client.listen("bar")
 def bar_listener2(topic, message):
+    print("Got response")
     global_object.another_variable = message["data"] + 1
 
 

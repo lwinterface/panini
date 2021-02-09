@@ -70,9 +70,6 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param logger_required: Is logger required for the project (if not - EmptyLogger will be provided)
         :param logger_files_path: main path for logs
         :param logger_in_separate_process: use log in the same or in different process
-        :param slack_webhook_url_for_logs:     #TODO
-        :param telegram_token_for_logs:        #TODO
-        :param telegram_chat_for_logs          #TODO
         """
         if publish_topics is None:
             publish_topics = []
