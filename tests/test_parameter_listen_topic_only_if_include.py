@@ -2,6 +2,7 @@ import pytest
 
 from anthill.test_client import TestClient
 from anthill import app as ant_app
+from .helper import get_testing_logs_directory_path
 
 
 def run_anthill():
@@ -11,7 +12,8 @@ def run_anthill():
         port=4222,
         listen_topic_only_if_include=["foo", "bar"],
         app_strategy="asyncio",
-        logger_required=False,
+        logger_in_separate_process=False,
+        logger_files_path=get_testing_logs_directory_path(),
     )
 
     @app.listen("start")

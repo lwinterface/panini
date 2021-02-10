@@ -3,6 +3,7 @@ import json
 from aiohttp import web
 from anthill import app as ant_app
 from anthill.test_client import TestClient
+from .helper import get_testing_logs_directory_path
 
 
 def run_anthill():
@@ -13,7 +14,8 @@ def run_anthill():
         port=4222,
         app_strategy="asyncio",
         web_server=True,
-        logger_required=False,
+        logger_in_separate_process=False,
+        logger_files_path=get_testing_logs_directory_path(),
     )
 
     @app.listen("foo")

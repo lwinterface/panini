@@ -7,6 +7,7 @@ from itertools import cycle
 from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
+from ._nats_client_interface import NATSClientInterface
 from ..utils.logger import get_logger
 from ..utils.helper import (
     start_thread,
@@ -16,7 +17,6 @@ from ..utils.helper import (
     register_msg,
 )
 from ._redis_response import RedisResponse, RedisQueue
-from ._nats_client_interface import NATSClientInterface
 
 isr_log = get_logger("inter_services_request")
 
@@ -109,11 +109,13 @@ class _MultiProcNATSClient(NATSClientInterface):
             transform_topic(LISTEN_FOR_NEW_SUBSCRIPTION_TOPIC)
         )
         self.forced_closure = False
+        self.nats_listener_process = None
+        self.nats_sender_process = None
         self._launch()
 
     def _launch(self):
-        self._launch_listener()
-        self._launch_sender()
+        self.nats_listener_process = self._launch_listener()
+        self.nats_sender_process = self._launch_sender()
         for topic, q in self.listen_message_queue.items():
             start_thread(self._listen_incoming_messages_forever, args=(q, topic))
 
@@ -132,7 +134,7 @@ class _MultiProcNATSClient(NATSClientInterface):
 
     def _launch_listener(self):
         listen_queue_topics = list(self.listen_message_queue.keys())
-        start_process(
+        return start_process(
             _ListenerProc,
             kwargs={
                 "client_id": self.client_id,
@@ -148,7 +150,7 @@ class _MultiProcNATSClient(NATSClientInterface):
 
     def _launch_sender(self):
         publish_queue_topics = list(self.publish_message_queue.keys())
-        start_process(
+        return start_process(
             _SenderProc,
             kwargs={
                 "client_id": self.client_id,
@@ -174,6 +176,7 @@ class _MultiProcNATSClient(NATSClientInterface):
                 base_topic = new_msg.pop("base_topic")
                 if "reply" in new_msg:
                     reply_key = new_msg.pop("reply")
+                    # isr_log.info(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_topic}")
                 callbacks = self.listen_topics_callbacks[base_topic]
                 for callback in callbacks:
                     reply = callback(**new_msg)
@@ -182,27 +185,30 @@ class _MultiProcNATSClient(NATSClientInterface):
                             reply = json.dumps(reply)
                         else:
                             reply = str(reply)
+                        # isr_log.info(f"4SENDING RESPONSE msg: {new_msg['message']} {base_topic}")
                         RedisResponse(reply_key).put(str(reply))
             except Empty:
                 pass
             except Exception as e:
-                if not "reply" in locals():
-                    reply = "hasn't handeled"
-                if not "new_msg" in locals():
-                    new_msg = "hasn't handeled"
-                error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg} "
+                if "reply" not in locals():
+                    reply = "hasn't handled"
+                if "new_msg" not in locals():
+                    new_msg = "hasn't handled"
+                error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
                 isr_log.error(error, slack=True)
 
     def publish_sync(self, topic: str, message, reply_to: str = None):
-        if reply_to is not None:
-            return self._publish_request_with_reply_to_another_topic(
-                topic, message, reply_to
-            )
+        if reply_to:
+            self._publish_request_with_reply_to_another_topic(topic, message, reply_to)
+            return
+
         if type(message) == str and is_json(message):
             message = json.loads(message)
         message["topic"] = topic
         message = json.dumps(message)
         q = self.publish_queue_circle.__next__()
+        # isr_log.info(f'1BPUBLISH', topic=topic,
+        #         redis_topic=transform_topic(topic))
         q.put(message)
 
     def request_sync(self, topic: str, message, timeout: int = 10, unpack: bool = True):
@@ -216,11 +222,13 @@ class _MultiProcNATSClient(NATSClientInterface):
                 message = json.loads(message)
                 message["reply"] = reply
                 message["timeout"] = timeout
+            # isr_log.info(f'1BRREQUEST reply {reply} timeout {timeout}', phase='request', topic=topic,
             # redis_topic=transform_topic(topic))
             self.publish_sync(topic, message)
             response = redis_response.return_response_when_appeared(
                 topic=reply, timeout=timeout
             )
+            # isr_log.info(f'6ARREQUEST reply {reply}', phase='response', topic=topic)
             if unpack:
                 return json.loads(response.decode())
             return response.decode()

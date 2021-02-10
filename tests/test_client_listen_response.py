@@ -1,5 +1,5 @@
 from anthill.test_client import TestClient
-from tests.global_object import Global
+from tests.helper import Global
 
 # no need to run anthill
 client = TestClient()

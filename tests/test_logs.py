@@ -1,16 +1,13 @@
 import os
 import json
-import shutil
-import pathlib
 
 from anthill.test_client import TestClient
 from anthill import app as ant_app
+from .helper import get_testing_logs_directory_path
 
-testing_directory_path = pathlib.Path(__file__).parent.absolute()
-testing_logs_directory_path = os.path.join(testing_directory_path, "logs")
-
-if os.path.exists(testing_logs_directory_path):
-    shutil.rmtree(testing_logs_directory_path)
+testing_logs_directory_path = get_testing_logs_directory_path(
+    "logs_test_logs", remove_if_exist=True
+)
 
 
 def run_anthill():

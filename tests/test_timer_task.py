@@ -2,8 +2,9 @@ import time
 
 from anthill.test_client import TestClient
 from anthill import app as ant_app
+from .helper import get_testing_logs_directory_path
 
-from tests.global_object import Global
+from tests.helper import Global
 
 
 def run_anthill():
@@ -12,7 +13,8 @@ def run_anthill():
         host="127.0.0.1",
         port=4222,
         app_strategy="asyncio",
-        logger_required=False,
+        logger_in_separate_process=False,
+        logger_files_path=get_testing_logs_directory_path(),
     )
 
     @app.timer_task(0.1)

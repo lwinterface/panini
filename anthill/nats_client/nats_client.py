@@ -76,7 +76,7 @@ class NATSClient(NATSClientInterface):
                 num_of_queues,
             )
         else:
-            raise InitializingNATSError('Client strategy unsupported')
+            raise InitializingNATSError("Client strategy unsupported")
 
     def check_connection(self):
         self.connector.check_connection()

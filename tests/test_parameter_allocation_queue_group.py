@@ -3,6 +3,7 @@ import pytest
 
 from anthill.test_client import TestClient
 from anthill import app as ant_app
+from .helper import get_testing_logs_directory_path
 
 from anthill.utils.helper import start_process
 
@@ -14,7 +15,8 @@ def run_anthill1():
         port=4222,
         allocation_queue_group="group1",
         app_strategy="asyncio",
-        logger_required=False,
+        logger_in_separate_process=False,
+        logger_files_path=get_testing_logs_directory_path(),
     )
 
     @app.listen("foo")
@@ -31,7 +33,8 @@ def run_anthill2():
         port=4222,
         allocation_queue_group="group1",
         app_strategy="asyncio",
-        logger_required=False,
+        logger_in_separate_process=False,
+        logger_files_path=get_testing_logs_directory_path(),
     )
 
     @app.listen("foo")
