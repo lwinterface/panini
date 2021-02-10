@@ -1,7 +1,7 @@
 import inspect
 from .exceptions import SerializationError
 
-_serializers = {}
+_validators = {}
 _logger = None
 
 
@@ -11,7 +11,7 @@ class Serializer:
         super().__init_subclass__(**kwargs)
         Serializer.set_logger()
         cls.retrieve_fields()
-        _serializers[cls.__name__] = cls
+        _validators[cls.__name__] = cls
 
     @staticmethod
     def set_logger():
@@ -112,9 +112,9 @@ class Field:
         if not kwargs["type"] in [str, int, float, list, dict]:
             all_clss = inspect.getmro(kwargs["type"])
             if len(all_clss) > 1:
-                serializator_name = all_clss[0].__name__
-                if not serializator_name in _serializers:
-                    error = f"Serializer {serializator_name} hasn't registered yet. You have to register in first"
+                serializer_name = all_clss[0].__name__
+                if not serializer_name in _validators:
+                    error = f"Serializer {serializer_name} hasn't registered yet. You have to register in first"
                     _logger.error(error)
                     raise SerializationError(error)
                 parent_name = all_clss[1].__name__

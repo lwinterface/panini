@@ -1,9 +1,9 @@
 import asyncio
 from anthill import app as ant_app
-from anthill.serializer import Serializer, Field
+from anthill.validator import Validator, Field
 
 app = ant_app.App(
-    service_name="serializers",
+    service_name="validators",
     host="127.0.0.1",
     port=4222,
     app_strategy="asyncio",
@@ -12,18 +12,18 @@ app = ant_app.App(
 log = app.logger
 
 
-class SubTestSerializer(Serializer):
+class SubTestValidator(Validator):
     subkey1 = Field(type=str)
     subkey2 = Field(type=int)
 
 
-class TestSerializer(Serializer):
+class TestValidator(Validator):
     key1 = Field(type=str)
     key2 = Field(type=int)
     key3 = Field(type=float)
     key4 = Field(type=list)
     key5 = Field(type=dict)
-    key6 = Field(type=SubTestSerializer)
+    key6 = Field(type=SubTestValidator)
     key7 = Field(type=int, null=True)
     key8 = Field(type=int, null=True, default=None)
 
@@ -51,7 +51,7 @@ async def publish_periodically():
         await app.publish(topic="some.publish.topic", message=msg)
 
 
-@app.listen("some.publish.topic", serializator=TestSerializer)
+@app.listen("some.publish.topic", validator=TestValidator)
 async def requests_listener(topic, message):
     log.warning(f"got message {message}")
     await asyncio.sleep(1)

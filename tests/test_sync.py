@@ -124,13 +124,6 @@ def test_publish_request():
     client.wait(1)
     assert global_object.another_variable == 10
 
-    # finalize
-    client.publish("finish", {})
-    import time
-
-    time.sleep(1)
-    client.anthill_process.terminate()
-
 
 # NotImplemented - raises an error
 # def test_publish_request_reply():
@@ -138,3 +131,11 @@ def test_publish_request():
 #     client.publish("publish.request.reply", {"test": 0})
 #     client.wait(1)
 #     assert global_object.additional_variable == 4
+
+def test_finish():
+    # finalize
+    client.publish("finish", {})
+    import time
+
+    time.sleep(1)
+    client.anthill_process.terminate()
