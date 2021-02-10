@@ -1,15 +1,15 @@
 import inspect
-from .exceptions import SerializationError
+from .exceptions import ValidationError
 
 _validators = {}
 _logger = None
 
 
-class Serializer:
+class Validator:
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        Serializer.set_logger()
+        Validator.set_logger()
         cls.retrieve_fields()
         _validators[cls.__name__] = cls
 
@@ -24,32 +24,32 @@ class Serializer:
     @classmethod
     def retrieve_fields(cls):
         dct = cls.__dict__
-        serialisers = {}
+        validators = {}
         [
-            serialisers.update({field_name: field_obj})
+            validators.update({field_name: field_obj})
             for field_name, field_obj in dct.items()
             if not field_name.startswith("__")
         ]
-        cls.serialisers = serialisers
-        [delattr(cls, field_name) for field_name in serialisers]
+        cls.validators = validators
+        [delattr(cls, field_name) for field_name in validators]
 
     @classmethod
     def validated_message(cls, message):
         if not type(message) in [dict, list]:
             error = "Unexpected message. Accepted dict or list"
             _logger.error(error)
-            raise SerializationError(error)
+            raise ValidationError(error)
         if type(message) is list:
             if not cls.__many:
-                error = "Unexpected message, expected dict. You can set many=True in serializer if you need to handle list of dicts"
+                error = "Unexpected message, expected dict. You can set many=True in validator if you need to handle list of dicts"
                 _logger.error(error)
-                raise SerializationError(error)
+                raise ValidationError(error)
             result = []
             for m in message:
                 result.append(cls._validate_message(cls, m))
             return result
         message = cls._validate_message(message)
-        # print(f'message {message} is OK {cls.serialisers}')
+        # print(f'message {message} is OK {cls.validators}')
         return message
 
     @classmethod
@@ -57,25 +57,25 @@ class Serializer:
         if not type(message) is dict:
             error = "Unexpected message, expected dict"
             _logger.error(error)
-            raise SerializationError(error)
-        for key, field_obj in cls.serialisers.items():
-            if issubclass(field_obj.type.__base__, Serializer):
+            raise ValidationError(error)
+        for key, field_obj in cls.validators.items():
+            if issubclass(field_obj.type.__base__, Validator):
                 field_obj.type.validated_message(message[key])
                 continue
             if not key in message and not hasattr(field_obj, "default"):
                 error = f'Expected field "{key}" not found'
                 _logger.error(error)
-                raise SerializationError(error)
+                raise ValidationError(error)
             elif not key in message and hasattr(field_obj, "default"):
                 message[key] = field_obj.default
             if message[key] is None and field_obj.null is False:
                 error = f'Wrong value None for field "{key}" (because null=False)'
                 _logger.error(error)
-                raise SerializationError(error)
+                raise ValidationError(error)
             if field_obj.type is not type(message[key]) and message[key] is not None:
                 error = f'Expected {field_obj.type} type of field "{key}" but got {type(message[key])} instead'
                 _logger.error(error)
-                raise SerializationError(error)
+                raise ValidationError(error)
             continue
         return message
 
@@ -92,7 +92,7 @@ class Field:
         if not "type" in kwargs:
             error = "type required in Field"
             _logger.error(error)
-            raise SerializationError(error)
+            raise ValidationError(error)
         if (
             "default" in kwargs
             and kwargs["default"] is None
@@ -100,7 +100,7 @@ class Field:
         ):
             error = "You have to set null=True first if you want to set default=None"
             _logger.error(error)
-            raise SerializationError(error)
+            raise ValidationError(error)
         if (
             "default" in kwargs
             and kwargs["default"] is not None
@@ -108,21 +108,23 @@ class Field:
         ):
             error = f'Your default type is {type(kwargs["default"])} but expected {kwargs["type"]}'
             _logger.error(error)
-            raise SerializationError(error)
+            raise ValidationError(error)
         if not kwargs["type"] in [str, int, float, list, dict]:
             all_clss = inspect.getmro(kwargs["type"])
             if len(all_clss) > 1:
-                serializer_name = all_clss[0].__name__
-                if not serializer_name in _validators:
-                    error = f"Serializer {serializer_name} hasn't registered yet. You have to register in first"
+                validator_name = all_clss[0].__name__
+                if not validator_name in _validators:
+                    error = f"Validator {validator_name} hasn't registered yet. You have to register in first"
                     _logger.error(error)
-                    raise SerializationError(error)
+                    raise ValidationError(error)
                 parent_name = all_clss[1].__name__
-                if not parent_name == "Serializer":
-                    error = 'You have to inherit your serializer from the class "Serializer"'
+                if not parent_name == "Validator":
+                    error = (
+                        'You have to inherit your validator from the class "Validator"'
+                    )
                     _logger.error(error)
-                    raise SerializationError(error)
+                    raise ValidationError(error)
             else:
-                error = f'Invalid data type {kwargs["type"]} for field. Only JSON data types or another Serializer class allowed'
+                error = f'Invalid data type {kwargs["type"]} for field. Only JSON data types or another Validator class allowed'
                 _logger.error(error)
-                raise SerializationError(error)
+                raise ValidationError(error)

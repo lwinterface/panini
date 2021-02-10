@@ -16,7 +16,7 @@ class RedisResponse(RedisQueue):
         host: str = "127.0.0.1",
         port: int = 6379,
         db: int = 0,
-        waiting_btwn_check: float = 0.001,
+        waiting_between_check: float = 0.001,
     ):
         self.log = get_logger("RedisResponse")
         if "SERVICE_NAME" in os.environ:
@@ -28,14 +28,14 @@ class RedisResponse(RedisQueue):
         else:
             self._name = "_".join(["Unknown", name])
         super().__init__(name, namespace, host, port, db)
-        self.waiting_btwn_check = waiting_btwn_check
+        self.waiting_between_check = waiting_between_check
 
     def return_response_when_appeared(self, topic=None, timeout=30):
         started = datetime.datetime.now().timestamp()
         while datetime.datetime.now().timestamp() - started < timeout:
             try:
                 if self.empty():
-                    time.sleep(self.waiting_btwn_check)
+                    time.sleep(self.waiting_between_check)
                     continue
                 return self.get()
             except Exception as e:

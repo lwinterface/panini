@@ -58,7 +58,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param app_strategy: 'async' or 'sync'. We strongly recommend using 'async'.
         'sync' app_strategy works in many times slower and created only for lazy microservices.
         :param subscribe_topics_and_callbacks: if you need to subscibe additional topics(except topics from event.py).
-                                        This way doesn't support serializators
+                                        This way doesn't support validators
         :param publish_topics: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
         :param allocation_queue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue

@@ -85,7 +85,7 @@ class RequestError(BaseError):
     pass
 
 
-class SerializationError(Exception):
+class ValidationError(Exception):
     pass
 
 

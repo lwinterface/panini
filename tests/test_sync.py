@@ -132,6 +132,7 @@ def test_publish_request():
 #     client.wait(1)
 #     assert global_object.additional_variable == 4
 
+
 def test_finish():
     # finalize
     client.publish("finish", {})

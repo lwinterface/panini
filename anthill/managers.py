@@ -3,7 +3,7 @@ import asyncio
 from . import exceptions
 from typing import Callable
 from .exceptions import (
-    SerializationError,
+    ValidationError,
     InitializingIntevalTaskError,
     NotReadyError,
     BaseError,
@@ -18,10 +18,10 @@ class _EventManager:
     SUBSCRIPTIONS = {}
 
     def listen(
-        self, topic: list or str, serializator: type = None, dynamic_subscription=False
+        self, topic: list or str, validator: type = None, dynamic_subscription=False
     ):
         def wrapper(function):
-            function = _EventManager.wrap_function_by_serializer(function, serializator)
+            function = _EventManager.wrap_function_by_validator(function, validator)
             if type(topic) is list:
                 for t in topic:
                     _EventManager._check_subscription(t)
@@ -47,24 +47,24 @@ class _EventManager:
         self.subscribe_new_topic(topic, function)
 
     @staticmethod
-    def wrap_function_by_serializer(function, serializator):
-        def serialize_message(topic, message):
+    def wrap_function_by_validator(function, validator):
+        def validate_message(topic, message):
             try:
-                if serializator is not None:
-                    message = serializator.validated_message(message)
-            except exceptions.SerializationError as se:
+                if validator is not None:
+                    message = validator.validated_message(message)
+            except exceptions.ValidationError as se:
                 error = f"topic: {topic} error: {str(se)}"
                 return {"success": False, "error": error}
             except Exception as e:
-                raise SerializationError(e)
+                raise ValidationError(e)
             return message
 
         def wrapper(topic, message):
-            message = serialize_message(topic, message)
+            message = validate_message(topic, message)
             return function(topic, message)
 
         async def wrapper_async(topic, message):
-            message = serialize_message(topic, message)
+            message = validate_message(topic, message)
             return await function(topic, message)
 
         if asyncio.iscoroutinefunction(function):
@@ -73,9 +73,9 @@ class _EventManager:
             return wrapper
 
     @staticmethod
-    def _check_subscription(subsciption):
-        if not subsciption in _EventManager.SUBSCRIPTIONS:
-            _EventManager.SUBSCRIPTIONS[subsciption] = []
+    def _check_subscription(subscription):
+        if not subscription in _EventManager.SUBSCRIPTIONS:
+            _EventManager.SUBSCRIPTIONS[subscription] = []
 
 
 class _TaskManager:
