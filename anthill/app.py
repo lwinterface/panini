@@ -9,7 +9,7 @@ from .http_server.http_server_app import HTTPServer
 from .exceptions import (
     InitializingEventManagerError,
     InitializingTaskError,
-    InitializingIntevalTaskError,
+    InitializingIntervalTaskError,
 )
 from .utils.helper import (
     start_thread,
@@ -217,7 +217,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             for interval in self.interval_tasks:
                 for coro in self.interval_tasks[interval]:
                     if not asyncio.iscoroutinefunction(coro):
-                        raise InitializingIntevalTaskError(
+                        raise InitializingIntervalTaskError(
                             "For asyncio app_strategy only coroutine interval tasks allowed"
                         )
                     loop.create_task(coro())
@@ -228,14 +228,14 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             time.sleep(1)
             for task in self.tasks:
                 if asyncio.iscoroutinefunction(task):
-                    raise InitializingIntevalTaskError(
+                    raise InitializingIntervalTaskError(
                         "For sync app_strategy coroutine task doesn't allowed"
                     )
                 start_thread(task)
             for interval in self.interval_tasks:
                 for task in self.interval_tasks[interval]:
                     if asyncio.iscoroutinefunction(task):
-                        raise InitializingIntevalTaskError(
+                        raise InitializingIntervalTaskError(
                             "For sync app_strategy coroutine interval_task doesn't allowed"
                         )
                     start_thread(task)

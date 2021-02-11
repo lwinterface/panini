@@ -88,15 +88,16 @@ class Field:
         self.validate_field(kwargs)
         self.__dict__.update(kwargs)
 
-    def validate_field(self, kwargs):
-        if not "type" in kwargs:
+    @staticmethod
+    def validate_field(kwargs):
+        if "type" not in kwargs:
             error = "type required in Field"
             _logger.error(error)
             raise ValidationError(error)
         if (
             "default" in kwargs
             and kwargs["default"] is None
-            and (not "null" in kwargs or kwargs["null"] == False)
+            and ("null" not in kwargs or kwargs["null"] == False)
         ):
             error = "You have to set null=True first if you want to set default=None"
             _logger.error(error)

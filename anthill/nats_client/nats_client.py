@@ -24,7 +24,7 @@ class NATSClient(NATSClientInterface):
         num_of_queues=1,
     ):
         """
-        :param client_id: instance identificator for NATS, str
+        :param client_id: instance identifier for NATS, str
         :param port: default '4333'
         :param publish_topics: for example public.binance.order_book.BTC_USD
         :param allow_reconnect: False if you want to stop instance when connection lost

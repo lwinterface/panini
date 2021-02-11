@@ -4,7 +4,7 @@ from . import exceptions
 from typing import Callable
 from .exceptions import (
     ValidationError,
-    InitializingIntevalTaskError,
+    InitializingIntervalTaskError,
     NotReadyError,
     BaseError,
 )
@@ -74,7 +74,7 @@ class _EventManager:
 
     @staticmethod
     def _check_subscription(subscription):
-        if not subscription in _EventManager.SUBSCRIPTIONS:
+        if subscription not in _EventManager.SUBSCRIPTIONS:
             _EventManager.SUBSCRIPTIONS[subscription] = []
 
 
@@ -119,7 +119,7 @@ class _IntervalTaskManager:
                 interval_task = _IntervalTaskManager.wrap_function_by_interval(
                     interval, interval_task
                 )
-            if not interval in _IntervalTaskManager.INTERVAL_TASKS:
+            if interval not in _IntervalTaskManager.INTERVAL_TASKS:
                 _IntervalTaskManager.INTERVAL_TASKS[interval] = []
             _IntervalTaskManager.INTERVAL_TASKS[interval].append(interval_task)
             return interval_task
@@ -133,7 +133,7 @@ class _IntervalTaskManager:
                 try:
                     await interval_task(**kwargs)
                     await asyncio.sleep(interval)
-                except InitializingIntevalTaskError as e:
+                except InitializingIntervalTaskError as e:
                     # TODO: warning log
                     pass
 
@@ -146,7 +146,7 @@ class _IntervalTaskManager:
                 try:
                     interval_task(**kwargs)
                     time.sleep(interval)
-                except InitializingIntevalTaskError as e:
+                except InitializingIntervalTaskError as e:
                     # TODO: warning log
                     pass
 

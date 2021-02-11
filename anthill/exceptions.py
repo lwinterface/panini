@@ -57,7 +57,7 @@ class InitializingTaskError(BaseError):
     pass
 
 
-class InitializingIntevalTaskError(BaseError):
+class InitializingIntervalTaskError(BaseError):
     pass
 
 

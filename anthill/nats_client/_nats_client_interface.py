@@ -1,9 +1,5 @@
-import time
-import random
-from ..utils.helper import start_thread
 from abc import ABC, abstractmethod
 
-from ..exceptions import InitializingNATSError
 from ..utils.logger import get_logger
 
 message = None
@@ -29,10 +25,8 @@ class NATSClientInterface(ABC):
         num_of_queues=1,
     ):
         """
-        :param client_id: instance identificator for NATS, str
-        :param broker_ip: '127.0.0.1' for local broker
+        :param client_id: instance identifier for NATS, str
         :param port: default '4333'
-        :param listen_topics: dictfor example public.binance.order_book.*
         :param publish_topics: for example public.binance.order_book.BTC_USD
         :param allow_reconnect: False if you want to stop instance when connection lost
         :param max_reconnect_attempts:

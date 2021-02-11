@@ -11,7 +11,7 @@ log = app.logger.log
 
 
 @app.listen("some.publish.topic")
-async def recieve_messages(topic, message):
+async def receive_messages(topic, message):
     log(f"got message {message}")
 
 

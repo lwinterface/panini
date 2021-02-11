@@ -57,14 +57,14 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.aio_publish(msg, topic='some.publish.topic')
+        await app.publish(topic='some.publish.topic', message=msg)
         log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.aio_publish(msg, topic='some.publish.topic')
+        await app.publish(topic='some.publish.topic', message=msg)
         log.warning(f'send message from periodic task {msg}')
 
 
@@ -107,7 +107,7 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.aio_publish_request(msg, topic='some.request.topic.123')
+        result = await app.request(topic='some.request.topic.123', message=msg)
         log.warning(f'response: {result}')
 
 @app.listen('some.request.topic.123')
@@ -143,7 +143,9 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 @app.task()
 async def request_to_another_topic():
     for _ in range(10):
-        await app.aio_publish_request_with_reply_to_another_topic(msg, topic='some.topic.for.request.with.response.to.another.topic', reply_to='reply.to.topic')
+        await app.publish(topic='some.topic.for.request.with.response.to.another.topic',
+                          message=msg,
+                          reply_to='reply.to.topic')
         log.warning('sent request')
 
 @app.listen('some.topic.for.request.with.response.to.another.topic')
@@ -203,13 +205,13 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.aio_publish(msg, topic='some.publish.topic')
+        await app.publish(topic='some.publish.topic', message=msg)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.aio_publish(msg, topic='some.publish.topic')
+        await app.publish(topic='some.publish.topic', message=msg)
 
 
 @app.listen('some.publish.topic', validator=TestValidator)
@@ -246,16 +248,16 @@ log = app.logger
 
 @app.http.get('/get')
 async def web_endpoint_listener(request):
-    '''
+    """
     Single HTTP endpoint
-    '''
+    """
     return web.Response(text="Hello, world")
 
 @app.http.view('/path/to/rest/endpoints')
 class MyView(web.View):
-    '''
+    """
     HTTP endpoints for REST schema
-    '''
+    """
     async def get(self):
         request = self.request
         return web.Response(text="Hello, REST world")
@@ -293,14 +295,14 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 @app.task()
 def publish():
     for _ in range(10):
-        app.publish(msg, topic='some.publish.topic')
+        app.publish_sync(topic='some.publish.topic', message=msg)
         log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 def publish_periodically():
     for _ in range(10):
-        app.publish(msg, topic='some.publish.topic')
+        app.publish_sync(topic='some.publish.topic', message=msg)
         log.warning(f'send message from periodic task {msg}')
 
 
@@ -372,7 +374,13 @@ Anthill will automatically detect and set it. After that you can get your logger
 
 ## Testing
 
-is coming..
+We use [pytest](https://docs.pytest.org/en/stable/) for testing
+
+To run tests (notice, that nats-server must be running for tests): 
+```angular2html
+cd tests
+./run_test.sh
+```
  
 ## Contributing
 

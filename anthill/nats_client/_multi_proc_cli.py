@@ -43,22 +43,22 @@ class _MultiProcNATSClient(NATSClientInterface):
     """
 
     def __init__(
-        self,
-        client_id: str,
-        host: str,
-        port: int or str,
-        listen_topics_callbacks: dict,
-        allow_reconnect: bool or None,
-        max_reconnect_attempts: int = 60,
-        reconnecting_time_wait: int = 2,
-        publish_topics=[],
-        auth: dict = {},
-        queue="",
-        client_strategy="asyncio",  # in_current_process' or in_separate_processes'
-        redis_host="127.0.0.1",
-        redis_port="6379",
-        pending_bytes_limit=65536 * 1024 * 10,
-        num_of_queues=1,
+            self,
+            client_id: str,
+            host: str,
+            port: int or str,
+            listen_topics_callbacks: dict,
+            allow_reconnect: bool or None,
+            max_reconnect_attempts: int = 60,
+            reconnecting_time_wait: int = 2,
+            publish_topics=[],
+            auth: dict = {},
+            queue="",
+            client_strategy="asyncio",  # in_current_process' or in_separate_processes'
+            redis_host="127.0.0.1",
+            redis_port="6379",
+            pending_bytes_limit=65536 * 1024 * 10,
+            num_of_queues=1,
     ):
         super().__init__(
             client_id,
@@ -241,7 +241,7 @@ class _MultiProcNATSClient(NATSClientInterface):
             )
 
     def _publish_request_with_reply_to_another_topic(
-        self, topic: str, message, reply_to: str = None
+            self, topic: str, message, reply_to: str = None
     ):
         if is_json(message):
             message = json.loads(message)
@@ -254,12 +254,12 @@ class _MultiProcNATSClient(NATSClientInterface):
         q.put(message)
 
     async def publish(
-        self, topic: str, message, reply_to: str = None, force: bool = None
+            self, topic: str, message, reply_to: str = None, force: bool = None
     ):
         self.publish_sync(topic, message, reply_to)
 
     async def request(
-        self, topic: str, message, timeout: int = 10, unpack: bool = True
+            self, topic: str, message, timeout: int = 10, unpack: bool = True
     ):
         return self.request_sync(topic, message, timeout=timeout, unpack=unpack)
 
@@ -272,14 +272,14 @@ class _MultiProcNATSClient(NATSClientInterface):
 
 class _ListenerProc:
     def __init__(
-        self,
-        client_id: str,
-        host: str,
-        port: int,
-        listen_queue_topics: list,
-        allow_reconnect: bool,
-        max_reconnect_attempts: int,
-        reconnecting_time_wait: int,
+            self,
+            client_id: str,
+            host: str,
+            port: int,
+            listen_queue_topics: list,
+            allow_reconnect: bool,
+            max_reconnect_attempts: int,
+            reconnecting_time_wait: int,
     ):
         self.client_id = client_id
         self.role = "listener"
@@ -330,7 +330,8 @@ class _ListenerProc:
                 + str(e)
             )
 
-    def wrap_callback(self, base_topic: str, q: RedisQueue, cli):
+    @staticmethod
+    def wrap_callback(base_topic: str, q: RedisQueue, cli):
         async def wrapped_callback(msg):
             subject = msg.subject
             reply = msg.reply
@@ -384,14 +385,14 @@ class _ListenerProc:
 
 class _SenderProc:
     def __init__(
-        self,
-        client_id: str,
-        host: str,
-        port: int,
-        publish_queue_topics: list,
-        allow_reconnect: bool,
-        max_reconnect_attempts: int,
-        reconnecting_time_wait: int,
+            self,
+            client_id: str,
+            host: str,
+            port: int,
+            publish_queue_topics: list,
+            allow_reconnect: bool,
+            max_reconnect_attempts: int,
+            reconnecting_time_wait: int,
     ):
         self.client_id = client_id
         self.role = "publisher"
@@ -456,7 +457,7 @@ class _SenderProc:
                     try:
                         reply = message.pop("reply")
                         r = RedisResponse(reply)
-                        if reply == False:
+                        if reply is False:
                             try:
                                 await self.client.publish(topic, message.encode())
                                 return

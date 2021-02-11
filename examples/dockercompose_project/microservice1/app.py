@@ -21,10 +21,10 @@ msg = {
 
 
 @app.timer_task(interval=1)
-async def publish_pereodically():
+async def publish_periodically():
     for _ in range(10):
-        await app.aio_publish(msg, topic="some.publish.topic")
-        log(f"send message from pereodic task {msg}")
+        await app.publish(topic="some.publish.topic", message=msg)
+        log(f"send message from periodic task {msg}")
 
 
 if __name__ == "__main__":
