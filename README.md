@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
 ```
 
-### Serializers
+### Validators
 
 Validator allows you to validate incoming messages:
 

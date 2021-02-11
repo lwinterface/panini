@@ -49,7 +49,7 @@ class InitializingEventManagerError(BaseError):
     pass
 
 
-class InitializingSerializerError(BaseError):
+class InitializingValidatorError(BaseError):
     pass
 
 
