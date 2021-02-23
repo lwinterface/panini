@@ -10,6 +10,17 @@ from multiprocessing import Process, Queue, Event
 from ..utils import helper
 
 
+# Decorator for check, if logger exist
+def check_logger(func):
+    def wrapper(self, msg, **extra):
+        if self.logger is None:
+            raise Exception("Logger hasn't been connected")
+        else:
+            func(self, msg, **extra)
+
+    return wrapper
+
+
 class Logger:
     """Generate logging systems which can be simply customized by adding config/log_config.json file to app_root_path
     self.logger - use built in logging system but with improved interface for logging
@@ -18,37 +29,25 @@ class Logger:
     def __init__(self, logger: logging.Logger):
         self.logger = logger
 
+    @check_logger
     def debug(self, msg, **extra):
         self.logger.debug(msg, extra={"extra": extra})
 
+    @check_logger
     def info(self, msg, **extra):
         self.logger.info(msg, extra={"extra": extra})
 
+    @check_logger
     def warning(self, msg, **extra):
         self.logger.warning(msg, extra={"extra": extra})
 
+    @check_logger
     def error(self, msg, **extra):
         self.logger.error(msg, extra={"extra": extra})
 
+    @check_logger
     def exception(self, msg, **extra):
         self.logger.exception(msg, extra={"extra": extra})
-
-
-class EmptyLogger(Logger):
-    def debug(self, msg, **extra):
-        raise Exception("Logger hasn't been connected")
-
-    def info(self, msg, **extra):
-        raise Exception("Logger hasn't been connected")
-
-    def warning(self, msg, **extra):
-        raise Exception("Logger hasn't been connected")
-
-    def error(self, msg, **extra):
-        raise Exception("Logger hasn't been connected")
-
-    def exception(self, msg, **extra):
-        raise Exception("Logger hasn't been connected")
 
 
 def set_logger(
