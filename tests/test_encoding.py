@@ -45,8 +45,12 @@ def run_anthill():
     app.start()
 
 
-# if no @client.listen are registered - you can run .start() just simply in chain
-client = TestClient(run_anthill).start()
+client = TestClient(run_anthill)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_encoding():

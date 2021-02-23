@@ -22,7 +22,12 @@ def run_anthill():
     app.start()
 
 
-client = TestClient(run_anthill).start()
+client = TestClient(run_anthill)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_publish_request_timeout():

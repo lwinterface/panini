@@ -1,3 +1,5 @@
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path, Global
@@ -15,6 +17,7 @@ def run_anthill():
 
     @app.listen("foo")
     async def publish(topic, message):
+        app.logger.error("GOT HERE")
         await app.publish(topic="bar", message={"data": 1})
 
     app.start()
@@ -38,8 +41,9 @@ def bar_listener2(topic, message):
     global_object.another_variable = message["data"] + 1
 
 
-# should be placed after all @client.listen
-client.start()
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_publish_no_message():

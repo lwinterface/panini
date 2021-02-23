@@ -17,6 +17,7 @@ def run_anthill():
         port=4222,
         app_strategy="asyncio",
         web_server=True,
+        web_port=8084,
         logger_in_separate_process=False,
         logger_files_path=get_testing_logs_directory_path(),
     )
@@ -43,10 +44,13 @@ def run_anthill():
 
 
 # if we use raw HTTPSessionTestClient - we need to run anthill manually and wait for setup
-start_process(run_anthill)
-time.sleep(1)
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    start_process(run_anthill)
+    time.sleep(2)
 
-client = HTTPSessionTestClient()  # handles only http requests
+
+client = HTTPSessionTestClient(base_url="http://127.0.0.1:8084")  # handles only http requests
 
 
 @pytest.mark.parametrize("url", ["get", "rest/endpoint"])
