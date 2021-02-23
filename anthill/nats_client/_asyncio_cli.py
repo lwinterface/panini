@@ -178,7 +178,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         self,
         topic: str,
         message,
-        loop: asyncio.unix_events._UnixSelectorEventLoop,
+        loop,
         timeout: int = 10,
         unpack: bool = False,
     ):
