@@ -2,6 +2,7 @@ import os
 import time
 import asyncio
 import uuid
+import logging
 from aiohttp import web
 from .nats_client.nats_client import NATSClient
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
@@ -83,6 +84,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             else:
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
+            self._client_id = client_id
+            self.service_name = service_name
             self.nats_config = {
                 "host": host,
                 "port": port,
@@ -103,22 +106,16 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             self.subscribe_topics_and_callbacks = subscribe_topics_and_callbacks
 
             self.app_root_path = get_app_root_path()
-            if logger_required:
-                self.logger: logger.Logger = None
-                self.logger_process = None
-                self.log_stop_event = None
-                self.log_listener_queue = None
-                self.change_logger_config_listener_queue = None
-                logger_files_path = logger_files_path if logger_files_path else "logs"
-                self.set_logger(
-                    service_name,
-                    self.app_root_path,
-                    logger_files_path,
-                    logger_in_separate_process,
-                    client_id,
-                )
-            else:
-                self.logger = logger.EmptyLogger(None)
+
+            self.logger_required = logger_required
+            self.logger_in_separate_process = logger_in_separate_process
+            self.logger_files_path = logger_files_path if logger_files_path else "logs"
+            self.logger = logger.Logger(None)
+            self.logger_process = None
+            self.log_stop_event = None
+            self.log_listener_queue = None
+            self.change_logger_config_listener_queue = None
+
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
                 if web_app:
@@ -171,7 +168,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 in_separate_process,
                 client_id,
             )
-        self.logger = logger.get_logger(service_name)
+        self.logger.logger = logging.getLogger(service_name)
 
     def start(self):
         if self.http_server:
@@ -180,6 +177,15 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             start_thread(self._start())
 
     def _start(self):
+        if self.logger_required:
+            self.set_logger(
+                self.service_name,
+                self.app_root_path,
+                self.logger_files_path,
+                self.logger_in_separate_process,
+                self._client_id,
+            )
+
         try:
             topics_and_callbacks = self.SUBSCRIPTIONS
             topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
