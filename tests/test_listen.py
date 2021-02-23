@@ -1,3 +1,5 @@
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -24,8 +26,12 @@ def run_anthill():
     app.start()
 
 
-# if no @client.listen are registered - you can run .start() just simply in chain
-client = TestClient(run_anthill).start()
+client = TestClient(run_anthill)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_listen_simple_topic_with_response():

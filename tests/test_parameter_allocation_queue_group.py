@@ -44,12 +44,14 @@ def run_anthill2():
     app.start()
 
 
-# if you want to run more that 1 anthill app in testing, please use start_process function for each app
-start_process(run_anthill1)
-start_process(run_anthill2)
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    # if you want to run more that 1 anthill app in testing, please use start_process function for each app
+    start_process(run_anthill1)
+    start_process(run_anthill2)
+    # wait for anthill apps to setup
+    time.sleep(2)
 
-# wait for anthill apps to setup
-time.sleep(0.2)
 
 # after that, no need to run client.start(), because anthill already running
 client = TestClient()

@@ -1,5 +1,7 @@
 import time
 
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -35,7 +37,9 @@ def foo_listener(topic, message):
     global_object.another_variable += 2
 
 
-client.start()
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_timer_task():

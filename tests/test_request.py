@@ -1,3 +1,5 @@
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -30,8 +32,9 @@ def foo_listener(topic, message):
     return message
 
 
-# should be placed after all @client.listen
-client.start()
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_publish_request():

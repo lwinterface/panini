@@ -1,3 +1,5 @@
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -94,7 +96,9 @@ def publish_request_reply_listener(topic, message):
     global_object.additional_variable = message["test"] + 1
 
 
-client.start(is_sync=True)
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start(is_sync=True)
 
 
 def test_listen_simple_topic_with_response():

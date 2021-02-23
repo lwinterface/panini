@@ -2,6 +2,8 @@ import os
 import time
 import json
 
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -42,7 +44,12 @@ def run_anthill():
     app.start()
 
 
-client = TestClient(run_anthill).start(sleep_time=2, is_daemon=False)
+client = TestClient(run_anthill)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start(sleep_time=2, is_daemon=False)
 
 
 def test_simple_log():

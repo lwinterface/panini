@@ -1,3 +1,5 @@
+import pytest
+
 from anthill.test_client import TestClient
 from anthill import app as ant_app
 from .helper import get_testing_logs_directory_path
@@ -37,8 +39,9 @@ def bar_listener(topic, message):
     global_object.public_variable = message["data"] + 3
 
 
-# should be placed after all @client.listen
-client.start()
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start()
 
 
 def test_reply_to():

@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from aiohttp import web
 from anthill import app as ant_app
 from anthill.test_client import TestClient
@@ -14,6 +15,7 @@ def run_anthill():
         port=4222,
         app_strategy="asyncio",
         web_server=True,
+        web_port=8084,
         logger_in_separate_process=False,
         logger_files_path=get_testing_logs_directory_path(),
     )
@@ -33,7 +35,12 @@ def run_anthill():
 
 
 # provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
-client = TestClient(run_anthill=run_anthill, use_web_server=True).start(sleep_time=1)
+client = TestClient(run_anthill=run_anthill, use_web_server=True, base_web_server_url="http://127.0.0.1:8084")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def start_client():
+    client.start(sleep_time=3)
 
 
 def test_request_and_post():
