@@ -126,7 +126,7 @@ class TestClient:
 
         self.anthill_process = start_process(self.run_anthill, daemon=is_daemon)
         if sleep_time is None:
-            time.sleep(4) if is_sync else time.sleep(0.1)
+            time.sleep(6) if is_sync else time.sleep(1)
         else:
             time.sleep(sleep_time)
         return self
