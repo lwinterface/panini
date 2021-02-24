@@ -1,4 +1,4 @@
-# Anthill
+# Panini
 
 Easy to work [asyncio](https://docs.python.org/3/library/asyncio.html) library based on [NATS python client](https://github.com/nats-io/nats.py).
 
@@ -13,7 +13,7 @@ is coming..
 ## Installing
 
 ```bash
-pip install anthill
+pip install panini
 ```
 
 Additional requirements:
@@ -21,7 +21,7 @@ Additional requirements:
 
 ## Broker
 
-Run broker from directory that include file [docker-compose.yml](https://github.com/lwinterface/anthill/blob/master/docker-compose.yml). Command below:
+Run broker from directory that include file [docker-compose.yml](https://github.com/lwinterface/panini/blob/master/docker-compose.yml). Command below:
 ```bash
 docker-compose up
 ```
@@ -31,7 +31,7 @@ Stop broker:
 docker-compose down
 ```
 
-Note, for production we recommend running the broker with dockerized microservices. Example of dockerized Anthill project [here](https://github.com/lwinterface/anthill/examples/dockercompose_project)
+Note, for production we recommend running the broker with dockerized microservices. Example of dockerized panini project [here](https://github.com/lwinterface/panini/examples/dockercompose_project)
 
 ## Examples
 
@@ -41,9 +41,9 @@ For streams:
 
 ```python
 
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
         service_name='async_publish',
         host='127.0.0.1',
         port=4222,
@@ -57,19 +57,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(topic='some.publish.topic', message=msg)
+        await app.publish(subject='some.publish.subject', message=msg)
         log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(topic='some.publish.topic', message=msg)
+        await app.publish(subject='some.publish.subject', message=msg)
         log.warning(f'send message from periodic task {msg}')
 
 
-@app.listen('some.publish.topic')
-async def receive_messages(topic, message):
+@app.listen('some.publish.subject')
+async def receive_messages(subject, message):
     log.warning(f'got message {message}')
 
 if __name__ == "__main__":
@@ -90,9 +90,9 @@ It's all! Microservice launched
 Classical request-response:
 
 ```python
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='async_request',
     host='127.0.0.1',
     port=4222,
@@ -107,11 +107,11 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.request(topic='some.request.topic.123', message=msg)
+        result = await app.request(subject='some.request.subject.123', message=msg)
         log.warning(f'response: {result}')
 
-@app.listen('some.request.topic.123')
-async def request_listener(topic, message):
+@app.listen('some.request.subject.123')
+async def request_listener(subject, message):
     log.warning('request has been processed')
     return {'success': True, 'data': 'request has been processed'}
 
@@ -120,15 +120,15 @@ if __name__ == "__main__":
     app.start()
 ```
 
-### Request with response to another topic
+### Request with response to another subject
 
-A response of request is sent to the third topic. This method can significantly increase the throughput in comparison to classical request-response model
+A response of request is sent to the third subject. This method can significantly increase the throughput in comparison to classical request-response model
 
 ```python
 
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='async_reply_to',
     host='127.0.0.1',
     port=4222,
@@ -141,21 +141,21 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
        'key6': {'subkey1': '1', 'subkey2': 2, '3': 3, '4': 4, '5': 5}, 'key7': None}
 
 @app.task()
-async def request_to_another_topic():
+async def request_to_another_subject():
     for _ in range(10):
-        await app.publish(topic='some.topic.for.request.with.response.to.another.topic',
+        await app.publish(subject='some.subject.for.request.with.response.to.another.subject',
                           message=msg,
-                          reply_to='reply.to.topic')
+                          reply_to='reply.to.subject')
         log.warning('sent request')
 
-@app.listen('some.topic.for.request.with.response.to.another.topic')
-async def request_listener(topic, message):
+@app.listen('some.subject.for.request.with.response.to.another.subject')
+async def request_listener(subject, message):
     log.warning('request has been processed')
     return {'success': True, 'data': 'request has been processed'}
 
-@app.listen('reply.to.topic')
-async def another_topic_listener(topic, message):
-    log.warning(f'received response: {topic} {message}')
+@app.listen('reply.to.subject')
+async def another_subject_listener(subject, message):
+    log.warning(f'received response: {subject} {message}')
 
 
 if __name__ == "__main__":
@@ -169,10 +169,10 @@ Validator allows you to validate incoming messages:
 
 ```python
 
-from anthill import app as ant_app
-from anthill.validator import Validator, Field
+from panini import app as panini_app
+from panini.validator import Validator, Field
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='validators',
     host='127.0.0.1',
     port=4222,
@@ -205,17 +205,17 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(topic='some.publish.topic', message=msg)
+        await app.publish(subject='some.publish.subject', message=msg)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(topic='some.publish.topic', message=msg)
+        await app.publish(subject='some.publish.subject', message=msg)
 
 
-@app.listen('some.publish.topic', validator=TestValidator)
-async def topic_for_requests_listener(topic, message):
+@app.listen('some.publish.subject', validator=TestValidator)
+async def subject_for_requests_listener(subject, message):
     log.warning(f'got message {message}')
 
 
@@ -232,9 +232,9 @@ Also you can specify web
 ```python
 
 from aiohttp import web
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='async_web_server',
     host='127.0.0.1',
     port=4222,
@@ -280,9 +280,9 @@ Not familiar with asyncio? Try a synchronous implementation
 
 ```python
 
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
@@ -295,19 +295,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 @app.task()
 def publish():
     for _ in range(10):
-        app.publish_sync(topic='some.publish.topic', message=msg)
+        app.publish_sync(subject='some.publish.subject', message=msg)
         log.warning(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 def publish_periodically():
     for _ in range(10):
-        app.publish_sync(topic='some.publish.topic', message=msg)
+        app.publish_sync(subject='some.publish.subject', message=msg)
         log.warning(f'send message from periodic task {msg}')
 
 
-@app.listen('some.publish.topic')
-def topic_for_requests_listener(topic, message):
+@app.listen('some.publish.subject')
+def subject_for_requests_listener(subject, message):
     log.warning(f'got message {message}')
 
 if __name__ == "__main__":
@@ -317,15 +317,15 @@ Remember, a synchronous app_strategy many times slower than an asynchronous one.
 
 ## Logging
 
-Anthill creates a logfile folder in the project directory and stores all logs there. There are several ways to store your own logs there.
+Panini creates a logfile folder in the project directory and stores all logs there. There are several ways to store your own logs there.
 
 Logging from app object:
 
 ```python
-from anthill import app as ant_app
-from anthill.utils.logger import get_logger
+from panini import app as panini_app
+from panini.utils.logger import get_logger
 
-app = ant_app.App(  # create app
+app = panini_app.App(  # create app
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
@@ -345,7 +345,7 @@ log.exception("some exception log with automatic traceback logging")
 Separated (after setting at the startup - you can get any registered logger with get_logger funciton):
 
 ```python
-from anthill.utils.logger import get_logger
+from panini.utils.logger import get_logger
 
 log = get_logger('some_logger_name')
 
@@ -353,12 +353,12 @@ log.warning("some log")  # write log
 
 ```
 
-Anthill uses logging in separate process by default to speed-up app, but you can change it on the app creation:
+Panini uses logging in separate process by default to speed-up app, but you can change it on the app creation:
 
 ```python
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
@@ -368,9 +368,9 @@ app = ant_app.App(
 
 ```
 
-Anthill let you to choose between default (recommended by developers) and custom logger configurations. If you want to
+Panini let you to choose between default (recommended by developers) and custom logger configurations. If you want to
 use custom logging config - just create `config/log_config.json` file with custom logger configuration at the app root.
-Anthill will automatically detect and set it. After that you can get your logger with `get_logger` function.
+Panini will automatically detect and set it. After that you can get your logger with `get_logger` function.
 
 ## Testing
 
@@ -384,15 +384,15 @@ cd tests
  
 ## Contributing
 
-Welcome contributor! We are looking developers to make Anthill a great project.
+Welcome contributor! We are looking developers to make Panini a great project.
 
 Working on your first Pull Request? You can learn how from this *free* series, [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github).
 
 Here's how you can help:
 
-* suggest new updates or report about bug [here](https://github.com/lwinterface/anthill/issues)
-* review a [pull request](https://github.com/lwinterface/anthill/pulls)
-* fix an [issue](https://github.com/lwinterface/anthill/issues)
+* suggest new updates or report about bug [here](https://github.com/lwinterface/panini/issues)
+* review a [pull request](https://github.com/lwinterface/panini/pulls)
+* fix an [issue](https://github.com/lwinterface/panini/issues)
 * write a tutorial
 * always follow by [this](https://github.com/firstcontributions/first-contributions) guide for your contributions
 

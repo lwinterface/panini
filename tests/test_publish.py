@@ -16,9 +16,9 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def publish(topic, message):
+    async def publish(subject, message):
         app.logger.error("GOT HERE")
-        await app.publish(topic="bar", message={"data": 1})
+        await app.publish(subject="bar", message={"data": 1})
 
     app.start()
 
@@ -30,13 +30,13 @@ client = TestClient(run_panini)
 
 
 @client.listen("bar")
-def bar_listener1(topic, message):
+def bar_listener1(subject, message):
     print("Got response")
     global_object.public_variable = message["data"]
 
 
 @client.listen("bar")
-def bar_listener2(topic, message):
+def bar_listener2(subject, message):
     print("Got response")
     global_object.another_variable = message["data"] + 1
 

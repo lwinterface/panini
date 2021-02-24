@@ -10,11 +10,11 @@ class NATSClient(NATSClientInterface):
         client_id: str,
         host: str,
         port: int or str,
-        listen_topics_callbacks: dict,
+        listen_subjects_callbacks: dict,
         allow_reconnect: bool or None,
         max_reconnect_attempts: int = 60,
         reconnecting_time_wait: int = 2,
-        publish_topics=[],
+        publish_subjects=[],
         auth: dict = {},
         queue="",
         client_strategy="asyncio",
@@ -26,7 +26,7 @@ class NATSClient(NATSClientInterface):
         """
         :param client_id: instance identifier for NATS, str
         :param port: default '4333'
-        :param publish_topics: for example public.binance.order_book.BTC_USD
+        :param publish_subjects: for example public.binance.order_book.BTC_USD
         :param allow_reconnect: False if you want to stop instance when connection lost
         :param max_reconnect_attempts:
         :param reconnecting_time_wait:
@@ -38,11 +38,11 @@ class NATSClient(NATSClientInterface):
                 client_id,
                 host,
                 port,
-                listen_topics_callbacks,
+                listen_subjects_callbacks,
                 allow_reconnect,
                 max_reconnect_attempts,
                 reconnecting_time_wait,
-                publish_topics,
+                publish_subjects,
                 auth,
                 queue,
                 client_strategy,
@@ -56,11 +56,11 @@ class NATSClient(NATSClientInterface):
                 client_id,
                 host,
                 port,
-                listen_topics_callbacks,
+                listen_subjects_callbacks,
                 allow_reconnect,
                 max_reconnect_attempts,
                 reconnecting_time_wait,
-                publish_topics,
+                publish_subjects,
                 auth,
                 queue,
                 client_strategy,
@@ -75,27 +75,27 @@ class NATSClient(NATSClientInterface):
     def check_connection(self):
         self.connector.check_connection()
 
-    def subscribe_new_topic(self, topic: str, callback):
-        self.connector.subscribe_new_topic(topic, callback)
+    def subscribe_new_subject(self, subject: str, callback):
+        self.connector.subscribe_new_subject(subject, callback)
 
     def disconnect(self):
         self.connector.disconnect()
 
-    def publish_sync(self, topic: str, message: dict, reply_to: str = None):
-        self.connector.publish_sync(topic, message, reply_to)
+    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
+        self.connector.publish_sync(subject, message, reply_to)
 
     def request_sync(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
     ):
-        return self.connector.request_sync(topic, message, timeout, unpack)
+        return self.connector.request_sync(subject, message, timeout, unpack)
 
     async def publish(
-        self, topic: str, message: dict, reply_to: str = None, force: bool = False
+        self, subject: str, message: dict, reply_to: str = None, force: bool = False
     ):
-        await self.connector.publish(topic, message, reply_to, force)
+        await self.connector.publish(subject, message, reply_to, force)
 
     async def request(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
     ):
-        return await self.connector.request(topic, message, timeout, unpack)
+        return await self.connector.request(subject, message, timeout, unpack)
 

@@ -19,7 +19,7 @@ def run_panini():
 
     @app.task()
     async def publish():
-        await app.publish(topic="foo", message={"data": 1})
+        await app.publish(subject="foo", message={"data": 1})
 
     app.start()
 
@@ -31,7 +31,7 @@ client = TestClient(run_panini)
 
 
 @client.listen("foo")
-def foo_listener(topic, message):
+def foo_listener(subject, message):
     global_object.public_variable = message["data"] + 1
 
 

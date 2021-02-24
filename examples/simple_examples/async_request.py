@@ -24,12 +24,12 @@ msg = {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.request(topic="some.request.topic.123", message=msg)
+        result = await app.request(subject="some.request.subject.123", message=msg)
         log.warning(result)
 
 
-@app.listen("some.request.topic.123")
-async def topic_for_requests_listener(topic, message):
+@app.listen("some.request.subject.123")
+async def subject_for_requests_listener(subject, message):
     return {"success": True, "data": "request has been processed"}
 
 

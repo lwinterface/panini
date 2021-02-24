@@ -11,11 +11,11 @@ class NATSClientInterface(ABC):
         client_id: str,
         host: str,
         port: int or str,
-        listen_topics_callbacks: dict,
+        listen_subjects_callbacks: dict,
         allow_reconnect: bool or None,
         max_reconnect_attempts: int = 60,
         reconnecting_time_wait: int = 2,
-        publish_topics=[],
+        publish_subjects=[],
         auth: dict = {},
         queue="",
         client_strategy="asyncio",  # in_current_process' or in_separate_processes'
@@ -27,7 +27,7 @@ class NATSClientInterface(ABC):
         """
         :param client_id: instance identifier for NATS, str
         :param port: default '4333'
-        :param publish_topics: for example public.binance.order_book.BTC_USD
+        :param publish_subjects: for example public.binance.order_book.BTC_USD
         :param allow_reconnect: False if you want to stop instance when connection lost
         :param max_reconnect_attempts:
         :param reconnecting_time_wait:
@@ -40,8 +40,8 @@ class NATSClientInterface(ABC):
         self.port = port
         self.queue = queue
         self.auth = auth
-        self.listen_topics_callbacks = listen_topics_callbacks
-        self.publish_topics = publish_topics
+        self.listen_subjects_callbacks = listen_subjects_callbacks
+        self.publish_subjects = publish_subjects
         self.allow_reconnect = allow_reconnect
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnecting_time_wait = reconnecting_time_wait
@@ -59,7 +59,7 @@ class NATSClientInterface(ABC):
         pass
 
     @abstractmethod
-    def subscribe_new_topic(self, topic: str, callback):
+    def subscribe_new_subject(self, subject: str, callback):
         pass
 
     @abstractmethod
@@ -67,23 +67,23 @@ class NATSClientInterface(ABC):
         pass
 
     @abstractmethod
-    def publish_sync(self, topic: str, message: dict, reply_to: str = None):
+    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
         pass
 
     @abstractmethod
     def request_sync(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
     ):
         pass
 
     @abstractmethod
     async def publish(
-        self, topic: str, message: dict, reply_to: str = None, force: bool = False
+        self, subject: str, message: dict, reply_to: str = None, force: bool = False
     ):
         pass
 
     @abstractmethod
     async def request(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
     ):
         pass

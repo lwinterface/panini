@@ -10,8 +10,8 @@ app = panini_app.App(
 log = app.logger.log
 
 
-@app.listen("some.publish.topic")
-async def receive_messages(topic, message):
+@app.listen("some.publish.subject")
+async def receive_messages(subject, message):
     log(f"got message {message}")
 
 

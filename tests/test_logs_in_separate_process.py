@@ -27,17 +27,17 @@ def run_panini():
     log = app.logger
 
     @app.listen("foo")
-    async def topic_for_requests(topic, message):
-        log.info(f"Got topic: {topic}", message=message)
+    async def subject_for_requests(subject, message):
+        log.info(f"Got subject: {subject}", message=message)
         return {"success": True}
 
     @app.listen("foo.*.bar")
-    async def composite_topic_for_requests(topic, message):
-        log.error(f"Got topic: {topic}", message=message)
+    async def composite_subject_for_requests(subject, message):
+        log.error(f"Got subject: {subject}", message=message)
         return {"success": True}
 
     @app.listen("kill.logs")
-    async def kill_logs(topic, message):
+    async def kill_logs(subject, message):
         app.logger_process.kill()
         return {"success": True}
 
@@ -65,13 +65,13 @@ def test_simple_log():
         data = json.loads(f.read())
         assert data["name"] == "test_logs_in_separate_process"
         assert data["levelname"] == "INFO"
-        assert data["message"] == "Got topic: foo"
+        assert data["message"] == "Got subject: foo"
         assert data["extra"]["message"]["data"] == 1
 
 
-def test_listen_composite_topic_with_response():
-    topic = "foo.some.bar"
-    response = client.request(topic, {"data": 2})
+def test_listen_composite_subject_with_response():
+    subject = "foo.some.bar"
+    response = client.request(subject, {"data": 2})
     assert response["success"] is True
 
     # wait for log being written
@@ -80,7 +80,7 @@ def test_listen_composite_topic_with_response():
         data = json.loads(f.read())
         assert data["name"] == "test_logs_in_separate_process"
         assert data["levelname"] == "ERROR"
-        assert data["message"] == f"Got topic: {topic}"
+        assert data["message"] == f"Got subject: {subject}"
         assert data["extra"]["message"]["data"] == 2
 
 

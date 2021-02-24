@@ -23,19 +23,19 @@ msg = {
 @app.task()
 def publish():
     for _ in range(10):
-        app.publish_sync(topic="some.publish.topic", message=msg)
+        app.publish_sync(subject="some.publish.subject", message=msg)
         log.warning(f"send message {msg}")
 
 
 @app.timer_task(interval=2)
 def publish_periodically():
     for _ in range(10):
-        app.publish_sync(topic="some.publish.topic", message=msg)
+        app.publish_sync(subject="some.publish.subject", message=msg)
         log.warning(f"send message from periodic task {msg}")
 
 
-@app.listen("some.publish.topic")
-def topic_for_requests_listener(topic, message):
+@app.listen("some.publish.subject")
+def subject_for_requests_listener(subject, message):
     log.warning(f"got message {message}")
 
 

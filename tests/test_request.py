@@ -16,8 +16,8 @@ def run_panini():
     )
 
     @app.listen("start")
-    async def publish_request(topic, message):
-        response = await app.request(topic="foo", message={"data": 1})
+    async def publish_request(subject, message):
+        response = await app.request(subject="foo", message={"data": 1})
         return response
 
     app.start()
@@ -27,7 +27,7 @@ client = TestClient(run_panini)
 
 
 @client.listen("foo")
-def foo_listener(topic, message):
+def foo_listener(subject, message):
     message["data"] += 1
     return message
 

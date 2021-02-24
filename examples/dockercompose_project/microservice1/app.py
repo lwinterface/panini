@@ -23,7 +23,7 @@ msg = {
 @app.timer_task(interval=1)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(topic="some.publish.topic", message=msg)
+        await app.publish(subject="some.publish.subject", message=msg)
         log(f"send message from periodic task {msg}")
 
 

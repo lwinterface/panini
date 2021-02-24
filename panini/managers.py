@@ -18,54 +18,54 @@ class _EventManager:
     SUBSCRIPTIONS = {}
 
     def listen(
-        self, topic: list or str, validator: type = None, dynamic_subscription=False
+        self, subject: list or str, validator: type = None, dynamic_subscription=False
     ):
         def wrapper(function):
             function = _EventManager.wrap_function_by_validator(function, validator)
-            if type(topic) is list:
-                for t in topic:
+            if type(subject) is list:
+                for t in subject:
                     _EventManager._check_subscription(t)
                     _EventManager.SUBSCRIPTIONS[t].append(function)
             else:
-                _EventManager._check_subscription(topic)
-                _EventManager.SUBSCRIPTIONS[topic].append(function)
+                _EventManager._check_subscription(subject)
+                _EventManager.SUBSCRIPTIONS[subject].append(function)
             return function
 
         if dynamic_subscription:
-            if type(topic) is list:
-                for t in topic:
-                    self._subscribe(t, wrapper)
+            if type(subject) is list:
+                for s in subject:
+                    self._subscribe(s, wrapper)
             else:
-                self._subscribe(topic, wrapper)
+                self._subscribe(subject, wrapper)
         return wrapper
 
-    def _subscribe(self, topic, function):
+    def _subscribe(self, subject, function):
         if not hasattr(self, "connector") or self.connector.check_connection is False:
             raise NotReadyError(
                 "Something wrong. NATS client should be connected first"
             )
-        self.subscribe_new_topic(topic, function)
+        self.subscribe_new_subject(subject, function)
 
     @staticmethod
     def wrap_function_by_validator(function, validator):
-        def validate_message(topic, message):
+        def validate_message(subject, message):
             try:
                 if validator is not None:
                     message = validator.validated_message(message)
             except exceptions.ValidationError as se:
-                error = f"topic: {topic} error: {str(se)}"
+                error = f"subject: {subject} error: {str(se)}"
                 return {"success": False, "error": error}
             except Exception as e:
                 raise ValidationError(e)
             return message
 
-        def wrapper(topic, message):
-            message = validate_message(topic, message)
-            return function(topic, message)
+        def wrapper(subject, message):
+            message = validate_message(subject, message)
+            return function(subject, message)
 
-        async def wrapper_async(topic, message):
-            message = validate_message(topic, message)
-            return await function(topic, message)
+        async def wrapper_async(subject, message):
+            message = validate_message(subject, message)
+            return await function(subject, message)
 
         if asyncio.iscoroutinefunction(function):
             return wrapper_async

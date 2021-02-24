@@ -42,17 +42,17 @@ msg = {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(topic="some.publish.topic", message=msg)
+        await app.publish(subject="some.publish.subject", message=msg)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(topic="some.publish.topic", message=msg)
+        await app.publish(subject="some.publish.subject", message=msg)
 
 
-@app.listen("some.publish.topic", validator=TestValidator)
-async def requests_listener(topic, message):
+@app.listen("some.publish.subject", validator=TestValidator)
+async def requests_listener(subject, message):
     log.warning(f"got message {message}")
     await asyncio.sleep(1)
 

@@ -18,11 +18,11 @@ def run_panini():
     )
 
     @app.listen("start")
-    async def reply_to(topic, message):
-        await app.publish(message={"data": 1}, topic="foo", reply_to="bar")
+    async def reply_to(subject, message):
+        await app.publish(message={"data": 1}, subject="foo", reply_to="bar")
 
     @app.listen("foo")
-    async def helper(topic, message):
+    async def helper(subject, message):
         message["data"] += 2
         return message
 
@@ -35,7 +35,7 @@ global_object = Global()
 
 
 @client.listen("bar")
-def bar_listener(topic, message):
+def bar_listener(subject, message):
     global_object.public_variable = message["data"] + 3
 
 

@@ -18,55 +18,55 @@ def run_panini():
     )
 
     @app.listen("foo")
-    def topic_for_requests(topic, message):
+    def subject_for_requests(subject, message):
         return {"test": message["test"] + 1}
 
     @app.listen("foo.*.bar")
-    def composite_topic_for_requests(topic, message):
-        return {"test": topic + str(message["test"])}
+    def composite_subject_for_requests(subject, message):
+        return {"test": subject + str(message["test"])}
 
     @app.listen("publish")
-    def publish(topic, message):
+    def publish(subject, message):
         app.publish_sync(
-            topic="publish.listener", message={"test": message["test"] + 1}
+            subject="publish.listener", message={"test": message["test"] + 1}
         )
 
     @app.listen("publish.request")
-    def publish_request(topic, message):
+    def publish_request(subject, message):
         response = app.request_sync(
-            topic="publish.request.helper", message={"test": message["test"] + 1}
+            subject="publish.request.helper", message={"test": message["test"] + 1}
         )
         app.publish_sync(
-            topic="publish.request.listener", message={"test": response["test"] + 3}
+            subject="publish.request.listener", message={"test": response["test"] + 3}
         )
 
     @app.listen("publish.request.helper")
-    def publish_request_helper(topic, message):
+    def publish_request_helper(subject, message):
         return {"test": message["test"] + 2}
 
     @app.listen("publish.request.reply")
-    def publish_request(topic, message):
+    def publish_request(subject, message):
         app.publish_sync(
-            topic="publish.request.reply.helper",
+            subject="publish.request.reply.helper",
             message={"test": message["test"] + 1},
             reply_to="publish.request.reply.replier",
         )
 
     @app.listen("publish.request.reply.helper")
-    def publish_request_helper(topic, message):
+    def publish_request_helper(subject, message):
         res = {"test": message["test"] + 1}
         print("Send: ", res)
         return res
 
     @app.listen("publish.request.reply.replier")
-    def publish_request_helper(topic, message):
+    def publish_request_helper(subject, message):
         app.publish_sync(
-            topic="publish.request.reply.listener",
+            subject="publish.request.reply.listener",
             message={"test": message["test"] + 1},
         )
 
     @app.listen("finish")
-    def kill(topic, message):
+    def kill(subject, message):
         if hasattr(app.connector, "nats_listener_process"):
             app.connector.nats_listener_process.terminate()
         if hasattr(app.connector, "nats_sender_process"):
@@ -81,17 +81,17 @@ global_object = Global()
 
 
 @client.listen("publish.listener")
-def publish_listener(topic, message):
+def publish_listener(subject, message):
     global_object.public_variable = message["test"] + 1
 
 
 @client.listen("publish.request.listener")
-def publish_request_listener(topic, message):
+def publish_request_listener(subject, message):
     global_object.another_variable = message["test"] + 4
 
 
 @client.listen("publish.request.reply.listener")
-def publish_request_reply_listener(topic, message):
+def publish_request_reply_listener(subject, message):
     print("message: ", message)
     global_object.additional_variable = message["test"] + 1
 
@@ -101,18 +101,18 @@ def start_client():
     client.start(is_sync=True)
 
 
-def test_listen_simple_topic_with_response():
+def test_listen_simple_subject_with_response():
     response = client.request("foo", {"test": 1})
     assert response["test"] == 2
 
 
-def test_listen_composite_topic_with_response():
-    topic1 = "foo.some.bar"
-    topic2 = "foo.another.bar"
-    response1 = client.request(topic1, {"test": 1})
-    response2 = client.request(topic2, {"test": 2})
-    assert response1["test"] == f"{topic1}1"
-    assert response2["test"] == f"{topic2}2"
+def test_listen_composite_subject_with_response():
+    subject1 = "foo.some.bar"
+    subject2 = "foo.another.bar"
+    response1 = client.request(subject1, {"test": 1})
+    response2 = client.request(subject2, {"test": 2})
+    assert response1["test"] == f"{subject1}1"
+    assert response2["test"] == f"{subject2}2"
 
 
 def test_publish():

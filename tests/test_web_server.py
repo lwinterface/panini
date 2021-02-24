@@ -21,7 +21,7 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def foo(topic, message):
+    async def foo(subject, message):
         message["data"] += 1
         return message
 

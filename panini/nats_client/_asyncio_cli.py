@@ -22,11 +22,11 @@ class _AsyncioNATSClient(NATSClientInterface):
         client_id: str,
         host: str,
         port: int or str,
-        listen_topics_callbacks: dict,
+        listen_subjects_callbacks: dict,
         allow_reconnect: bool or None,
         max_reconnect_attempts: int = 60,
         reconnecting_time_wait: int = 2,
-        publish_topics=[],
+        publish_subjects=[],
         auth: dict = {},
         queue="",
         client_strategy="asyncio",  # in_current_process' or in_separate_processes'
@@ -39,11 +39,11 @@ class _AsyncioNATSClient(NATSClientInterface):
             client_id,
             host,
             port,
-            listen_topics_callbacks,
+            listen_subjects_callbacks,
             allow_reconnect,
             max_reconnect_attempts,
             reconnecting_time_wait,
-            publish_topics,
+            publish_subjects,
             auth,
             queue,
             client_strategy,
@@ -69,18 +69,18 @@ class _AsyncioNATSClient(NATSClientInterface):
         kwargs.update(self.auth)
         await self.client.connect(**kwargs)
         if self.client.is_connected:
-            listen_topics_callbacks = self.listen_topics_callbacks
-            for topic, callbacks in listen_topics_callbacks.items():
+            listen_subjects_callbacks = self.listen_subjects_callbacks
+            for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_topic(topic, callback)
+                    await self.aio_subscribe_new_subject(subject, callback)
 
-    def subscribe_new_topic(self, topic: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.aio_subscribe_new_topic(topic, callback))
+    def subscribe_new_subject(self, subject: str, callback: CoroutineType):
+        self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
-    async def aio_subscribe_new_topic(self, topic: str, callback: CoroutineType):
+    async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType):
         wrapped_callback = self.wrap_callback(callback, self)
         await self.client.subscribe(
-            topic,
+            subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
@@ -143,59 +143,59 @@ class _AsyncioNATSClient(NATSClientInterface):
                     isr_id = "Absent or Unknown"
                 isr_log.error(
                     "4SENDING RESPONSE error msg: " + str(e),
-                    topic=subject,
+                    subject=subject,
                     isr_id=isr_id,
                 )
 
         return wrapped_callback
 
-    def publish_sync(self, topic: str, message: dict, reply_to: str = None):
+    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
         if reply_to is not None:
-            return self._publish_request_with_reply_to_another_topic(
-                topic, message, reply_to
+            return self._publish_request_with_reply_to_another_subject(
+                subject, message, reply_to
             )
 
-        asyncio.ensure_future(self.publish(topic, message, reply_to))
+        asyncio.ensure_future(self.publish(subject, message, reply_to))
 
-    def _publish_request_with_reply_to_another_topic(
-        self, topic: str, message: dict, reply_to: str = None
+    def _publish_request_with_reply_to_another_subject(
+        self, subject: str, message: dict, reply_to: str = None
     ):
         asyncio.ensure_future(
-            self._aio_publish_request_with_reply_to_another_topic(
-                topic, message, reply_to
+            self._aio_publish_request_with_reply_to_another_subject(
+                subject, message, reply_to
             )
         )
 
-    def publish_from_another_thread(self, topic: str, message: dict):
-        self.loop.call_soon_threadsafe(self.publish, topic, message)
+    def publish_from_another_thread(self, subject: str, message: dict):
+        self.loop.call_soon_threadsafe(self.publish, subject, message)
 
     def request_sync(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = False
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = False
     ):
-        asyncio.ensure_future(self.request(topic, message, timeout, unpack))
+        asyncio.ensure_future(self.request(subject, message, timeout, unpack))
 
     def request_from_another_thread(
         self,
-        topic: str,
+        subject: str,
         message,
         loop,
         timeout: int = 10,
         unpack: bool = False,
     ):
-        coro = self.request(topic, message, timeout, unpack)
+        coro = self.request(subject, message, timeout, unpack)
         return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
 
     async def publish(
         self,
-        topic: str,
+        subject: str,
         message: dict,
         reply_to: str = None,
         force: bool = False,
         nonjson: bool = False,
     ):
         if reply_to is not None:
-            return await self._aio_publish_request_with_reply_to_another_topic(
-                topic, message, reply_to
+            return await self._aio_publish_request_with_reply_to_another_subject(
+                subject, message, reply_to
             )
 
         if type(message) is dict and nonjson is False:
@@ -206,12 +206,12 @@ class _AsyncioNATSClient(NATSClientInterface):
         elif type(message) is bytes:
             pass
         if not force:
-            await self.client.publish(topic, message)
+            await self.client.publish(subject, message)
         else:
             raise NotImplementedError
 
     async def request(
-        self, topic: str, message: dict, timeout: int = 10, unpack: bool = False
+        self, subject: str, message: dict, timeout: int = 10, unpack: bool = False
     ):
         if type(message) == str:
             message = json.loads(message)
@@ -222,15 +222,15 @@ class _AsyncioNATSClient(NATSClientInterface):
             else:
                 message = json.dumps(message)
             message = message.encode()
-            response = await self.client.request(topic, message, timeout=timeout)
+            response = await self.client.request(subject, message, timeout=timeout)
             response = response.data
             if unpack:
                 response = json.loads(response)
             return response
-        isr_log.error(f"Invalid message: {message}", topic=topic)
+        isr_log.error(f"Invalid message: {message}", subject=subject)
 
-    async def _aio_publish_request_with_reply_to_another_topic(
-        self, topic: str, message, reply_to: str = None
+    async def _aio_publish_request_with_reply_to_another_subject(
+        self, subject: str, message, reply_to: str = None
     ):
         message["isr-id"] = str(uuid.uuid4())[:10]
         if is_json(message):
@@ -239,7 +239,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         else:
             message["reply_to"] = reply_to
         message = json.dumps(message)
-        await self.publish(topic, message)
+        await self.publish(subject, message)
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())

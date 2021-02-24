@@ -20,7 +20,7 @@ def run_panini1():
     )
 
     @app.listen("foo")
-    async def foo(topic, message):
+    async def foo(subject, message):
         return {"data": 1}
 
     app.start()
@@ -38,7 +38,7 @@ def run_panini2():
     )
 
     @app.listen("foo")
-    async def foo(topic, message):
+    async def foo(subject, message):
         return {"data": 2}
 
     app.start()
@@ -57,12 +57,12 @@ def start_client():
 client = TestClient()
 
 
-def test_listen_topic_only_if_include_one_request():
+def test_listen_subject_only_if_include_one_request():
     response = client.request("foo", {})
     assert response["data"] in (1, 2)
 
 
-def test_listen_topic_only_if_include_multiple_requests():
+def test_listen_subject_only_if_include_multiple_requests():
     """Tests that some requests are handled by first panini app and some by second"""
     results = set(client.request("foo", {})["data"] for _ in range(10))
     assert 1 in results

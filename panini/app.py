@@ -35,10 +35,10 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         reconnecting_time_sleep: int = 2,
         app_strategy: str = "asyncio",
         num_of_queues: int = 1,  # only for sync strategy
-        subscribe_topics_and_callbacks: dict = None,
-        publish_topics: list = None,
+        subscribe_subjects_and_callbacks: dict = None,
+        publish_subjects: list = None,
         allocation_queue_group: str = "",
-        listen_topic_only_if_include: list = None,
+        listen_subject_only_if_include: list = None,
         web_server: bool = False,
         web_app: web.Application = None,
         web_host: str = None,
@@ -58,12 +58,12 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param reconnecting_time_sleep: pause between reconnection
         :param app_strategy: 'async' or 'sync'. We strongly recommend using 'async'.
         'sync' app_strategy works in many times slower and created only for lazy microservices.
-        :param subscribe_topics_and_callbacks: if you need to subscibe additional topics(except topics from event.py).
+        :param subscribe_subjects_and_callbacks: if you need to subscibe additional subjects(except subjects from event.py).
                                         This way doesn't support validators
-        :param publish_topics: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
+        :param publish_subjects: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
         :param allocation_queue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
-        :param listen_topic_only_if_include:   if not None, client will subscribe only to topics that include these key words
+        :param listen_subject_only_if_include:   if not None, client will subscribe only to subjects that include these key words
         :param web_app: web.Application:       custom aiohttp app that you can create separately from panini.
                             if you set this argument client will only run this aiohttp app without handeling
         :param web_host: Web application host
@@ -72,10 +72,10 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param logger_files_path: main path for logs
         :param logger_in_separate_process: use log in the same or in different process
         """
-        if publish_topics is None:
-            publish_topics = []
-        if subscribe_topics_and_callbacks is None:
-            subscribe_topics_and_callbacks = {}
+        if publish_subjects is None:
+            publish_subjects = []
+        if subscribe_subjects_and_callbacks is None:
+            subscribe_subjects_and_callbacks = {}
         if tasks is None:
             tasks = []
         try:
@@ -90,8 +90,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 "host": host,
                 "port": port,
                 "client_id": client_id,
-                "listen_topics_callbacks": None,
-                "publish_topics": publish_topics,
+                "listen_subjects_callbacks": None,
+                "publish_subjects": publish_subjects,
                 "allow_reconnect": reconnect,
                 "queue": allocation_queue_group,
                 "max_reconnect_attempts": max_reconnect_attempts,
@@ -102,8 +102,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                 self.nats_config["num_of_queues"] = num_of_queues
             self.tasks = tasks
             self.app_strategy = app_strategy
-            self.listen_topic_only_if_include = listen_topic_only_if_include
-            self.subscribe_topics_and_callbacks = subscribe_topics_and_callbacks
+            self.listen_subject_only_if_include = listen_subject_only_if_include
+            self.subscribe_subjects_and_callbacks = subscribe_subjects_and_callbacks
 
             self.app_root_path = get_app_root_path()
 
@@ -187,22 +187,22 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             )
 
         try:
-            topics_and_callbacks = self.SUBSCRIPTIONS
-            topics_and_callbacks.update(self.subscribe_topics_and_callbacks)
-            if self.listen_topic_only_if_include is not None:
-                for topic in topics_and_callbacks.copy():
+            subjects_and_callbacks = self.SUBSCRIPTIONS
+            subjects_and_callbacks.update(self.subscribe_subjects_and_callbacks)
+            if self.listen_subject_only_if_include is not None:
+                for subject in subjects_and_callbacks.copy():
                     success = False
-                    for topic_include in self.listen_topic_only_if_include:
-                        if topic_include in topic:
+                    for subject_include in self.listen_subject_only_if_include:
+                        if subject_include in subject:
                             success = True
                             break
                     if success is False:
-                        del topics_and_callbacks[topic]
+                        del subjects_and_callbacks[subject]
         except InitializingEventManagerError as e:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
 
-        self.nats_config["listen_topics_callbacks"] = topics_and_callbacks
+        self.nats_config["listen_subjects_callbacks"] = subjects_and_callbacks
 
         NATSClient.__init__(self, **self.nats_config)
 

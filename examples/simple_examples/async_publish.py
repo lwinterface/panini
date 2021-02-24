@@ -25,19 +25,19 @@ msg = {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(topic="some.publish.topic", message=msg)
+        await app.publish(subject="some.publish.subject", message=msg)
         log.warning(f"send message {msg}")
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(topic="some.publish.topic", message=msg)
+        await app.publish(subject="some.publish.subject", message=msg)
         log.warning(f"send message from periodic task {msg}")
 
 
-@app.listen("some.publish.topic")
-async def receive_messages(topic, message):
+@app.listen("some.publish.subject")
+async def receive_messages(subject, message):
     log.warning(f"got message {message}")
 
 

@@ -30,7 +30,7 @@ class RedisResponse(RedisQueue):
         super().__init__(name, namespace, host, port, db)
         self.waiting_between_check = waiting_between_check
 
-    def return_response_when_appeared(self, topic=None, timeout=30):
+    def return_response_when_appeared(self, subject=None, timeout=30):
         started = datetime.datetime.now().timestamp()
         while datetime.datetime.now().timestamp() - started < timeout:
             try:
@@ -41,5 +41,5 @@ class RedisResponse(RedisQueue):
             except Exception as e:
                 self.log.exception("RedisResponse error: ", str(e))
         msg = "Nats client timeout"
-        self.log.error(f"Waiting for response from redis ERROR: {msg}, topic: {topic}")
+        self.log.error(f"Waiting for response from redis ERROR: {msg}, subject: {subject}")
         raise ErrTimeout(msg)

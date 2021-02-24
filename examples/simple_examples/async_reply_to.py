@@ -21,25 +21,25 @@ msg = {
 
 
 @app.task()
-async def request_to_another_topic():
+async def request_to_another_subject():
     for _ in range(10):
         await app.publish(
-            topic="some.topic.for.request.with.response.to" ".another.topic",
+            subject="some.subject.for.request.with.response.to" ".another.subject",
             message=msg,
-            reply_to="reply.to.topic",
+            reply_to="reply.to.subject",
         )
         log.warning("sent request")
 
 
-@app.listen("some.topic.for.request.with.response.to.another.topic")
-async def topic_for_requests_listener(topic, message):
+@app.listen("some.subject.for.request.with.response.to.another.subject")
+async def subject_for_requests_listener(subject, message):
     log.warning("request has been processed")
     return {"success": True, "data": "request has been processed"}
 
 
-@app.listen("reply.to.topic")
-async def another_topic_listener(topic, message):
-    log.warning(f"received response: {topic} {message}")
+@app.listen("reply.to.subject")
+async def another_subject_listener(subject, message):
+    log.warning(f"received response: {subject} {message}")
 
 
 if __name__ == "__main__":
