@@ -45,7 +45,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         web_port: int = None,
         logger_required: bool = True,
         logger_files_path: str = None,
-        logger_in_separate_process: bool = True,
+        logger_in_separate_process: bool = False,
     ):
         """
         :param host: NATS broker host
