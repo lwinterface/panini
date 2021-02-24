@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import requests
 from pynats import NATSClient, NATSMessage
 
-from anthill.utils.helper import start_process
+from panini.utils.helper import start_process
 
 
 # Annotations for `Session.request()`
@@ -77,7 +77,7 @@ class TestClient:
 
     def __init__(
         self,
-        run_anthill: typing.Callable = lambda *args, **kwargs: None,
+        run_panini: typing.Callable = lambda *args, **kwargs: None,
         use_web_server: bool = False,
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
@@ -90,7 +90,7 @@ class TestClient:
             ]
         ),
     ):
-        self.run_anthill = run_anthill
+        self.run_panini = run_panini
         self.nats_client = NATSClient(
             url=base_nats_url,
             name=name,
@@ -101,12 +101,12 @@ class TestClient:
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
 
-        self.anthill_process = None
+        self.panini_process = None
 
     def __del__(self):
         self.nats_client.close()
-        if self.anthill_process:
-            self.anthill_process.kill()
+        if self.panini_process:
+            self.panini_process.kill()
         if hasattr(self, "http_session"):
             self.http_session.close()
 
@@ -124,7 +124,7 @@ class TestClient:
         if is_daemon is None:
             is_daemon = False if is_sync else True
 
-        self.anthill_process = start_process(self.run_anthill, daemon=is_daemon)
+        self.panini_process = start_process(self.run_panini, daemon=is_daemon)
         if sleep_time is None:
             time.sleep(6) if is_sync else time.sleep(1)
         else:

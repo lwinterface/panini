@@ -1,6 +1,6 @@
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name="ms_template_sync_by_lib",
     host="127.0.0.1",
     port=4222,

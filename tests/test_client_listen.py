@@ -1,7 +1,7 @@
-from anthill.test_client import TestClient
+from panini.test_client import TestClient
 from tests.helper import Global
 
-# no need to run anthill
+# no need to run panini
 client = TestClient()
 
 

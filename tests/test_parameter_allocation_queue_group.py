@@ -1,15 +1,15 @@
 import time
 import pytest
 
-from anthill.test_client import TestClient
-from anthill import app as ant_app
+from panini.test_client import TestClient
+from panini import app as panini_app
 from .helper import get_testing_logs_directory_path
 
-from anthill.utils.helper import start_process
+from panini.utils.helper import start_process
 
 
-def run_anthill1():
-    app = ant_app.App(
+def run_panini1():
+    app = panini_app.App(
         service_name="test_allocation_queue_group1",
         host="127.0.0.1",
         port=4222,
@@ -26,8 +26,8 @@ def run_anthill1():
     app.start()
 
 
-def run_anthill2():
-    app = ant_app.App(
+def run_panini2():
+    app = panini_app.App(
         service_name="test_allocation_queue_group2",
         host="127.0.0.1",
         port=4222,
@@ -46,14 +46,14 @@ def run_anthill2():
 
 @pytest.fixture(scope="session", autouse=True)
 def start_client():
-    # if you want to run more that 1 anthill app in testing, please use start_process function for each app
-    start_process(run_anthill1)
-    start_process(run_anthill2)
-    # wait for anthill apps to setup
+    # if you want to run more that 1 panini app in testing, please use start_process function for each app
+    start_process(run_panini1)
+    start_process(run_panini2)
+    # wait for panini apps to setup
     time.sleep(2)
 
 
-# after that, no need to run client.start(), because anthill already running
+# after that, no need to run client.start(), because panini already running
 client = TestClient()
 
 
@@ -63,7 +63,7 @@ def test_listen_topic_only_if_include_one_request():
 
 
 def test_listen_topic_only_if_include_multiple_requests():
-    """Tests that some requests are handled by first anthill app and some by second"""
+    """Tests that some requests are handled by first panini app and some by second"""
     results = set(client.request("foo", {})["data"] for _ in range(10))
     assert 1 in results
     assert 2 in results

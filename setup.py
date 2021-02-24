@@ -9,11 +9,11 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 
 setup(
-    name="anthill",
+    name="panini",
     version="0.1.0",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
-    url="https://github.com/lwinterface/anthill",
+    url="https://github.com/lwinterface/panini",
     author="Op Return SA, developer Andrew Volotskov",
     author_email="example@example.com",
     python_requires=">=3.8.2",
@@ -30,7 +30,7 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=["anthill"],
+    packages=["panini"],
     install_requires=[
         "aiohttp>=3.6.2",
         "aiohttp-cors>=0.7.0",
@@ -50,8 +50,8 @@ setup(
         "queue",
     ],
     project_urls={  # Optional
-        "Bug Reports": "https://github.com/pypa/anthill/issues",
-        "Source": "https://github.com/pypa/anthill/",
+        "Bug Reports": "https://github.com/pypa/panini/issues",
+        "Source": "https://github.com/pypa/panini/",
     },
     zip_safe=False,
 )

@@ -1,7 +1,7 @@
 from aiohttp import web
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name="async_web_server",
     host="127.0.0.1",
     port=4222,

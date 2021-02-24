@@ -1,8 +1,8 @@
 import asyncio
-from anthill import app as ant_app
-from anthill.validator import Validator, Field
+from panini import app as panini_app
+from panini.validator import Validator, Field
 
-app = ant_app.App(
+app = panini_app.App(
     service_name="validators",
     host="127.0.0.1",
     port=4222,

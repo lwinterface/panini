@@ -2,14 +2,14 @@ import json
 
 import pytest
 from aiohttp import web
-from anthill import app as ant_app
-from anthill.test_client import TestClient
+from panini import app as panini_app
+from panini.test_client import TestClient
 from .helper import get_testing_logs_directory_path
 
 
-def run_anthill():
+def run_panini():
 
-    app = ant_app.App(
+    app = panini_app.App(
         service_name="test_web_server",
         host="127.0.0.1",
         port=4222,
@@ -35,7 +35,7 @@ def run_anthill():
 
 
 # provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
-client = TestClient(run_anthill=run_anthill, use_web_server=True, base_web_server_url="http://127.0.0.1:8084")
+client = TestClient(run_panini=run_panini, use_web_server=True, base_web_server_url="http://127.0.0.1:8084")
 
 
 @pytest.fixture(scope="session", autouse=True)

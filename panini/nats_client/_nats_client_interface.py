@@ -33,7 +33,7 @@ class NATSClientInterface(ABC):
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-        self.log = get_logger("anthill")
+        self.log = get_logger("panini")
         self.connected = False
         self.client_id = client_id
         self.host = host

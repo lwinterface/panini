@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from anthill.test_client import TestClient
-from anthill import app as ant_app
+from panini.test_client import TestClient
+from panini import app as panini_app
 from .helper import get_testing_logs_directory_path
 
 testing_logs_directory_path = get_testing_logs_directory_path(
@@ -13,8 +13,8 @@ testing_logs_directory_path = get_testing_logs_directory_path(
 )
 
 
-def run_anthill():
-    app = ant_app.App(
+def run_panini():
+    app = panini_app.App(
         service_name="test_logs_in_separate_process",
         host="127.0.0.1",
         port=4222,
@@ -44,7 +44,7 @@ def run_anthill():
     app.start()
 
 
-client = TestClient(run_anthill)
+client = TestClient(run_panini)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -87,4 +87,4 @@ def test_listen_composite_topic_with_response():
 def test_kill_logs():
     response = client.request("kill.logs", {})
     assert response["success"] is True
-    client.anthill_process.kill()
+    client.panini_process.kill()

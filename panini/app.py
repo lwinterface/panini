@@ -27,7 +27,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         self,
         host: str,
         port: int,
-        service_name: str = "anthill_microservice_" + str(uuid.uuid4())[:10],
+        service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
         client_id: str = None,
         tasks: list = None,
         reconnect: bool = False,
@@ -64,7 +64,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
         :param allocation_queue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
         :param listen_topic_only_if_include:   if not None, client will subscribe only to topics that include these key words
-        :param web_app: web.Application:       custom aiohttp app that you can create separately from anthill.
+        :param web_app: web.Application:       custom aiohttp app that you can create separately from panini.
                             if you set this argument client will only run this aiohttp app without handeling
         :param web_host: Web application host
         :param web_port: Web application port

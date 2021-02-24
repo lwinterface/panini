@@ -3,15 +3,15 @@ import json
 
 import pytest
 from aiohttp import web
-from anthill import app as ant_app
-from anthill.test_client import HTTPSessionTestClient
-from anthill.utils.helper import start_process
+from panini import app as panini_app
+from panini.test_client import HTTPSessionTestClient
+from panini.utils.helper import start_process
 from .helper import get_testing_logs_directory_path
 
 
-def run_anthill():
+def run_panini():
 
-    app = ant_app.App(
+    app = panini_app.App(
         service_name="test_web_server_separately",
         host="127.0.0.1",
         port=4222,
@@ -43,10 +43,10 @@ def run_anthill():
     app.start()
 
 
-# if we use raw HTTPSessionTestClient - we need to run anthill manually and wait for setup
+# if we use raw HTTPSessionTestClient - we need to run panini manually and wait for setup
 @pytest.fixture(scope="session", autouse=True)
 def start_client():
-    start_process(run_anthill)
+    start_process(run_panini)
     time.sleep(2)
 
 

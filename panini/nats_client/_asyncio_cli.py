@@ -8,7 +8,7 @@ from ..exceptions import EventHandlingError
 from ..utils.logger import get_logger
 from ._nats_client_interface import NATSClientInterface
 
-log = get_logger("anthill")
+log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
 
 

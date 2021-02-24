@@ -168,7 +168,7 @@ def _configure_default_logging(name):
                 "formatter": "simple",
                 "stream": "ext://sys.stdout",
             },
-            "anthill": _basic_file_handler_skeleton("anthill"),
+            "panini": _basic_file_handler_skeleton("panini"),
             "inter_services_request": _basic_file_handler_skeleton(
                 "inter_services_request"
             ),
@@ -182,12 +182,12 @@ def _configure_default_logging(name):
             },
         },
         "loggers": {
-            "anthill": {"handlers": ["anthill"]},
+            "panini": {"handlers": ["panini"]},
             "inter_services_request": {"handlers": ["inter_services_request"]},
         },
         "root": {"level": "DEBUG", "handlers": ["console", "errors", "app"]},
     }
-    if name not in ("anthill", "inter_services_request"):
+    if name not in ("panini", "inter_services_request"):
         default_log_config["handlers"][name] = _basic_file_handler_skeleton(name)
 
         default_log_config["loggers"][name] = {"handlers": [name]}
@@ -205,7 +205,7 @@ def _configure_logging_with_custom_config_file(custom_config_path) -> dict:
                 "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
                 "format": "%(created)s %(name)s %(levelname)s %(processName)s %(threadName)s %(message)s %(extra)s",
             }
-        for basic_config in ("anthill", "inter_services_request"):
+        for basic_config in ("panini", "inter_services_request"):
             if basic_config not in config["handlers"]:
                 config["handlers"][basic_config] = _basic_file_handler_skeleton(
                     basic_config

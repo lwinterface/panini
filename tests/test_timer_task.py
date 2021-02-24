@@ -2,15 +2,15 @@ import time
 
 import pytest
 
-from anthill.test_client import TestClient
-from anthill import app as ant_app
+from panini.test_client import TestClient
+from panini import app as panini_app
 from .helper import get_testing_logs_directory_path
 
 from tests.helper import Global
 
 
-def run_anthill():
-    app = ant_app.App(
+def run_panini():
+    app = panini_app.App(
         service_name="test_timer_task",
         host="127.0.0.1",
         port=4222,
@@ -29,7 +29,7 @@ def run_anthill():
 global_object = Global()
 
 
-client = TestClient(run_anthill)
+client = TestClient(run_panini)
 
 
 @client.listen("foo")

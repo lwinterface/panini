@@ -1,7 +1,7 @@
-from anthill import app as ant_app
-from anthill.utils.logger import get_logger
+from panini import app as panini_app
+from panini.utils.logger import get_logger
 
-app = ant_app.App(
+app = panini_app.App(
     service_name="async_publish",
     host="127.0.0.1",
     port=4222,
