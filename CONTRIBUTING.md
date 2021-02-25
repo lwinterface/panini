@@ -2,7 +2,7 @@
 
 ### Welcome contributer! 
 
-First off, thank you for considering contributing to Anthill. We are looking for developers to make Anthill a great project.
+First off, thank you for considering contributing to Panini. We are looking for developers to make Panini a great project.
 
 ### Why you need to read your guidelines.
 
@@ -13,9 +13,9 @@ Working on your first Pull Request? You can learn how from this *free* series, [
 
 Well, how can you help:
 
-* suggest new updates [here](https://github.com/lwinterface/anthill/issues)
-* review a [pull request](https://github.com/lwinterface/anthill/pulls)
-* fix an [issue](https://github.com/lwinterface/anthill/issues)
+* suggest new updates [here](https://github.com/lwinterface/panini/issues)
+* review a [pull request](https://github.com/lwinterface/panini/pulls)
+* fix an [issue](https://github.com/lwinterface/panini/issues)
 * write a tutorial
 * always follow by [this](https://github.com/firstcontributions/first-contributions) guide for your contributions
 

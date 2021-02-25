@@ -4,9 +4,9 @@ Logger has 2 important parameters:
 - logger_files_path - the path to the log folder - can be absolute or relative (will relate to the app root path):
 
 ```python
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
@@ -22,9 +22,9 @@ log.info("some log")  # write log
 - in_separate_process - specify, if you want logger to be as separate process or to log in main process:
 
 ```python
-from anthill import app as ant_app
+from panini import app as panini_app
 
-app = ant_app.App(
+app = panini_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
@@ -65,10 +65,10 @@ In the logger we use simple default config, that fit majority of logger needs:
       "formatter": "simple",
       "stream": "ext://sys.stdout"
     },
-    "anthill": {
+    "panini": {
         "level": "DEBUG",
         "class": "logging.handlers.RotatingFileHandler",
-        "filename": "anthill.log",
+        "filename": "panini.log",
         "mode": "a",
         "formatter": "detailed",
         "maxBytes": 1000000,
@@ -113,9 +113,9 @@ In the logger we use simple default config, that fit majority of logger needs:
     }
   },
   "loggers": {
-    "anthill": {
+    "panini": {
       "handlers": [
-        "anthill"
+        "panini"
       ]
     },
     "inter_services_request": {
@@ -146,7 +146,7 @@ To do that - just create `config/log_config.json` file inside your app root path
 (see [log_config.json.sample](../../examples/simple_examples/config/log_config.json.sample))
 
 *Please notice, that some formatters and loggers will be added to your custom config,
-but not overwritten if they exist (such as anthill and inter_services_request loggers
+but not overwritten if they exist (such as panini and inter_services_request loggers
 and detailed formatter)*
 
 You can also provide some keywords to custom log config file, that will be replaced to
@@ -162,7 +162,7 @@ some meaningful data, such as:
 ## Additional logger information:
 If you want to be able to log some *extra* parameters, the things should be done as next:
 ```python
-from anthill.utils.logger import get_logger
+from panini.utils.logger import get_logger
 
 log = get_logger('app')
 

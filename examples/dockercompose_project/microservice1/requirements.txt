@@ -1,4 +1,4 @@
-anthill==0.1.0
+panini==0.1.1
 aiohttp==3.6.3
 aiohttp-cors==0.7.0
 async-timeout==3.0.1
