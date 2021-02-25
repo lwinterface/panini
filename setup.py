@@ -14,7 +14,7 @@ setup(
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     url="https://github.com/lwinterface/panini",
-    author="Op Return SA, developers: Andrew Volotskov",
+    author="Op Return SA, developers: Andrew Volotskov, Danylo Tiutiushkin",
     author_email="example@example.com",
     python_requires=">=3.8.2",
     license="MIT",
