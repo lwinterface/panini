@@ -3,15 +3,98 @@
 Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
 The framework allows you to work with NATS features and some additional logic using a simple interface:
-*  stream via NATS broker to some subject
-*  subscribe to subject
-*  request to subject
-*  receive a request from another microservice and return a response like HTTP request-response
-* create some additional periodic tasks
-* create HTTP endpoints and NATS endpoints alltogether in one microservice 
-*  built-in traffic balancing between instances of the microservice if you have high loads
- 
+*  easily initialize application
+```python
+from panini import app as panini_app
 
+app = panini_app.App(
+        service_name='your-microservice-name',
+        host='127.0.0.1',
+        port=4222,
+)
+```
+*  stream via NATS broker to some subject
+```python
+@app.task()
+async def publish():
+    while True:
+        msg = get_some_update()
+        await app.publish(subject='some.subject', message=msg)
+```
+*  subscribe to subject
+```python
+@app.listen('some.subject')
+async def subject_for_requests_listener(subject, message):
+    # handle incoming message
+```
+*  request to subject
+```python
+response = await app.request(subject='some.request.subject.123', message={'request':'params'})
+```
+* receive a request from another microservice and return a response like HTTP request-response
+```python
+@app.listen('some.request.subject.123')
+async def request_listener(subject, message):
+    # handle request
+    return {'success': True, 'data': 'request has been processed'}
+```
+* create some additional periodic tasks
+```python
+@app.timer_task(interval=2)
+async def your_periodic_task():
+    for _ in range(10):
+        await app.publish(subject='some.publish.subject', message={'some':'data'})
+```
+* sync & async
+```python
+@app.timer_task(interval=2)
+def your_periodic_task():
+    for _ in range(10):
+        app.publish_sync(subject='some.publish.subject', message={'some':'data'})
+```
+* create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints alltogether in one microservice
+```python
+from aiohttp import web
+
+@app.listen('some.publish.subject')
+async def subject_for_requests_listener(subject, message):
+    handle_incoming_message(subject, message)
+
+@app.http.get('/get')
+async def web_endpoint_listener(request):
+    """
+    Single HTTP endpoint
+    """
+    return web.Response(text="Hello, world")
+
+@app.http.view('/path/to/rest/endpoints')
+class MyView(web.View):
+    """
+    HTTP endpoints for REST schema
+    """
+    async def get(self):
+        request = self.request
+        return web.Response(text="Hello, REST world")
+
+    async def post(self):
+        request = self.request
+        return web.Response(text="Hello, REST world")
+
+```
+* built-in traffic balancing between instances of the microservice if you have high loads
+```python
+app = panini_app.App(
+        service_name='async_publish',
+        host='127.0.0.1',
+        allocation_queue_group='group24', 
+        port=4222,
+        app_strategy='asyncio',
+)
+
+# incoming traffic will be distributed among 
+# all microservers that are in the "group24"
+
+```
 What is NATS? 
 
 It is a high-performance messaging system written in Golang. It is straightforward to use, can run millions of messages per minute through one broker, and easily scales if you need many brokers. Has 48 well-known clients, 11 of which are supported by maintainers, 18 are contributors to the community. Delivery Guarantees, High Availability and Fault Tolerance. Anthill based on NATS python client.
@@ -402,7 +485,7 @@ Panini will automatically detect and set it. After that you can get your logger 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing
 
 To run tests (notice, that nats-server must be running for tests): 
-```angular2html
+```python
 cd tests
 ./run_test.sh
 ```
