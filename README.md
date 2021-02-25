@@ -1,11 +1,36 @@
 # Panini
+  
+Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
+ 
+The framework allows you to work with NATS features and some additional logic using a simple interface:
+*  stream via NATS broker to some subject
+*  subscribe to subject
+*  request to subject
+*  receive a request from another microservice and return a response like HTTP request-response
+* create some additional periodic tasks
+* create HTTP endpoints and NATS endpoints alltogether in one microservice 
+*  built-in traffic balancing between instances of the microservice if you have high loads
+ 
 
-Easy to work [asyncio](https://docs.python.org/3/library/asyncio.html) library based on [NATS python client](https://github.com/nats-io/nats.py).
+What is NATS? 
 
-The syntax makes it easy to create fast and flexible microservices that are ready to scale.
-Just try to follow the examples and you will see how uncomplicated it is.
+It is a high-performance messaging system written in Golang. It is straightforward to use, can run millions of messages per minute through one broker, and easily scales if you need many brokers. Has 48 well-known clients, 11 of which are supported by maintainers, 18 are contributors to the community. Delivery Guarantees, High Availability and Fault Tolerance. Anthill based on NATS python client.
+ 
 
-The project is inspired by the syntax of [faust](https://github.com/robinhood/faust), the wonderful python project based on [Kafka Streams](https://kafka.apache.org/documentation/streams/) 
+What is subject? 
+
+It is just a string of characters that form a name the publisher and subscriber can use to find each other. NATS supports wild card that dramatically increases the usability of subjects
+
+NATS support subject hierarchies and wildcards
+ 
+What is hierarchy? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
+
+What is wildcard? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
+
+ 
+Just try following the examples to see how easy it is.
+
+The project is inspired by faust, the wonderful python project based on Kafka Streams
 
 ## Documentation
 is coming..
