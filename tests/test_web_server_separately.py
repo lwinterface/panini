@@ -50,7 +50,9 @@ def start_client():
     time.sleep(2)
 
 
-client = HTTPSessionTestClient(base_url="http://127.0.0.1:8084")  # handles only http requests
+client = HTTPSessionTestClient(
+    base_url="http://127.0.0.1:8084"
+)  # handles only http requests
 
 
 @pytest.mark.parametrize("url", ["get", "rest/endpoint"])

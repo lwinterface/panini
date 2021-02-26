@@ -98,4 +98,3 @@ class NATSClient(NATSClientInterface):
         self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
     ):
         return await self.connector.request(subject, message, timeout, unpack)
-

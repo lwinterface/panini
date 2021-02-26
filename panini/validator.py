@@ -41,7 +41,10 @@ class Validator:
             raise ValidationError(error)
         if type(message) is list:
             if not cls.__many:
-                error = "Unexpected message, expected dict. You can set many=True in validator if you need to handle list of dicts"
+                error = (
+                    "Unexpected message, expected dict. "
+                    "You can set many=True in validator if you need to handle list of dicts"
+                )
                 _logger.error(error)
                 raise ValidationError(error)
             result = []
@@ -62,11 +65,11 @@ class Validator:
             if issubclass(field_obj.type.__base__, Validator):
                 field_obj.type.validated_message(message[key])
                 continue
-            if not key in message and not hasattr(field_obj, "default"):
+            if key not in message and not hasattr(field_obj, "default"):
                 error = f'Expected field "{key}" not found'
                 _logger.error(error)
                 raise ValidationError(error)
-            elif not key in message and hasattr(field_obj, "default"):
+            elif key not in message and hasattr(field_obj, "default"):
                 message[key] = field_obj.default
             if message[key] is None and field_obj.null is False:
                 error = f'Wrong value None for field "{key}" (because null=False)'
@@ -97,7 +100,7 @@ class Field:
         if (
             "default" in kwargs
             and kwargs["default"] is None
-            and ("null" not in kwargs or kwargs["null"] == False)
+            and ("null" not in kwargs or kwargs["null"] is False)
         ):
             error = "You have to set null=True first if you want to set default=None"
             _logger.error(error)
@@ -111,14 +114,14 @@ class Field:
             _logger.error(error)
             raise ValidationError(error)
         if not kwargs["type"] in [str, int, float, list, dict]:
-            all_clss = inspect.getmro(kwargs["type"])
-            if len(all_clss) > 1:
-                validator_name = all_clss[0].__name__
-                if not validator_name in _validators:
+            all_classes = inspect.getmro(kwargs["type"])
+            if len(all_classes) > 1:
+                validator_name = all_classes[0].__name__
+                if validator_name not in _validators:
                     error = f"Validator {validator_name} hasn't registered yet. You have to register in first"
                     _logger.error(error)
                     raise ValidationError(error)
-                parent_name = all_clss[1].__name__
+                parent_name = all_classes[1].__name__
                 if not parent_name == "Validator":
                     error = (
                         'You have to inherit your validator from the class "Validator"'
@@ -126,6 +129,9 @@ class Field:
                     _logger.error(error)
                     raise ValidationError(error)
             else:
-                error = f'Invalid data type {kwargs["type"]} for field. Only JSON data types or another Validator class allowed'
+                error = (
+                    f'Invalid data type {kwargs["type"]} for field.'
+                    f" Only JSON data types or another Validator class allowed"
+                )
                 _logger.error(error)
                 raise ValidationError(error)

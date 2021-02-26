@@ -1,4 +1,5 @@
 # Logger:
+*Please, notice, that logger starts to be functional only after app.start()*
 
 Logger has 2 important parameters:
 - logger_files_path - the path to the log folder - can be absolute or relative (will relate to the app root path):
@@ -7,10 +8,9 @@ Logger has 2 important parameters:
 from panini import app as panini_app
 
 app = panini_app.App(
-    service_name='ms_template_sync_by_lib',
+    service_name='logger_example',
     host='127.0.0.1',
     port=4222,
-    app_strategy='sync',
     logger_files_path='some/relative/path',  # put here absolute or relative path
 )
 
@@ -25,12 +25,11 @@ log.info("some log")  # write log
 from panini import app as panini_app
 
 app = panini_app.App(
-    service_name='ms_template_sync_by_lib',
+    service_name='logger_example',
     host='127.0.0.1',
     port=4222,
-    app_strategy='sync',
-    logger_in_separate_process=True,  # by default and more efficient
-    # logger_in_separate_process=False  # less efficient but more intuitive
+    logger_in_separate_process=False,  # by default, more intuitive
+    # logger_in_separate_process=True  # more efficient, but needs good understanding of process
 )
 
 log = app.logger

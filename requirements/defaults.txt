@@ -9,4 +9,3 @@ yarl==1.6.1
 nats-python==0.8.0
 pytest==6.2.1
 python-json-logger==2.0.1
-requests==2.25.1

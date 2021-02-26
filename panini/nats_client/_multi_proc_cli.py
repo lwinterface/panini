@@ -43,22 +43,22 @@ class _MultiProcNATSClient(NATSClientInterface):
     """
 
     def __init__(
-            self,
-            client_id: str,
-            host: str,
-            port: int or str,
-            listen_subjects_callbacks: dict,
-            allow_reconnect: bool or None,
-            max_reconnect_attempts: int = 60,
-            reconnecting_time_wait: int = 2,
-            publish_subjects=[],
-            auth: dict = {},
-            queue="",
-            client_strategy="asyncio",  # in_current_process' or in_separate_processes'
-            redis_host="127.0.0.1",
-            redis_port="6379",
-            pending_bytes_limit=65536 * 1024 * 10,
-            num_of_queues=1,
+        self,
+        client_id: str,
+        host: str,
+        port: int or str,
+        listen_subjects_callbacks: dict,
+        allow_reconnect: bool or None,
+        max_reconnect_attempts: int = 60,
+        reconnecting_time_wait: int = 2,
+        publish_subjects=[],
+        auth: dict = {},
+        queue="",
+        client_strategy="asyncio",  # in_current_process' or in_separate_processes'
+        redis_host="127.0.0.1",
+        redis_port="6379",
+        pending_bytes_limit=65536 * 1024 * 10,
+        num_of_queues=1,
     ):
         super().__init__(
             client_id,
@@ -81,7 +81,11 @@ class _MultiProcNATSClient(NATSClientInterface):
         # [self.listen_message_queue.update({subject: multiprocessing.Queue()}) for subject in self.listen_subjects_callbacks]
         [
             self.listen_message_queue.update(
-                {subject: RedisQueue(transform_subject(subject, self.client_id, "listener"))}
+                {
+                    subject: RedisQueue(
+                        transform_subject(subject, self.client_id, "listener")
+                    )
+                }
             )
             for subject in self.listen_subjects_callbacks
         ]
@@ -199,7 +203,9 @@ class _MultiProcNATSClient(NATSClientInterface):
 
     def publish_sync(self, subject: str, message, reply_to: str = None):
         if reply_to:
-            self._publish_request_with_reply_to_another_subject(subject, message, reply_to)
+            self._publish_request_with_reply_to_another_subject(
+                subject, message, reply_to
+            )
             return
 
         if type(message) == str and is_json(message):
@@ -211,7 +217,9 @@ class _MultiProcNATSClient(NATSClientInterface):
         #         redis_subject=transform_subject(subject))
         q.put(message)
 
-    def request_sync(self, subject: str, message, timeout: int = 10, unpack: bool = True):
+    def request_sync(
+        self, subject: str, message, timeout: int = 10, unpack: bool = True
+    ):
         try:
             reply = str(uuid.uuid4())[10:]
             redis_response = RedisResponse(reply)
@@ -241,7 +249,7 @@ class _MultiProcNATSClient(NATSClientInterface):
             )
 
     def _publish_request_with_reply_to_another_subject(
-            self, subject: str, message, reply_to: str = None
+        self, subject: str, message, reply_to: str = None
     ):
         if is_json(message):
             message = json.loads(message)
@@ -254,12 +262,12 @@ class _MultiProcNATSClient(NATSClientInterface):
         q.put(message)
 
     async def publish(
-            self, subject: str, message, reply_to: str = None, force: bool = None
+        self, subject: str, message, reply_to: str = None, force: bool = None
     ):
         self.publish_sync(subject, message, reply_to)
 
     async def request(
-            self, subject: str, message, timeout: int = 10, unpack: bool = True
+        self, subject: str, message, timeout: int = 10, unpack: bool = True
     ):
         return self.request_sync(subject, message, timeout=timeout, unpack=unpack)
 
@@ -272,14 +280,14 @@ class _MultiProcNATSClient(NATSClientInterface):
 
 class _ListenerProc:
     def __init__(
-            self,
-            client_id: str,
-            host: str,
-            port: int,
-            listen_queue_subjects: list,
-            allow_reconnect: bool,
-            max_reconnect_attempts: int,
-            reconnecting_time_wait: int,
+        self,
+        client_id: str,
+        host: str,
+        port: int,
+        listen_queue_subjects: list,
+        allow_reconnect: bool,
+        max_reconnect_attempts: int,
+        reconnecting_time_wait: int,
     ):
         self.client_id = client_id
         self.role = "listener"
@@ -338,7 +346,9 @@ class _ListenerProc:
             data = json.loads(msg.data.decode())
             if reply == "" and not "reply_to" in data:
                 q.put(
-                    json.dumps(dict(base_subject=base_subject, subject=subject, message=data))
+                    json.dumps(
+                        dict(base_subject=base_subject, subject=subject, message=data)
+                    )
                 )
             elif "reply_to" in data:
                 reply_to = data.pop("reply_to")
@@ -385,14 +395,14 @@ class _ListenerProc:
 
 class _SenderProc:
     def __init__(
-            self,
-            client_id: str,
-            host: str,
-            port: int,
-            publish_queue_subjects: list,
-            allow_reconnect: bool,
-            max_reconnect_attempts: int,
-            reconnecting_time_wait: int,
+        self,
+        client_id: str,
+        host: str,
+        port: int,
+        publish_queue_subjects: list,
+        allow_reconnect: bool,
+        max_reconnect_attempts: int,
+        reconnecting_time_wait: int,
     ):
         self.client_id = client_id
         self.role = "publisher"

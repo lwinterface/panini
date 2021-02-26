@@ -40,6 +40,8 @@ setup(
         "requests>=2.24.0",
         "six>=1.15.0",
         "yarl>=1.6.1",
+        "python-json-logger>=2.0.1",
+        "nats-python>=0.8.0",
     ],
     keywords=[
         "nats",

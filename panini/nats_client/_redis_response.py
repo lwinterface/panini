@@ -41,5 +41,7 @@ class RedisResponse(RedisQueue):
             except Exception as e:
                 self.log.exception("RedisResponse error: ", str(e))
         msg = "Nats client timeout"
-        self.log.error(f"Waiting for response from redis ERROR: {msg}, subject: {subject}")
+        self.log.error(
+            f"Waiting for response from redis ERROR: {msg}, subject: {subject}"
+        )
         raise ErrTimeout(msg)

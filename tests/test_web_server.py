@@ -35,7 +35,11 @@ def run_panini():
 
 
 # provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
-client = TestClient(run_panini=run_panini, use_web_server=True, base_web_server_url="http://127.0.0.1:8084")
+client = TestClient(
+    run_panini=run_panini,
+    use_web_server=True,
+    base_web_server_url="http://127.0.0.1:8084",
+)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -44,9 +44,9 @@ def start_client():
 
 def test_timer_task():
     assert global_object.another_variable == 0
-    client.wait(5)
+    client.wait(20)
     start_time = time.time()
-    assert global_object.another_variable == 10
-    client.wait(5)
-    assert global_object.another_variable == 20
+    assert global_object.another_variable == 40
+    client.wait(20)
+    assert global_object.another_variable == 80
     assert time.time() - start_time >= 0.4
