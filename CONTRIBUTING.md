@@ -1,6 +1,6 @@
 # Introduction
 
-### Welcome contributer! 
+### Welcome contributor! 
 
 First off, thank you for considering contributing to Panini. We are looking for developers to make Panini a great project.
 

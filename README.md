@@ -52,7 +52,7 @@ def your_periodic_task():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message={'some':'data'})
 ```
-* create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints alltogether in one microservice
+* create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints all together in one microservice
 ```python
 from aiohttp import web
 
@@ -92,7 +92,7 @@ app = panini_app.App(
 )
 
 # incoming traffic will be distributed among 
-# all microservers that are in the "group24"
+# all microservices that are in the "group24"
 
 ```
 What is NATS? 
@@ -102,13 +102,13 @@ It is a high-performance messaging system written in Golang. It is straightforwa
 
 What is subject? 
 
-It is just a string of characters that form a name the publisher and subscriber can use to find each other. NATS supports wild card that dramatically increases the usability of subjects
+It is just a string of characters that form a name the publisher and subscriber can use to find each other. NATS supports a wild card that dramatically increases the usability of subjects
 
 NATS support subject hierarchies and wildcards
  
-What is hierarchy? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
+What is a hierarchy? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
 
-What is wildcard? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
+What is a wildcard? [here](https://docs.nats.io/nats-concepts/subjects#subject-hierarchies)
 
  
 Just try following the examples to see how easy it is.
@@ -116,7 +116,7 @@ Just try following the examples to see how easy it is.
 The project is inspired by faust, the wonderful python project based on Kafka Streams
 
 ## Documentation
-is coming..
+is coming...
 
 ## Installing
 
@@ -129,7 +129,7 @@ Additional requirements:
 
 ## Broker
 
-Run broker from directory that include file [docker-compose.yml](https://github.com/lwinterface/panini/blob/master/docker-compose.yml). Command below:
+Run broker from a directory that include file [docker-compose.yml](https://github.com/lwinterface/panini/blob/master/docker-compose.yml). Command below:
 ```bash
 docker-compose up
 ```
@@ -335,7 +335,7 @@ if __name__ == "__main__":
 ### HTTP server
 
 You must specify web_server=True to activate the web server. [Aiohttp](https://docs.python.org/3/library/asyncio.html) is used as a web server. Accordingly, you can use their syntax.
-Also you can specify web
+Also, you can specify web
 
 ```python
 
@@ -450,7 +450,7 @@ log.exception("some exception log with automatic traceback logging")
 
 ```
 
-Separated (after setting at the startup - you can get any registered logger with get_logger funciton):
+Separated (after setting at the startup - you can get any registered logger with a get_logger function):
 
 ```python
 from panini.utils.logger import get_logger
