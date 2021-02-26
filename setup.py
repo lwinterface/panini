@@ -4,13 +4,13 @@ import pathlib
 
 here = pathlib.Path(__file__).parent.resolve()
 
-# Get the long description from the README file
-long_description = (here / "README.md").read_text(encoding="utf-8")
-
+# # Get the long description from the README file
+long_description = (here / "readme.txt").read_text(encoding="utf-8")
+#
 
 setup(
     name="panini",
-    version="0.1.0",
+    version="0.1.1",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     url="https://github.com/lwinterface/panini",
