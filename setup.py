@@ -1,18 +1,26 @@
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
-import pathlib
 
-here = pathlib.Path(__file__).parent.resolve()
+long_description = """
+Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
+The framework allows you to work with NATS features and some additional logic using a simple interface:
 
-# Get the long description from the README file
-long_description = (here / "README.md").read_text(encoding="utf-8")
+- publish messages to subject
+- subscribe to subject
+- request-response
+- request-response to another topic
+- tasks
+- periodic tasks
+- HTTP server
 
+"""
 
 setup(
     name="panini",
-    version="0.1.0",
+    version="0.1.2",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
+    long_description_content_type='text/x-rst',
     url="https://github.com/lwinterface/panini",
     author="Op Return SA, developers: Andrew Volotskov, Danylo Tiutiushkin",
     author_email="example@example.com",
@@ -30,7 +38,7 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=["panini"],
+    packages=['panini', 'panini.utils', 'panini.http_server', 'panini.nats_client'],
     install_requires=[
         "aiohttp>=3.6.2",
         "aiohttp-cors>=0.7.0",
@@ -45,15 +53,16 @@ setup(
     ],
     keywords=[
         "nats",
-        "microservice" "stream",
+        "microservice",
+        "stream",
         "processing",
         "asyncio",
         "distributed",
         "queue",
     ],
     project_urls={  # Optional
-        "Bug Reports": "https://github.com/pypa/panini/issues",
-        "Source": "https://github.com/pypa/panini/",
+        "Bug Reports": "https://github.com/lwinterface/panini/issues",
+        "Source": "https://github.com/lwinterface/panini/",
     },
     zip_safe=False,
 )
