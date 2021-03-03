@@ -78,6 +78,18 @@ class NATSClient(NATSClientInterface):
     def subscribe_new_subject(self, subject: str, callback):
         self.connector.subscribe_new_subject(subject, callback)
 
+    async def aio_subscribe_new_subject(self, topic: str, callback):
+        return await self.connector.aio_subscribe_new_subject(topic, callback)
+
+    async def aio_unsubscribe_subject(self, topic: str):
+        await self.connector.aio_unsubscribe_subject(topic)
+
+    def unsubscribe_ssid(self, ssid: int):
+        self.connector.unsubscribe_ssid(ssid)
+
+    async def aio_unsubscribe_ssid(self, ssid: int):
+        await self.connector.aio_unsubscribe_ssid(ssid)
+
     def disconnect(self):
         self.connector.disconnect()
 
