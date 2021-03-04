@@ -3,7 +3,7 @@
 Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
 The framework allows you to work with NATS features and some additional logic using a simple interface:
-*  easily initialize application
+*  easy to initialize application
 ```python
 from panini import app as panini_app
 
@@ -38,14 +38,14 @@ async def request_listener(subject, message):
     # handle request
     return {'success': True, 'data': 'request has been processed'}
 ```
-* create some additional periodic tasks
+* create periodic tasks
 ```python
 @app.timer_task(interval=2)
 async def your_periodic_task():
     for _ in range(10):
         await app.publish(subject='some.publish.subject', message={'some':'data'})
 ```
-* sync & async
+* synchronous and asynchronous endpoints
 ```python
 @app.timer_task(interval=2)
 def your_periodic_task():
@@ -125,7 +125,7 @@ pip install panini
 ```
 
 Additional requirements:
-- docker >= 19.03.8
+- python >= 3.8.2
 
 ## Broker
 
