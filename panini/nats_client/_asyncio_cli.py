@@ -73,12 +73,16 @@ class _AsyncioNATSClient(NATSClientInterface):
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_subject(subject, callback, init_subscribtion=True)
+                    await self.aio_subscribe_new_subject(
+                        subject, callback, init_subscribtion=True
+                    )
 
     def subscribe_new_subject(self, subject: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
-    async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType, init_subscribtion=False):
+    async def aio_subscribe_new_subject(
+        self, subject: str, callback: CoroutineType, init_subscribtion=False
+    ):
         wrapped_callback = self.wrap_callback(callback, self)
         ssid = await self.client.subscribe(
             subject,

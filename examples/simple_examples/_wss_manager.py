@@ -38,6 +38,7 @@ html = """
 </html>
 """
 
+
 class WSSManager:
     ssid_map = {}
 
@@ -49,51 +50,73 @@ class WSSManager:
             try:
                 msg = await client_ws_connection.receive()
                 body = json.loads(msg.data)
-                action = body['action'] if 'action' in body else 'subscribe'
-                if action not in ['subscribe', 'unsubscribe']:
+                action = body["action"] if "action" in body else "subscribe"
+                if action not in ["subscribe", "unsubscribe"]:
                     await client_ws_connection.send_str(
                         json.dumps(
-                            {"success": False, "data": f"The user has to specify action in message ('subscribe' or 'unsubscribe')"}))
-                if not 'subjects' in body:
-                    raise Exception('subjects required')
-                subjects = body['subjects']
-                if action == 'subscribe':
+                            {
+                                "success": False,
+                                "data": f"The user has to specify action in message ('subscribe' or 'unsubscribe')",
+                            }
+                        )
+                    )
+                if not "subjects" in body:
+                    raise Exception("subjects required")
+                subjects = body["subjects"]
+                if action == "subscribe":
                     for subject in subjects:
                         cb = await self._get_callback(client_ws_connection)
                         ssid = await self.app.aio_subscribe_new_subject(subject, cb)
                         if not subject in self.ssid_map:
                             self.ssid_map[subject] = []
                         self.ssid_map[subject].append(ssid)
-                    await client_ws_connection.send_str(json.dumps({"success": True, "data": f"Successfully connected to events: {str(subjects)[1:-1]}"}))
-                elif action == 'unsubscribe':
+                    await client_ws_connection.send_str(
+                        json.dumps(
+                            {
+                                "success": True,
+                                "data": f"Successfully connected to events: {str(subjects)[1:-1]}",
+                            }
+                        )
+                    )
+                elif action == "unsubscribe":
                     for subject in subjects:
                         if subject in self.ssid_map:
                             for ssid in self.ssid_map[subject]:
                                 await self.app.aio_unsubscribe_ssid(ssid)
                             await client_ws_connection.send_str(
                                 json.dumps(
-                                    {"success": True,
-                                     "data": f"Successfully unsubscribed from event: {subject}"}))
+                                    {
+                                        "success": True,
+                                        "data": f"Successfully unsubscribed from event: {subject}",
+                                    }
+                                )
+                            )
                         else:
                             await client_ws_connection.send_str(
                                 json.dumps(
-                                    {"success": False, "data": f"The user did not subscribe to event {subject}"}))
+                                    {
+                                        "success": False,
+                                        "data": f"The user did not subscribe to event {subject}",
+                                    }
+                                )
+                            )
             except Exception as e:
-                log.error(f'WSS error: {str(e)} connection_id {connection_id}')
+                log.error(f"WSS error: {str(e)} connection_id {connection_id}")
                 try:
                     await client_ws_connection.send_str(
-                        json.dumps(
-                            {"success": False, "error": str(e)}))
+                        json.dumps({"success": False, "error": str(e)})
+                    )
                 except Exception as e:
-                    log.error(str(e), level='error')
+                    log.error(str(e), level="error")
                 return client_ws_connection
 
     async def _get_callback(self, subscriber):
-        if hasattr(self, 'callback'):
+        if hasattr(self, "callback"):
             cb = self.callback
         else:
-            raise Exception('self.callback function for incoming messages expected')
+            raise Exception("self.callback function for incoming messages expected")
+
         async def wrapper(subject, message):
             return await cb(subscriber, subject, message)
-        return wrapper
 
+        return wrapper
