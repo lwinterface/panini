@@ -11,6 +11,24 @@ from ._nats_client_interface import NATSClientInterface
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
 
+class Msg:
+    """
+    Alternative implementation of the class with "context" field
+    """
+    __slots__ = ('subject', 'reply', 'data', 'sid', 'context')
+
+    def __init__(self, subject='', reply='', data=b'', sid=0):
+        self.subject = subject
+        self.reply = reply
+        self.data = data
+        self.sid = sid
+
+    def __repr__(self):
+        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
+            self.__class__.__name__,
+            self.subject,
+            self.reply,
+        )
 
 class _AsyncioNATSClient(NATSClientInterface):
     """
@@ -58,6 +76,7 @@ class _AsyncioNATSClient(NATSClientInterface):
     async def _establish_connection(self):
         # TODO: authorization
         self.client = NATS()
+        self.client.msg_class = Msg
         self.server = self.host + ":" + str(self.port)
         kwargs = {"servers": self.server, "loop": self.loop, "name": self.client_id}
         if self.allow_reconnect:
@@ -78,7 +97,8 @@ class _AsyncioNATSClient(NATSClientInterface):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
     async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType):
-        wrapped_callback = self.wrap_callback(callback, self)
+        # wrapped_callback = self.wrap_callback(callback, self)
+        wrapped_callback = RecievedMessageHandler(self.publish, callback)
         await self.client.subscribe(
             subject,
             queue=self.queue,
@@ -254,3 +274,48 @@ class _AsyncioNATSClient(NATSClientInterface):
             log.info("NATS Client status: CONNECTED")
             return True
         log.warning("NATS Client status: DISCONNECTED")
+
+class RecievedMessageHandler:
+    def __init__(self, publish_func, cb, parse_format='json'):
+        self.publish_func = publish_func
+        self.cb = cb
+        self.parse_format = parse_format
+        self.cb_is_async = asyncio.iscoroutinefunction(cb)
+
+    def __call__(self, msg):
+        asyncio.ensure_future(
+            self.call(msg)
+        )
+
+    async def call(self, msg):
+        # - Содержание сообщения парсится и ложится в msg.parsed_data. Может быть распарено как bytes, string, json, dataframe
+        self.parse_data(msg)
+        # - Определяется тип сообщения: “no_reply”, “reply”, “reply_to”
+        reply_to = self.match_msg_case(msg)
+        # - Если сообщение требует ответа, отоправляется ответ
+        if self.cb_is_async:
+            response = await self.cb(msg)
+        else:
+            response = self.cb(msg)
+        if reply_to is not None:
+            await self.publish_func(reply_to, response)
+
+    def parse_data(self, msg):
+        if self.parse_format == 'raw' or self.parse_format == bytes:
+            return
+        if self.parse_format == str:
+            msg.data = msg.data.decode()
+        elif self.parse_format == dict or self.parse_format == 'json':
+            msg.data = json.loads(msg.data.decode())
+        else:
+            raise Exception(f'{self.parse_format} is unsupported data format')
+
+    def match_msg_case(self, msg):
+        if not msg.reply == "":
+            reply_to = msg.reply
+        elif self.parse_format == 'json' and "reply_to" in msg.data:
+            reply_to = msg.data.pop("reply_to")
+        else:
+            reply_to = None
+        return reply_to
+
