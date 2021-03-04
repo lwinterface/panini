@@ -22,14 +22,24 @@ test_msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key
 
 manager = WSSManager(app)
 
-# @app.timer_task(interval=1)
-# async def publish_pereodically_for_test():
-#     test_msg['key3'] = random.random()
-#     await app.aio_publish(test_msg, subject='test.subject')
+@app.timer_task(interval=1)
+async def publish_pereodically_for_test():
+    test_msg['key3'] = random.random()
+    await app.publish('test.subject', test_msg)
 
 
 @app.http.get('/')
 async def web_endpoint_listener(request):
+    """
+    Web client to view NATS stream. Displays messages from subjects that an user is following
+
+    Example of request
+    subscribe:
+    {"subjects":["*.>"],"action":"subscribe"}
+    unsubscribe:
+    {"subjects":["*.>"],"action":"unsubscribe"}
+
+    """
     return web.Response(text=html, content_type='text/html')
 
 @app.http.get('/stream')
