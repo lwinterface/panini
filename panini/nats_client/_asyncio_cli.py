@@ -52,6 +52,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             pending_bytes_limit,
             num_of_queues,
         )
+        self.ssid_map = {}
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
 
@@ -72,19 +73,57 @@ class _AsyncioNATSClient(NATSClientInterface):
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_subject(subject, callback)
+                    await self.aio_subscribe_new_subject(
+                        subject, callback, init_subscribtion=True
+                    )
 
     def subscribe_new_subject(self, subject: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
-    async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType):
+    async def aio_subscribe_new_subject(
+        self, subject: str, callback: CoroutineType, init_subscribtion=False
+    ):
         wrapped_callback = self.wrap_callback(callback, self)
-        await self.client.subscribe(
+        ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
         )
+        if not subject in self.ssid_map:
+            self.ssid_map[subject] = []
+        self.ssid_map[subject].append(ssid)
+        if init_subscribtion is False:
+            if not subject in self.listen_subjects_callbacks:
+                self.listen_subjects_callbacks[subject] = []
+            self.listen_subjects_callbacks[subject].append(callback)
+        return ssid
+
+    def unsubscribe_subject(self, topic: str):
+        self.loop.run_until_complete(self.aio_unsubscribe_subject(topic))
+
+    async def aio_unsubscribe_subject(self, subject: str):
+        if not subject in self.ssid_map:
+            raise Exception(f"Subject {subject} hasn't been subscribed")
+        for ssid in self.ssid_map[subject]:
+            await self.client.unsubscribe(ssid)
+        del self.ssid_map[subject]
+        del self.listen_subjects_callbacks[subject]
+
+    async def aio_unsubscribe_ssid(self, ssid: int, topic: str = None):
+        if topic and not topic in self.ssid_map:
+            raise Exception(f"Subject {topic} hasn't been subscribed")
+        await self.client.unsubscribe(ssid)
+        if topic:
+            del self.ssid_map[topic]
+            del self.listen_subjects_callbacks[topic]
+        else:
+            for topic in self.ssid_map:
+                if ssid in self.ssid_map[topic]:
+                    self.ssid_map[topic].remove(ssid)
+            for topic in self.listen_subjects_callbacks:
+                if ssid in self.listen_subjects_callbacks[topic]:
+                    self.listen_subjects_callbacks[topic].remove(ssid)
 
     @staticmethod
     def wrap_callback(cb, cli):
