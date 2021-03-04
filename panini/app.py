@@ -3,7 +3,12 @@ import time
 import asyncio
 import uuid
 import logging
+from collections import namedtuple
+from typing import Type
+
 from aiohttp import web
+
+from .middleware import Middleware, middleware_dict_factory
 from .nats_client.nats_client import NATSClient
 from .managers import _EventManager, _TaskManager, _IntervalTaskManager
 from .http_server.http_server_app import HTTPServer
@@ -117,6 +122,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             self.log_stop_event = None
             self.log_listener_queue = None
             self.change_logger_config_listener_queue = None
+            self.middleware_list = []
 
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
@@ -249,3 +255,19 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
                     start_thread(task)
             if self.http_server:
                 self.http_server.start_server()
+
+    def add_middleware(self, middleware_cls: Type[Middleware], *args, **kwargs):
+        assert issubclass(middleware_cls, Middleware), "Each custom middleware class must be a subclass of Middleware"
+        MiddlewareTuple = namedtuple("MiddlewareTuple", ["cls", "args", "kwargs"])
+        self.middleware_list.append(MiddlewareTuple(middleware_cls, args, kwargs))
+
+    def get_middleware_dict(self) -> dict:
+        """Get middleware dictionary, that contains next info:
+        {
+            "send_publish_middleware": <list of middleware_func>,
+            "receive_publish_middleware": <list of middleware_func>,
+            "send_request_middleware": <list of middleware_func>,
+            "receive_request_middleware": <list of middleware_func>,
+        }
+        """
+        return middleware_dict_factory(self.middleware_list)
