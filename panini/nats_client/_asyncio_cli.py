@@ -100,76 +100,13 @@ class _AsyncioNATSClient(NATSClientInterface):
 
     async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType):
         # wrapped_callback = self.wrap_callback(callback, self)
-        wrapped_callback = RecievedMessageHandler(self.publish, callback)
+        wrapped_callback = _RecievedMessageHandler(self.publish, callback)
         await self.client.subscribe(
             subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
         )
-
-    @staticmethod
-    def wrap_callback(cb, cli):
-        async def wrapped_callback(msg):
-            async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
-                if asyncio.iscoroutinefunction(cb):
-
-                    async def coro_callback_with_reply(subject, data, reply_to, isr_id):
-                        try:
-                            reply = await cb(subject, data)
-                            if reply_to:
-                                if reply is None:
-                                    return
-                                reply["isr-id"] = isr_id
-                                reply = json.dumps(reply)
-                                await cli.publish(reply_to, reply)
-                        except EventHandlingError as e:
-                            if not "reply" in locals():
-                                reply = ""
-                            raise EventHandlingError(
-                                f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}"
-                            )
-
-                    try:
-                        asyncio.ensure_future(
-                            coro_callback_with_reply(subject, data, reply_to, isr_id)
-                        )
-                        # await coro_callback_with_reply(subject, data, reply_to, isr_id)
-                    except EventHandlingError as e:
-                        raise Exception(f"callback ERROR: {str(e)}")
-                else:
-                    return cb(subject, data)
-
-            async def handle_message_with_response(cli, data, reply_to, isr_id):
-                reply = await callback(cb, subject, data, reply_to, isr_id)
-                if reply:
-                    reply["isr-id"] = isr_id
-                    reply = json.dumps(reply)
-                    await cli.publish(reply_to, reply)
-
-            subject = msg.subject
-            raw_data = msg.data.decode()
-            data = json.loads(raw_data)
-            if not msg.reply == "":
-                reply_to = msg.reply
-            elif "reply_to" in data:
-                reply_to = data.pop("reply_to")
-            else:
-                await callback(cb, subject, data)
-                return
-            isr_id = data.get("isr-id", str(uuid.uuid4())[:10])
-            try:
-                await handle_message_with_response(cli, data, reply_to, isr_id)
-            except EventHandlingError as e:
-                if not "isr_id" in locals():
-                    isr_id = "Absent or Unknown"
-                isr_log.error(
-                    "4SENDING RESPONSE error msg: " + str(e),
-                    subject=subject,
-                    isr_id=isr_id,
-                )
-
-        return wrapped_callback
 
     def publish_sync(self, subject: str, message: dict, reply_to: str = None):
         if reply_to is not None:
@@ -277,7 +214,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             return True
         log.warning("NATS Client status: DISCONNECTED")
 
-class RecievedMessageHandler:
+class _RecievedMessageHandler:
     def __init__(self, publish_func, cb, parse_format='json'):
         self.publish_func = publish_func
         self.cb = cb
@@ -290,11 +227,8 @@ class RecievedMessageHandler:
         )
 
     async def call(self, msg):
-        # - Содержание сообщения парсится и ложится в msg.parsed_data. Может быть распарено как bytes, string, json, dataframe
         self.parse_data(msg)
-        # - Определяется тип сообщения: “no_reply”, “reply”, “reply_to”
         reply_to = self.match_msg_case(msg)
-        # - Если сообщение требует ответа, отоправляется ответ
         if self.cb_is_async:
             response = await self.cb(msg)
         else:
