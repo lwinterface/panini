@@ -16,7 +16,7 @@ def run_panini():
     )
 
     @app.listen("start")
-    async def publish_request(subject, message):
+    async def publish_request(msg):
         response = await app.request(subject="foo", message={"data": 1})
         return response
 

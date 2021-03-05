@@ -17,15 +17,15 @@ def run_panini():
     )
 
     @app.listen("start")
-    async def start(subject, message):
+    async def start(msg):
         return {"data": 1}
 
     @app.listen("foo")
-    async def foo(subject, message):
+    async def foo(msg):
         return {"data": 2}
 
     @app.listen("bar")
-    async def start(subject, message):
+    async def start(msg):
         return {"data": 3}
 
     app.start()

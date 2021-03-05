@@ -20,7 +20,7 @@ def run_panini1():
     )
 
     @app.listen("foo")
-    async def foo(subject, message):
+    async def foo(msg):
         return {"data": 1}
 
     app.start()
@@ -38,7 +38,7 @@ def run_panini2():
     )
 
     @app.listen("foo")
-    async def foo(subject, message):
+    async def foo(msg):
         return {"data": 2}
 
     app.start()

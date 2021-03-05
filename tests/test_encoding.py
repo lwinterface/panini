@@ -16,29 +16,29 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def foo(subject, message):
-        return {"len": len(message["data"])}
+    async def foo(msg):
+        return {"len": len(msg.data["data"])}
 
     @app.listen("helper.correct")
-    async def helper(subject, message):
+    async def helper(msg):
         return {"data": "data"}
 
     @app.listen("helper.incorrect")
-    async def helper(subject, message):
+    async def helper(msg):
         return "message not dict"
 
     @app.listen("message.incorrect")
-    async def bar(subject, message):
+    async def bar(msg):
         await app.request(subject="helper.correct", message="message not dict")
         return {"success": True}
 
     @app.listen("message.correct")
-    async def bar(subject, message):
+    async def bar(msg):
         await app.request(subject="helper.incorrect", message={"data": "some data"})
         return {"success": True}
 
     @app.listen("correct")
-    async def bar(subject, message):
+    async def bar(msg):
         await app.request(subject="helper.correct", message={"data": "some data"})
         return {"success": True}
 
