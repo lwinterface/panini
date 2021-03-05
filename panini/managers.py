@@ -1,13 +1,14 @@
 import time
 import asyncio
 from . import exceptions
-from typing import Callable
+from typing import Callable, Type
 from .exceptions import (
     ValidationError,
     InitializingIntervalTaskError,
     NotReadyError,
     BaseError,
 )
+from .middleware import Middleware
 
 
 class _EventManager:
@@ -155,4 +156,63 @@ class _IntervalTaskManager:
     @staticmethod
     def _check_timer_task(interval, interval_task):
         # TODO
+        pass
+
+
+class _MiddlewareManager:
+    MIDDLEWARE = {
+        "send_publish_middleware": [],
+        "listen_publish_middleware": [],
+        "send_request_middleware": [],
+        "listen_request_middleware": [],
+    }
+
+    def add_middleware(self, middleware_cls: Type[Middleware], *args, **kwargs):
+        assert issubclass(middleware_cls, Middleware), "Each custom middleware class must be a subclass of Middleware"
+        high_priority_functions = (
+            "send_publish",
+            "listen_publish",
+            "send_request",
+            "listen_request",
+        )
+        global_functions = ("send_any", "listen_any")
+
+        # check, that at least one function is implemented
+        assert any(
+            function in middleware_cls.__dict__
+            for function in high_priority_functions + global_functions
+        ), f"At least one of the following functions must be implemented: {high_priority_functions + global_functions}"
+
+        middleware_obj = middleware_cls(*args, **kwargs)
+        for function_name in high_priority_functions:
+            if function_name in middleware_cls.__dict__:
+                self.MIDDLEWARE[f"{function_name}_middleware"].append(
+                    getattr(middleware_obj, function_name)
+                )
+
+        if "send_any" in middleware_cls.__dict__:
+            if "send_publish" not in middleware_cls.__dict__:
+                self.MIDDLEWARE[f"send_publish_middleware"].append(
+                    middleware_obj.send_any
+                )
+
+            if "send_request" not in middleware_cls.__dict__:
+                self.MIDDLEWARE[f"send_request_middleware"].append(
+                    middleware_obj.send_any
+                )
+
+        if "listen_any" in middleware_cls.__dict__:
+            if "listen_publish" not in middleware_cls.__dict__:
+                self.MIDDLEWARE[f"listen_publish_middleware"].append(
+                    middleware_obj.listen_any
+                )
+
+            if "listen_request" not in middleware_cls.__dict__:
+                self.MIDDLEWARE[f"listen_request_middleware"].append(
+                    middleware_obj.listen_any
+                )
+
+    @staticmethod
+    def wrap_function_by_middleware():
+        # TODO: implement wrapping callbacks and functions
         pass

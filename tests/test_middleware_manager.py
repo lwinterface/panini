@@ -5,34 +5,34 @@ from panini.middleware import Middleware
 
 
 class FooMiddleware(Middleware):
-    def send_publish(self, msg, publish_func):
+    async def send_publish(self, subject: str, message, publish_func, **kwargs):
         """FooMiddleware send_publish"""  # docstring is important for testing
         pass  # implementation is not important for middleware_dict_factory
 
-    def receive_publish(self, msg, callback):
-        """FooMiddleware receive_publish"""
+    async def listen_publish(self, msg, callback):
+        """FooMiddleware listen_publish"""
         pass
 
-    def receive_request(self, msg, callback):
-        """FooMiddleware receive_request"""
+    async def listen_request(self, msg, callback):
+        """FooMiddleware listen_request"""
         pass
 
 
 class BarMiddleware(Middleware):
-    def send_request(self, msg, request_func):
+    def send_request(self, subject: str, message, request_func, **kwargs):
         """BarMiddleware send_request"""
         pass
 
-    def receive_publish(self, msg, callback):
-        """BarMiddleware receive_publish"""
+    def listen_publish(self, msg, callback):
+        """BarMiddleware listen_publish"""
         pass
 
-    def send_any(self, msg, send_func):
+    async def send_any(self, subject: str, message, send_func, **kwargs):
         """BarMiddleware send_any"""
         pass
 
-    def receive_any(self, msg, callback):
-        """BarMiddleware receive_any"""
+    async def listen_any(self, msg, callback):
+        """BarMiddleware listen_any"""
         pass
 
 
@@ -42,11 +42,11 @@ class FooBarMiddleware(Middleware):
         self.foo = foo
         self.bar = bar
 
-    def send_any(self, msg, send_func):
+    def send_any(self, subject: str, message, send_func, **kwargs):
         return f"""FooBarMiddleware send_any params: {self.foo}, {self.bar}"""  # here implemented for testing
 
-    def receive_request(self, msg, callback):
-        return f"""FooBarMiddleware receive_request params: {self.foo}, {self.bar}"""
+    def listen_request(self, msg, callback):
+        return f"""FooBarMiddleware listen_request params: {self.foo}, {self.bar}"""
 
 
 class IncorrectMiddleware:  # not inherited from Middleware
@@ -56,43 +56,50 @@ class IncorrectMiddleware:  # not inherited from Middleware
 
 @pytest.fixture
 def app():
-    return panini_app.App(
+    app = panini_app.App(
         service_name="test_middleware_dict_factory",
         host="127.0.0.1",
         port=4222,
     )
+    app.MIDDLEWARE = {
+        "send_publish_middleware": [],
+        "listen_publish_middleware": [],
+        "send_request_middleware": [],
+        "listen_request_middleware": [],
+    }
+    return app
 
 
 def test_foo_middleware(app):
     app.add_middleware(FooMiddleware)
-    middleware_dict = app.get_middleware_dict()
+    middleware_dict = app.MIDDLEWARE
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 0
-    assert len(middleware_dict["receive_publish_middleware"]) == 1
-    assert len(middleware_dict["receive_request_middleware"]) == 1
+    assert len(middleware_dict["listen_publish_middleware"]) == 1
+    assert len(middleware_dict["listen_request_middleware"]) == 1
 
     assert (
         middleware_dict["send_publish_middleware"][0].__doc__
         == "FooMiddleware send_publish"
     )
     assert (
-        middleware_dict["receive_publish_middleware"][0].__doc__
-        == "FooMiddleware receive_publish"
+        middleware_dict["listen_publish_middleware"][0].__doc__
+        == "FooMiddleware listen_publish"
     )
     assert (
-        middleware_dict["receive_request_middleware"][0].__doc__
-        == "FooMiddleware receive_request"
+        middleware_dict["listen_request_middleware"][0].__doc__
+        == "FooMiddleware listen_request"
     )
 
 
 def test_bar_middleware(app):
     app.add_middleware(BarMiddleware)
-    middleware_dict = app.get_middleware_dict()
+    middleware_dict = app.MIDDLEWARE
 
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 1
-    assert len(middleware_dict["receive_publish_middleware"]) == 1
-    assert len(middleware_dict["receive_request_middleware"]) == 1
+    assert len(middleware_dict["listen_publish_middleware"]) == 1
+    assert len(middleware_dict["listen_request_middleware"]) == 1
 
     assert (
         middleware_dict["send_publish_middleware"][0].__doc__
@@ -103,34 +110,34 @@ def test_bar_middleware(app):
         == "BarMiddleware send_request"
     )
     assert (
-        middleware_dict["receive_publish_middleware"][0].__doc__
-        == "BarMiddleware receive_publish"
+        middleware_dict["listen_publish_middleware"][0].__doc__
+        == "BarMiddleware listen_publish"
     )
     assert (
-        middleware_dict["receive_request_middleware"][0].__doc__
-        == "BarMiddleware receive_any"
+        middleware_dict["listen_request_middleware"][0].__doc__
+        == "BarMiddleware listen_any"
     )
 
 
 def test_foo_bar_middleware(app):
     app.add_middleware(FooBarMiddleware, "foo", bar="bar")
-    middleware_dict = app.get_middleware_dict()
+    middleware_dict = app.MIDDLEWARE
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 1
-    assert len(middleware_dict["receive_publish_middleware"]) == 0
-    assert len(middleware_dict["receive_request_middleware"]) == 1
+    assert len(middleware_dict["listen_publish_middleware"]) == 0
+    assert len(middleware_dict["listen_request_middleware"]) == 1
 
     assert (
-        middleware_dict["send_publish_middleware"][0](None, None)
+        middleware_dict["send_publish_middleware"][0](None, None, None)
         == "FooBarMiddleware send_any params: foo, bar"
     )
     assert (
-        middleware_dict["send_request_middleware"][0](None, None)
+        middleware_dict["send_request_middleware"][0](None, None, None)
         == "FooBarMiddleware send_any params: foo, bar"
     )
     assert (
-        middleware_dict["receive_request_middleware"][0](None, None)
-        == "FooBarMiddleware receive_request "
+        middleware_dict["listen_request_middleware"][0](None, None)
+        == "FooBarMiddleware listen_request "
         "params: foo, bar"
     )
 
@@ -139,11 +146,11 @@ def test_multiple_middlewares_order(app):
     app.add_middleware(FooMiddleware)
     app.add_middleware(BarMiddleware)
     app.add_middleware(FooBarMiddleware, "foo", bar="bar")
-    middleware_dict = app.get_middleware_dict()
+    middleware_dict = app.MIDDLEWARE
     assert len(middleware_dict["send_publish_middleware"]) == 3
     assert len(middleware_dict["send_request_middleware"]) == 2
-    assert len(middleware_dict["receive_publish_middleware"]) == 2
-    assert len(middleware_dict["receive_request_middleware"]) == 3
+    assert len(middleware_dict["listen_publish_middleware"]) == 2
+    assert len(middleware_dict["listen_request_middleware"]) == 3
 
     assert middleware_dict["send_publish_middleware"][0].__doc__.startswith(
         "FooMiddleware"
@@ -151,31 +158,31 @@ def test_multiple_middlewares_order(app):
     assert middleware_dict["send_publish_middleware"][1].__doc__.startswith(
         "BarMiddleware"
     )
-    assert middleware_dict["send_publish_middleware"][2](None, None).startswith(
+    assert middleware_dict["send_publish_middleware"][2](None, None, None).startswith(
         "FooBarMiddleware"
     )
 
     assert middleware_dict["send_request_middleware"][0].__doc__.startswith(
         "BarMiddleware"
     )
-    assert middleware_dict["send_request_middleware"][1](None, None).startswith(
+    assert middleware_dict["send_request_middleware"][1](None, None, None).startswith(
         "FooBarMiddleware"
     )
 
-    assert middleware_dict["receive_publish_middleware"][0].__doc__.startswith(
+    assert middleware_dict["listen_publish_middleware"][0].__doc__.startswith(
         "FooMiddleware"
     )
-    assert middleware_dict["receive_publish_middleware"][1].__doc__.startswith(
+    assert middleware_dict["listen_publish_middleware"][1].__doc__.startswith(
         "BarMiddleware"
     )
 
-    assert middleware_dict["receive_request_middleware"][0].__doc__.startswith(
+    assert middleware_dict["listen_request_middleware"][0].__doc__.startswith(
         "FooMiddleware"
     )
-    assert middleware_dict["receive_request_middleware"][1].__doc__.startswith(
+    assert middleware_dict["listen_request_middleware"][1].__doc__.startswith(
         "BarMiddleware"
     )
-    assert middleware_dict["receive_request_middleware"][2](None, None).startswith(
+    assert middleware_dict["listen_request_middleware"][2](None, None).startswith(
         "FooBarMiddleware"
     )
 
@@ -188,4 +195,3 @@ def test_incorrect_middlewares(app):
         app.add_middleware(
             FooBarMiddleware
         )  # not enough parameters for FooBarMiddleware __init__() method
-        app.get_middleware_dict()
