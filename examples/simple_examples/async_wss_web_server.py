@@ -65,9 +65,9 @@ async def web_endpoint_listener(request):
     return ws
 
 
-async def incoming_messages_callback(subscriber, subject, message, **kwargs):
+async def incoming_messages_callback(subscriber, msg, **kwargs):
     try:
-        await subscriber.send_str(json.dumps({"subject": subject, "data": message}))
+        await subscriber.send_str(json.dumps({"subject": msg.subject, "data": msg.data}))
     except Exception as e:
         log.error(f"error: {str(e)}")
 

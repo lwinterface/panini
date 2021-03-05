@@ -52,6 +52,13 @@ def your_periodic_task():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message={'some':'data'})
 ```
+* accept different datatypes: dict, str, bytes
+```python
+@app.timer_task(interval=2)
+def your_periodic_task():
+    for _ in range(10):
+        app.publish_sync(subject='some.publish.subject', message={'some':'data'})
+```
 * create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints all together in one microservice
 ```python
 from aiohttp import web

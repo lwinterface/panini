@@ -116,7 +116,7 @@ class WSSManager:
         else:
             raise Exception("self.callback function for incoming messages expected")
 
-        async def wrapper(subject, message):
-            return await cb(subscriber, subject, message)
+        async def wrapper(msg):
+            return await cb(subscriber, msg)
 
         return wrapper
