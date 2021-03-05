@@ -79,7 +79,6 @@ class _MultiProcNATSClient(NATSClientInterface):
             num_of_queues,
         )
         self.listen_message_queue = {}
-        # [self.listen_message_queue.update({subject: multiprocessing.Queue()}) for subject in self.listen_subjects_callbacks]
         [
             self.listen_message_queue.update(
                 {
@@ -181,7 +180,6 @@ class _MultiProcNATSClient(NATSClientInterface):
                 base_subject = new_msg.pop("base_subject")
                 if "reply" in new_msg:
                     reply_key = new_msg["reply"]
-                    # isr_log.info(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_subject}")
                 new_msg_obj = Msg(**new_msg)
                 callbacks = self.listen_subjects_callbacks[base_subject]
                 for callback in callbacks:
@@ -192,7 +190,6 @@ class _MultiProcNATSClient(NATSClientInterface):
                             reply = json.dumps(reply)
                         else:
                             reply = str(reply)
-                        # isr_log.info(f"4SENDING RESPONSE msg: {new_msg['message']} {base_subject}")
                         RedisResponse(reply_key).put(str(reply))
             except Empty:
                 pass
@@ -216,8 +213,6 @@ class _MultiProcNATSClient(NATSClientInterface):
         message["subject"] = subject
         message = json.dumps(message)
         q = self.publish_queue_circle.__next__()
-        # isr_log.info(f'1BPUBLISH', subject=subject,
-        #         redis_subject=transform_subject(subject))
         q.put(message)
 
     def request_sync(
@@ -233,13 +228,10 @@ class _MultiProcNATSClient(NATSClientInterface):
                 message = json.loads(message)
                 message["reply"] = reply
                 message["timeout"] = timeout
-            # isr_log.info(f'1BRREQUEST reply {reply} timeout {timeout}', phase='request', subject=subject,
-            # redis_subject=transform_subject(subject))
             self.publish_sync(subject, message)
             response = redis_response.return_response_when_appeared(
                 subject=reply, timeout=timeout
             )
-            # isr_log.info(f'6ARREQUEST reply {reply}', phase='response', subject=subject)
             if unpack:
                 return json.loads(response.decode())
             return response.decode()
@@ -483,11 +475,9 @@ class _SenderProc:
                         timeout = message.pop("timeout", 10)
                         isr_id = reply
                         message = register_msg(message, isr_id)
-                        # isr_log(f'2REQUEST: isr_id: {isr_id} message: {message} subject: {subject} timeout {timeout}', phase='request')#, subject=subject, subject=redis_subject)
                         response = await self.client.request(
                             subject, message.encode(), timeout=timeout
                         )
-                        # isr_log(f"5RESPONSE: isr_id: {isr_id} subject: {subject} response:"+str(response.data[:300]), phase='response')#, subject=subject, subject=redis_subject)
                         r.put(response.data)
                     except Exception as e:
                         if "isr_log" in locals():
@@ -499,8 +489,6 @@ class _SenderProc:
                             slack=True,
                         )
                 else:
-                    # isr_log(f'2PUBLISH: message: {message} subject: {subject} ')
-                    # self.loop.call_soon(self.client.publish(subject, json.dumps(message).encode()))
                     await self.client.publish(subject, json.dumps(message).encode())
             else:
                 isr_log.error(

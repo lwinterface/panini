@@ -99,7 +99,6 @@ class _AsyncioNATSClient(NATSClientInterface):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
     async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType):
-        # wrapped_callback = self.wrap_callback(callback, self)
         wrapped_callback = _RecievedMessageHandler(self.publish, callback)
         await self.client.subscribe(
             subject,
