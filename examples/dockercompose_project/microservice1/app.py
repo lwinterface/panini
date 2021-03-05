@@ -1,13 +1,14 @@
+import os
 from panini import app as panini_app
 
 app = panini_app.App(
     service_name="microservice1",
-    host="127.0.0.1",
+    host="nats-server" if 'HOSTNAME' in os.environ else "127.0.0.1",
     port=4222,
     app_strategy="asyncio",
 )
 
-log = app.logger.log
+log = app.logger
 
 msg = {
     "key1": "value1",
@@ -24,7 +25,7 @@ msg = {
 async def publish_periodically():
     for _ in range(10):
         await app.publish(subject="some.publish.subject", message=msg)
-        log(f"send message from periodic task {msg}")
+        log.warning(f"send message from periodic task {msg}")
 
 
 if __name__ == "__main__":
