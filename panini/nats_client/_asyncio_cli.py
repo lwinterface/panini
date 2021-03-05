@@ -180,7 +180,8 @@ class _AsyncioNATSClient(NATSClientInterface):
         unpack: bool = False,
     ):
         coro = self.request(subject, message, timeout, unpack)
-        return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
+        # return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
+        raise NotImplementedError
 
     async def publish(
         self,
