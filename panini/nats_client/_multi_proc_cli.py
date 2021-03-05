@@ -8,6 +8,7 @@ from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ._nats_client_interface import NATSClientInterface
+from ._asyncio_cli import Msg
 from ..utils.logger import get_logger
 from ..utils.helper import (
     start_thread,
@@ -179,12 +180,14 @@ class _MultiProcNATSClient(NATSClientInterface):
                 new_msg = json.loads(new_msg.decode())
                 base_subject = new_msg.pop("base_subject")
                 if "reply" in new_msg:
-                    reply_key = new_msg.pop("reply")
+                    reply_key = new_msg["reply"]
                     # isr_log.info(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_subject}")
+                new_msg_obj = Msg(**new_msg)
                 callbacks = self.listen_subjects_callbacks[base_subject]
                 for callback in callbacks:
-                    reply = callback(**new_msg)
+                    reply = callback(new_msg_obj)
                     if "reply_key" in locals():
+                        reply = json.dumps(reply)
                         if type(reply) is dict:
                             reply = json.dumps(reply)
                         else:
@@ -277,7 +280,6 @@ class _MultiProcNATSClient(NATSClientInterface):
     def check_connection(self):
         raise NotImplementedError
 
-
 class _ListenerProc:
     def __init__(
         self,
@@ -347,7 +349,7 @@ class _ListenerProc:
             if reply == "" and not "reply_to" in data:
                 q.put(
                     json.dumps(
-                        dict(base_subject=base_subject, subject=subject, message=data)
+                        dict(base_subject=base_subject, subject=subject, data=data)
                     )
                 )
             elif "reply_to" in data:
@@ -357,7 +359,7 @@ class _ListenerProc:
                         dict(
                             base_subject=base_subject,
                             subject=subject,
-                            message=data,
+                            data=data,
                             reply=reply,
                         )
                     )
@@ -376,7 +378,7 @@ class _ListenerProc:
                         dict(
                             base_subject=base_subject,
                             subject=subject,
-                            message=data,
+                            data=data,
                             reply=reply,
                         )
                     )
@@ -508,3 +510,5 @@ class _SenderProc:
                 )
         except Exception as e:
             isr_log.exception("Request error :" + str(e), slack=True)
+
+
