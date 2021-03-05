@@ -21,9 +21,9 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def foo(subject, message):
-        message["data"] += 1
-        return message
+    async def foo(msg):
+        msg.data["data"] += 1
+        return msg.data
 
     @app.http.post("/bar")
     async def post_listener(request):

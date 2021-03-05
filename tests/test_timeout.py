@@ -16,7 +16,7 @@ def run_panini():
     )
 
     @app.listen("publish.request.not.existing.subject")
-    async def publish_request(subject, message):
+    async def publish_request(msg):
         return await app.request(subject="not-existing-subject", message={"data": 1})
 
     app.start()

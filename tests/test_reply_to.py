@@ -18,13 +18,13 @@ def run_panini():
     )
 
     @app.listen("start")
-    async def reply_to(subject, message):
+    async def reply_to(msg):
         await app.publish(message={"data": 1}, subject="foo", reply_to="bar")
 
     @app.listen("foo")
-    async def helper(subject, message):
-        message["data"] += 2
-        return message
+    async def helper(msg):
+        msg.data["data"] += 2
+        return msg.data
 
     app.start()
 

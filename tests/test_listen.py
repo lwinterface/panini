@@ -16,12 +16,12 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def subject_for_requests(subject, message):
-        return {"data": message["data"] + 1}
+    async def subject_for_requests(msg):
+        return {"data": msg.data["data"] + 1}
 
     @app.listen("foo.*.bar")
-    async def composite_subject_for_requests(subject, message):
-        return {"data": subject + str(message["data"])}
+    async def composite_subject_for_requests(msg):
+        return {"data": msg.subject + str(msg.data["data"])}
 
     app.start()
 
@@ -37,7 +37,6 @@ def start_client():
 def test_listen_simple_subject_with_response():
     response = client.request("foo", {"data": 1})
     assert response["data"] == 2
-    assert "isr-id" in response  # will be present in each response
 
 
 def test_listen_composite_subject_with_response():
@@ -47,5 +46,4 @@ def test_listen_composite_subject_with_response():
     response2 = client.request(subject2, {"data": 2})
     assert response1["data"] == f"{subject1}1"
     assert response2["data"] == f"{subject2}2"
-    assert "isr-id" in response1
-    assert "isr-id" in response2
+

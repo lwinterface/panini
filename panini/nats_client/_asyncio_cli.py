@@ -11,6 +11,26 @@ from ._nats_client_interface import NATSClientInterface
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
 
+class Msg:
+    """
+    Alternative implementation of the class with "context" field
+    """
+    __slots__ = ('subject', 'reply', 'data', 'sid', 'context')
+
+    def __init__(self, subject='', reply='', data=b'', sid=0, context={}):
+        self.subject = subject
+        self.reply = reply
+        self.data = data
+        self.sid = sid
+        self.context = context
+
+    def __repr__(self):
+        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
+            self.__class__.__name__,
+            self.subject,
+            self.reply,
+            self.context,
+        )
 
 class _AsyncioNATSClient(NATSClientInterface):
     """
@@ -59,6 +79,7 @@ class _AsyncioNATSClient(NATSClientInterface):
     async def _establish_connection(self):
         # TODO: authorization
         self.client = NATS()
+        self.client.msg_class = Msg
         self.server = self.host + ":" + str(self.port)
         kwargs = {"servers": self.server, "loop": self.loop, "name": self.client_id}
         if self.allow_reconnect:
@@ -73,13 +94,17 @@ class _AsyncioNATSClient(NATSClientInterface):
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_subject(subject, callback, init_subscribtion=True)
+                    await self.aio_subscribe_new_subject(
+                        subject, callback, init_subscribtion=True
+                    )
 
     def subscribe_new_subject(self, subject: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
-    async def aio_subscribe_new_subject(self, subject: str, callback: CoroutineType, init_subscribtion=False):
-        wrapped_callback = self.wrap_callback(callback, self)
+    async def aio_subscribe_new_subject(
+        self, subject: str, callback: CoroutineType, init_subscribtion=False
+    ):
+        wrapped_callback = _RecievedMessageHandler(self.publish, callback)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
@@ -120,69 +145,6 @@ class _AsyncioNATSClient(NATSClientInterface):
             for topic in self.listen_subjects_callbacks:
                 if ssid in self.listen_subjects_callbacks[topic]:
                     self.listen_subjects_callbacks[topic].remove(ssid)
-
-    @staticmethod
-    def wrap_callback(cb, cli):
-        async def wrapped_callback(msg):
-            async def callback(cb, subject: str, data, reply_to=None, isr_id=None):
-                if asyncio.iscoroutinefunction(cb):
-
-                    async def coro_callback_with_reply(subject, data, reply_to, isr_id):
-                        try:
-                            reply = await cb(subject, data)
-                            if reply_to:
-                                if reply is None:
-                                    return
-                                reply["isr-id"] = isr_id
-                                reply = json.dumps(reply)
-                                await cli.publish(reply_to, reply)
-                        except EventHandlingError as e:
-                            if not "reply" in locals():
-                                reply = ""
-                            raise EventHandlingError(
-                                f"callback_when_future_finished ERROR: {str(e)}, reply if exist: {reply}"
-                            )
-
-                    try:
-                        asyncio.ensure_future(
-                            coro_callback_with_reply(subject, data, reply_to, isr_id)
-                        )
-                        # await coro_callback_with_reply(subject, data, reply_to, isr_id)
-                    except EventHandlingError as e:
-                        raise Exception(f"callback ERROR: {str(e)}")
-                else:
-                    return cb(subject, data)
-
-            async def handle_message_with_response(cli, data, reply_to, isr_id):
-                reply = await callback(cb, subject, data, reply_to, isr_id)
-                if reply:
-                    reply["isr-id"] = isr_id
-                    reply = json.dumps(reply)
-                    await cli.publish(reply_to, reply)
-
-            subject = msg.subject
-            raw_data = msg.data.decode()
-            data = json.loads(raw_data)
-            if not msg.reply == "":
-                reply_to = msg.reply
-            elif "reply_to" in data:
-                reply_to = data.pop("reply_to")
-            else:
-                await callback(cb, subject, data)
-                return
-            isr_id = data.get("isr-id", str(uuid.uuid4())[:10])
-            try:
-                await handle_message_with_response(cli, data, reply_to, isr_id)
-            except EventHandlingError as e:
-                if not "isr_id" in locals():
-                    isr_id = "Absent or Unknown"
-                isr_log.error(
-                    "4SENDING RESPONSE error msg: " + str(e),
-                    subject=subject,
-                    isr_id=isr_id,
-                )
-
-        return wrapped_callback
 
     def publish_sync(self, subject: str, message: dict, reply_to: str = None):
         if reply_to is not None:
@@ -289,3 +251,45 @@ class _AsyncioNATSClient(NATSClientInterface):
             log.info("NATS Client status: CONNECTED")
             return True
         log.warning("NATS Client status: DISCONNECTED")
+
+class _RecievedMessageHandler:
+    def __init__(self, publish_func, cb, parse_format='json'):
+        self.publish_func = publish_func
+        self.cb = cb
+        self.parse_format = parse_format
+        self.cb_is_async = asyncio.iscoroutinefunction(cb)
+
+    def __call__(self, msg):
+        asyncio.ensure_future(
+            self.call(msg)
+        )
+
+    async def call(self, msg):
+        self.parse_data(msg)
+        reply_to = self.match_msg_case(msg)
+        if self.cb_is_async:
+            response = await self.cb(msg)
+        else:
+            response = self.cb(msg)
+        if reply_to is not None:
+            await self.publish_func(reply_to, response)
+
+    def parse_data(self, msg):
+        if self.parse_format == 'raw' or self.parse_format == bytes:
+            return
+        if self.parse_format == str:
+            msg.data = msg.data.decode()
+        elif self.parse_format == dict or self.parse_format == 'json':
+            msg.data = json.loads(msg.data.decode())
+        else:
+            raise Exception(f'{self.parse_format} is unsupported data format')
+
+    def match_msg_case(self, msg):
+        if not msg.reply == "":
+            reply_to = msg.reply
+        elif self.parse_format == 'json' and "reply_to" in msg.data:
+            reply_to = msg.data.pop("reply_to")
+        else:
+            reply_to = None
+        return reply_to
+

@@ -16,7 +16,7 @@ def run_panini():
     )
 
     @app.listen("foo")
-    async def publish(subject, message):
+    async def publish(msg):
         app.logger.error("GOT HERE")
         await app.publish(subject="bar", message={"data": 1})
 

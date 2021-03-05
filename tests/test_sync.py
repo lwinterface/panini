@@ -18,55 +18,55 @@ def run_panini():
     )
 
     @app.listen("foo")
-    def subject_for_requests(subject, message):
-        return {"test": message["test"] + 1}
+    def subject_for_requests(msg):
+        return {"test": msg.data["test"] + 1}
 
     @app.listen("foo.*.bar")
-    def composite_subject_for_requests(subject, message):
-        return {"test": subject + str(message["test"])}
+    def composite_subject_for_requests(msg):
+        return {"test": msg.subject + str(msg.data["test"])}
 
     @app.listen("publish")
-    def publish(subject, message):
+    def publish(msg):
         app.publish_sync(
-            subject="publish.listener", message={"test": message["test"] + 1}
+            subject="publish.listener", message={"test": msg.data["test"] + 1}
         )
 
     @app.listen("publish.request")
-    def publish_request(subject, message):
+    def publish_request(msg):
         response = app.request_sync(
-            subject="publish.request.helper", message={"test": message["test"] + 1}
+            subject="publish.request.helper", message={"test": msg.data["test"] + 1}
         )
         app.publish_sync(
             subject="publish.request.listener", message={"test": response["test"] + 3}
         )
 
     @app.listen("publish.request.helper")
-    def publish_request_helper(subject, message):
-        return {"test": message["test"] + 2}
+    def publish_request_helper(msg):
+        return {"test": msg.data["test"] + 2}
 
     @app.listen("publish.request.reply")
-    def publish_request(subject, message):
+    def publish_request(msg):
         app.publish_sync(
             subject="publish.request.reply.helper",
-            message={"test": message["test"] + 1},
+            message={"test": msg.data["test"] + 1},
             reply_to="publish.request.reply.replier",
         )
 
     @app.listen("publish.request.reply.helper")
-    def publish_request_helper(subject, message):
-        res = {"test": message["test"] + 1}
+    def publish_request_helper(msg):
+        res = {"test": msg.data["test"] + 1}
         print("Send: ", res)
         return res
 
     @app.listen("publish.request.reply.replier")
-    def publish_request_helper(subject, message):
+    def publish_request_helper(msg):
         app.publish_sync(
             subject="publish.request.reply.listener",
-            message={"test": message["test"] + 1},
+            message={"test": msg.data["test"] + 1},
         )
 
     @app.listen("finish")
-    def kill(subject, message):
+    def kill(msg):
         if hasattr(app.connector, "nats_listener_process"):
             app.connector.nats_listener_process.terminate()
         if hasattr(app.connector, "nats_sender_process"):

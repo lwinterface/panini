@@ -26,13 +26,13 @@ def run_panini():
     log = app.logger
 
     @app.listen("foo")
-    async def subject_for_requests(subject, message):
-        log.info(f"Got subject: {subject}", message=message)
+    async def subject_for_requests(msg):
+        log.info(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
 
     @app.listen("foo.*.bar")
-    async def composite_subject_for_requests(subject, message):
-        log.error(f"Got subject: {subject}", message=message)
+    async def composite_subject_for_requests(msg):
+        log.error(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
 
     app.start()

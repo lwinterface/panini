@@ -49,24 +49,24 @@ class _EventManager:
 
     @staticmethod
     def wrap_function_by_validator(function, validator):
-        def validate_message(subject, message):
+        def validate_message(msg):
             try:
                 if validator is not None:
-                    message = validator.validated_message(message)
+                    validator.validated_message(msg.data)
             except exceptions.ValidationError as se:
-                error = f"subject: {subject} error: {str(se)}"
+                error = f"subject: {msg.subject} error: {str(se)}"
                 return {"success": False, "error": error}
             except Exception as e:
                 raise ValidationError(e)
-            return message
+            return msg
 
-        def wrapper(subject, message):
-            message = validate_message(subject, message)
-            return function(subject, message)
+        def wrapper(msg):
+            validate_message(msg)
+            return function(msg)
 
-        async def wrapper_async(subject, message):
-            message = validate_message(subject, message)
-            return await function(subject, message)
+        async def wrapper_async(msg):
+            validate_message(msg)
+            return await function(msg)
 
         if asyncio.iscoroutinefunction(function):
             return wrapper_async
