@@ -28,7 +28,7 @@ class TestValidator(Validator):
     key8 = Field(type=int, null=True, default=None)
 
 
-msg = {
+message = {
     "key1": "value1",
     "key2": 2,
     "key3": 3.0,
@@ -42,18 +42,18 @@ msg = {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=msg)
+        await app.publish(subject="some.publish.subject", message=message)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=msg)
+        await app.publish(subject="some.publish.subject", message=message)
 
 
 @app.listen("some.publish.subject", validator=TestValidator)
-async def requests_listener(subject, message):
-    log.warning(f"got message {message}")
+async def requests_listener(msg):
+    log.warning(f"got message {msg.data}")
     await asyncio.sleep(1)
 
 
