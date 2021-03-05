@@ -253,10 +253,10 @@ class _AsyncioNATSClient(NATSClientInterface):
         log.warning("NATS Client status: DISCONNECTED")
 
 class _RecievedMessageHandler:
-    def __init__(self, publish_func, cb, parse_format='json'):
+    def __init__(self, publish_func, cb):
         self.publish_func = publish_func
         self.cb = cb
-        self.parse_format = parse_format
+        self.data_type = getattr(cb, 'data_type', 'json.loads')
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
     def __call__(self, msg):
@@ -275,19 +275,19 @@ class _RecievedMessageHandler:
             await self.publish_func(reply_to, response)
 
     def parse_data(self, msg):
-        if self.parse_format == 'raw' or self.parse_format == bytes:
+        if self.data_type == 'raw' or self.data_type == bytes:
             return
-        if self.parse_format == str:
+        if self.data_type == str:
             msg.data = msg.data.decode()
-        elif self.parse_format == dict or self.parse_format == 'json':
+        elif self.data_type == dict or self.data_type == 'json.loads':
             msg.data = json.loads(msg.data.decode())
         else:
-            raise Exception(f'{self.parse_format} is unsupported data format')
+            raise Exception(f'{self.data_type} is unsupported data format')
 
     def match_msg_case(self, msg):
         if not msg.reply == "":
             reply_to = msg.reply
-        elif self.parse_format == 'json' and "reply_to" in msg.data:
+        elif self.data_type == 'json' and "reply_to" in msg.data:
             reply_to = msg.data.pop("reply_to")
         else:
             reply_to = None
