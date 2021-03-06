@@ -67,23 +67,23 @@ class NATSClientInterface(ABC):
         pass
 
     @abstractmethod
-    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
+    def publish_sync(self, subject: str, message: dict, reply_to: str = None, force: bool = False, data_type: type or str = "json.dumps"):
         pass
 
     @abstractmethod
     def request_sync(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, data_type: type or str = "json.dumps"
     ):
         pass
 
     @abstractmethod
     async def publish(
-        self, subject: str, message: dict, reply_to: str = None, force: bool = False
+        self, subject: str, message: dict, reply_to: str = None, force: bool = False, data_type: type or str = "json.dumps"
     ):
         pass
 
     @abstractmethod
     async def request(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
+        self, subject: str, message: dict, timeout: int = 10, data_type: type or str = "json.dumps"
     ):
         pass
