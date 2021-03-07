@@ -172,8 +172,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             )
         self.logger.logger = logging.getLogger(service_name)
 
-    def start(self):
-        if self.http_server:
+    def start(self, from_another_thread=False):
+        if self.http_server and from_another_thread is False:
             self._start()
         else:
             start_thread(self._start())
@@ -210,11 +210,10 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
-        self._start_tasks()
+        self._start_tasks(loop)
 
-    def _start_tasks(self):
+    def _start_tasks(self, loop):
         if self.app_strategy == "asyncio":
-            loop = asyncio.get_event_loop()
             tasks = asyncio.all_tasks(loop)
             for coro in self.tasks:
                 if not asyncio.iscoroutinefunction(coro):
