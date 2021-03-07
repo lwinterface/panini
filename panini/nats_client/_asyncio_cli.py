@@ -1,12 +1,16 @@
 import json
 import asyncio
 import uuid
+import threading
+import nest_asyncio
 from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
 from ..exceptions import DataTypeError
 from ..utils.logger import get_logger
 from ._nats_client_interface import NATSClientInterface
+
+nest_asyncio.apply()
 
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
@@ -165,23 +169,45 @@ class _AsyncioNATSClient(NATSClientInterface):
         )
 
     def publish_from_another_thread(self, subject: str, message: dict):
-        self.loop.call_soon_threadsafe(self.publish, subject, message)
+        self.loop.call_soon_threadsafe(self.publish_sync, subject, message)
+
 
     def request_sync(
         self, subject: str, message: dict, timeout: int = 10, data_type: type or str = "json.dumps"
 
     ):
-        asyncio.ensure_future(self.request(subject, message, timeout, data_type))
+        # asyncio.ensure_future(self.request(subject, message, timeout, data_type))
+        return self.loop.run_until_complete(self.request(subject, message, timeout, data_type))
 
     def request_from_another_thread(
         self,
         subject: str,
         message,
-        loop,
         timeout: int = 10,
     ):
-        coro = self.request(subject, message, timeout)
-        return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+        return loop.run_until_complete(self.aio_request_from_another_thread(subject, message, timeout))
+
+
+    async def aio_request_from_another_thread(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
+    ):
+        # return self.loop.call_soon_threadsafe(self.request_sync, subject, message, timeout)
+        fut = asyncio.run_coroutine_threadsafe(self.request(subject, message, timeout), self.loop)
+        finished = threading.Event()
+
+        def fut_finished_cb(_):
+            finished.set()
+
+        fut.add_done_callback(fut_finished_cb)
+        await asyncio.get_event_loop().run_in_executor(None, finished.wait)
+        return fut.result()
 
     async def publish(
         self,
@@ -227,9 +253,9 @@ class _AsyncioNATSClient(NATSClientInterface):
             raise DataTypeError(f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}')
         response = await self.client.request(subject, message, timeout=timeout)
         response = response.data
-        if type(message) is dict and data_type == "json.dumps":
+        if data_type == "json.dumps":
             response = json.loads(response)
-        elif type(message) is str and data_type is str:
+        elif data_type is str:
             response = response.decode()
         return response
 
@@ -249,7 +275,6 @@ class _AsyncioNATSClient(NATSClientInterface):
         await self.client.publish_request(subject, reply_to, message)
         if force:
             await self.client.flush()
-
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
