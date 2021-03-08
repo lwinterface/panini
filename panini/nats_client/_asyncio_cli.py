@@ -323,8 +323,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             return True
         log.warning("NATS Client status: DISCONNECTED")
 
-
-class _RecievedMessageHandler:
+class _ReceivedMessageHandler:
     def __init__(self, publish_func, cb):
         self.publish_func = publish_func
         self.cb = cb
