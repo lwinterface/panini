@@ -1,12 +1,16 @@
 import json
 import asyncio
 import uuid
+import threading
+import nest_asyncio
 from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
-from ..exceptions import EventHandlingError
+from ..exceptions import DataTypeError
 from ..utils.logger import get_logger
 from ._nats_client_interface import NATSClientInterface
+
+nest_asyncio.apply()
 
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
@@ -149,41 +153,84 @@ class _AsyncioNATSClient(NATSClientInterface):
                 if ssid in self.listen_subjects_callbacks[subject]:
                     self.listen_subjects_callbacks[subject].remove(ssid)
 
-    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
+    def publish_sync(
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
         if reply_to is not None:
             return self._publish_request_with_reply_to_another_subject(
-                subject, message, reply_to
+                subject, message, reply_to, force, data_type
             )
 
-        asyncio.ensure_future(self.publish(subject, message, reply_to))
+        asyncio.ensure_future(
+            self.publish(subject, message, reply_to, force, data_type)
+        )
 
     def _publish_request_with_reply_to_another_subject(
-        self, subject: str, message: dict, reply_to: str = None
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
     ):
         asyncio.ensure_future(
-            self._aio_publish_request_with_reply_to_another_subject(
-                subject, message, reply_to
+            self.aio_publish_request_with_reply_to_another_subject(
+                subject, message, reply_to, force, data_type
             )
         )
 
     def publish_from_another_thread(self, subject: str, message: dict):
-        self.loop.call_soon_threadsafe(self.publish, subject, message)
+        self.loop.call_soon_threadsafe(self.publish_sync, subject, message)
 
     def request_sync(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = False
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
-        asyncio.ensure_future(self.request(subject, message, timeout, unpack))
+        # asyncio.ensure_future(self.request(subject, message, timeout, data_type))
+        return self.loop.run_until_complete(
+            self.request(subject, message, timeout, data_type)
+        )
 
     def request_from_another_thread(
         self,
         subject: str,
         message,
-        loop,
         timeout: int = 10,
-        unpack: bool = False,
     ):
-        coro = self.request(subject, message, timeout, unpack)
-        return loop.run_until_complete(run_coro_threadsafe(coro, self.loop))
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+        return loop.run_until_complete(
+            self.aio_request_from_another_thread(subject, message, timeout)
+        )
+
+    async def aio_request_from_another_thread(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
+    ):
+        # return self.loop.call_soon_threadsafe(self.request_sync, subject, message, timeout)
+        fut = asyncio.run_coroutine_threadsafe(
+            self.request(subject, message, timeout), self.loop
+        )
+        finished = threading.Event()
+
+        def fut_finished_cb(_):
+            finished.set()
+
+        fut.add_done_callback(fut_finished_cb)
+        await asyncio.get_event_loop().run_in_executor(None, finished.wait)
+        return fut.result()
 
     async def publish(
         self,
@@ -191,55 +238,76 @@ class _AsyncioNATSClient(NATSClientInterface):
         message: dict,
         reply_to: str = None,
         force: bool = False,
-        nonjson: bool = False,
+        data_type: type or str = "json.dumps",
     ):
         if reply_to is not None:
-            return await self._aio_publish_request_with_reply_to_another_subject(
-                subject, message, reply_to
+            return await self.aio_publish_request_with_reply_to_another_subject(
+                subject, message, reply_to, force, data_type
             )
 
-        if type(message) is dict and nonjson is False:
+        if type(message) is dict and data_type == "json.dumps":
             message = json.dumps(message)
             message = message.encode()
-        elif type(message) is str:
+        elif type(message) is str and data_type is str:
             message = message.encode()
-        elif type(message) is bytes:
+        elif type(message) is bytes and data_type is bytes:
             pass
-        if not force:
-            await self.client.publish(subject, message)
         else:
-            raise NotImplementedError
+            raise DataTypeError(
+                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
+            )
+        await self.client.publish(subject, message)
+        if force:
+            await self.client.flush()
 
     async def request(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = False
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
-        if type(message) == str:
-            message = json.loads(message)
-        if validate_msg(message):
-            if "isr-id" not in message:
-                isr_id = str(uuid.uuid4())
-                message = register_msg(message, isr_id)
-            else:
-                message = json.dumps(message)
+        if type(message) is dict and data_type == "json.dumps":
+            message = json.dumps(message)
             message = message.encode()
-            response = await self.client.request(subject, message, timeout=timeout)
-            response = response.data
-            if unpack:
-                response = json.loads(response)
-            return response
-        isr_log.error(f"Invalid message: {message}", subject=subject)
-
-    async def _aio_publish_request_with_reply_to_another_subject(
-        self, subject: str, message, reply_to: str = None
-    ):
-        message["isr-id"] = str(uuid.uuid4())[:10]
-        if is_json(message):
-            message = json.loads(message)
-            message["reply_to"] = reply_to
+        elif type(message) is str and data_type is str:
+            message = message.encode()
+        elif type(message) is bytes and data_type is bytes:
+            pass
         else:
-            message["reply_to"] = reply_to
-        message = json.dumps(message)
-        await self.publish(subject, message)
+            raise DataTypeError(
+                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
+            )
+        response = await self.client.request(subject, message, timeout=timeout)
+        response = response.data
+        if data_type == "json.dumps":
+            response = json.loads(response)
+        elif data_type is str:
+            response = response.decode()
+        return response
+
+    async def aio_publish_request_with_reply_to_another_subject(
+        self,
+        subject: str,
+        message,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
+        if type(message) is dict and data_type == "json.dumps":
+            message = json.dumps(message)
+            message = message.encode()
+        elif type(message) is str and data_type is str:
+            message = message.encode()
+        elif type(message) is bytes and data_type is bytes:
+            pass
+        else:
+            raise DataTypeError(
+                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
+            )
+        await self.client.publish_request(subject, reply_to, message)
+        if force:
+            await self.client.flush()
 
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
@@ -256,11 +324,11 @@ class _AsyncioNATSClient(NATSClientInterface):
         log.warning("NATS Client status: DISCONNECTED")
 
 
-class _ReceivedMessageHandler:
-    def __init__(self, publish_func, cb, parse_format="json"):
+class _RecievedMessageHandler:
+    def __init__(self, publish_func, cb):
         self.publish_func = publish_func
         self.cb = cb
-        self.parse_format = parse_format
+        self.data_type = getattr(cb, "data_type", "json.loads")
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
     def __call__(self, msg):
@@ -277,19 +345,19 @@ class _ReceivedMessageHandler:
             await self.publish_func(reply_to, response)
 
     def parse_data(self, msg):
-        if self.parse_format == "raw" or self.parse_format == bytes:
+        if self.data_type == "raw" or self.data_type == bytes:
             return
-        if self.parse_format == str:
+        if self.data_type == str:
             msg.data = msg.data.decode()
-        elif self.parse_format == dict or self.parse_format == "json":
+        elif self.data_type == dict or self.data_type == "json.loads":
             msg.data = json.loads(msg.data.decode())
         else:
-            raise Exception(f"{self.parse_format} is unsupported data format")
+            raise Exception(f"{self.data_type} is unsupported data format")
 
     def match_msg_case(self, msg):
         if not msg.reply == "":
             reply_to = msg.reply
-        elif self.parse_format == "json" and "reply_to" in msg.data:
+        elif self.data_type == "json" and "reply_to" in msg.data:
             reply_to = msg.data.pop("reply_to")
         else:
             reply_to = None

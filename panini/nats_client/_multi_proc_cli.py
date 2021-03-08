@@ -183,6 +183,9 @@ class _MultiProcNATSClient(NATSClientInterface):
                 new_msg_obj = Msg(**new_msg)
                 callbacks = self.listen_subjects_callbacks[base_subject]
                 for callback in callbacks:
+                    data_type = getattr(callback, "data_type", "json.loads")
+                    print(data_type)
+                    self.parse_data(new_msg_obj, data_type)
                     reply = callback(new_msg_obj)
                     if "reply_key" in locals():
                         reply = json.dumps(reply)
@@ -200,6 +203,16 @@ class _MultiProcNATSClient(NATSClientInterface):
                     new_msg = "hasn't handled"
                 error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
                 isr_log.error(error, slack=True)
+
+    def parse_data(self, msg, data_type):
+        if data_type == "raw" or data_type == bytes:
+            msg.data = str(msg.data).encode()
+        elif data_type == str:
+            msg.data = str(msg.data)
+        elif data_type == dict or data_type == "json.loads":
+            return
+        else:
+            raise Exception(f"{data_type} is unsupported data format")
 
     def publish_sync(self, subject: str, message, reply_to: str = None):
         if reply_to:

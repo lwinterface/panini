@@ -91,3 +91,7 @@ class ValidationError(Exception):
 
 class DecodeError(BaseError):
     pass
+
+
+class DataTypeError(BaseError):
+    pass

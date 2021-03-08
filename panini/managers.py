@@ -19,7 +19,11 @@ class _EventManager:
     SUBSCRIPTIONS = {}
 
     def listen(
-        self, subject: list or str, validator: type = None, dynamic_subscription=False
+        self,
+        subject: list or str,
+        validator: type = None,
+        dynamic_subscription=False,
+        data_type=dict,
     ):
         def wrapper(function):
             function = _MiddlewareManager._wrap_function_by_middleware(function, "listen")
@@ -31,6 +35,7 @@ class _EventManager:
             else:
                 _EventManager._check_subscription(subject)
                 _EventManager.SUBSCRIPTIONS[subject].append(function)
+            function.data_type = data_type
             return function
 
         if dynamic_subscription:

@@ -175,8 +175,8 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager,
             )
         self.logger.logger = logging.getLogger(service_name)
 
-    def start(self):
-        if self.http_server:
+    def start(self, from_another_thread=False):
+        if self.http_server and from_another_thread is False:
             self._start()
         else:
             start_thread(self._start())
