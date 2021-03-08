@@ -34,6 +34,7 @@ async def request_periodically():
         app.publish_sync(subject="some.publish.subject", message=message)
         log.warning(f"send message from periodic task {message}")
 
+
 @app.timer_task(interval=2)
 async def request_from_another_thread_periodically():
     start_thread(another_thread_func)
@@ -41,14 +42,16 @@ async def request_from_another_thread_periodically():
 
 def another_thread_func():
     for _ in range(10):
-        response = app.connector.request_from_another_thread(subject="some.publish.subject", message=message)
-        print(f'response: {response}')
+        response = app.connector.request_from_another_thread(
+            subject="some.publish.subject", message=message
+        )
+        print(f"response: {response}")
 
 
 @app.listen("some.publish.subject")
 def subject_for_requests_listener(msg):
     log.warning(f"got request {msg.subject}")
-    return {'success':True}
+    return {"success": True}
 
 
 if __name__ == "__main__":

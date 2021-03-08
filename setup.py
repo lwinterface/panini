@@ -21,7 +21,7 @@ setup(
     version="0.1.2c",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
-    long_description_content_type='text/x-rst',
+    long_description_content_type="text/x-rst",
     url="https://github.com/lwinterface/panini",
     author="Op Return SA, developers: Andrew Volotskov, Danylo Tiutiushkin",
     author_email="example@example.com",
@@ -39,7 +39,7 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=['panini', 'panini.utils', 'panini.http_server', 'panini.nats_client'],
+    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client"],
     install_requires=[
         "aiohttp>=3.6.2",
         "aiohttp-cors>=0.7.0",

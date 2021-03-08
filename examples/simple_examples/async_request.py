@@ -24,7 +24,11 @@ message = {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.request(subject="some.request.subject.123", message=json.dumps(message).encode(), data_type=bytes)
+        result = await app.request(
+            subject="some.request.subject.123",
+            message=json.dumps(message).encode(),
+            data_type=bytes,
+        )
         log.warning(result)
 
 

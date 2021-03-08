@@ -29,20 +29,26 @@ async def publish():
         await app.publish(subject="some.publish.subject", message=message)
         log.warning(f"send message {message}")
 
+
 @app.timer_task(interval=1)
 async def publish_periodically():
     for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=json.dumps(message), data_type=str)
+        await app.publish(
+            subject="some.publish.subject", message=json.dumps(message), data_type=str
+        )
+
 
 @app.listen("some.publish.subject", data_type=str)
 async def receive_messages(msg):
     log.warning(f"got subject {msg.subject}")
     log.warning(f"got message {msg.data}")
 
+
 @app.listen("some.publish.subject", data_type=bytes)
 async def receive_messages(msg):
     log.warning(f"got subject {msg.subject}")
     log.warning(f"got message {msg.data}")
+
 
 if __name__ == "__main__":
     app.start()

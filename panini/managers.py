@@ -18,8 +18,12 @@ class _EventManager:
     SUBSCRIPTIONS = {}
 
     def listen(
-        self, subject: list or str, validator: type = None, dynamic_subscription=False,
-    data_type=dict):
+        self,
+        subject: list or str,
+        validator: type = None,
+        dynamic_subscription=False,
+        data_type=dict,
+    ):
         def wrapper(function):
             function = _EventManager.wrap_function_by_validator(function, validator)
             if type(subject) is list:

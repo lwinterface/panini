@@ -22,9 +22,6 @@ message = {
 }
 
 
-
-
-
 @app.timer_task(interval=2)
 async def publish_periodically():
     start_thread(another_thread_func)
@@ -32,8 +29,9 @@ async def publish_periodically():
 
 def another_thread_func():
     for _ in range(10):
-        app.connector.publish_from_another_thread(subject="some.publish.subject", message=message)
-
+        app.connector.publish_from_another_thread(
+            subject="some.publish.subject", message=message
+        )
 
 
 @app.listen("some.publish.subject")

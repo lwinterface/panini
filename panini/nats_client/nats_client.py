@@ -94,21 +94,39 @@ class NATSClient(NATSClientInterface):
         self.connector.disconnect()
 
     def publish_sync(
-        self, subject: str, message: dict, reply_to: str = None, force: bool = False, data_type: type or str = "json.dumps"
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
     ):
         self.connector.publish_sync(subject, message, reply_to, force, data_type)
 
     def request_sync(
-        self, subject: str, message: dict, timeout: int = 10, data_type: type or str = "json.dumps"
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
         return self.connector.request_sync(subject, message, timeout, data_type)
 
     async def publish(
-        self, subject: str, message: dict, reply_to: str = None, force: bool = False, data_type: type or str = "json.dumps"
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
     ):
         await self.connector.publish(subject, message, reply_to, force, data_type)
 
     async def request(
-        self, subject: str, message: dict, timeout: int = 10, data_type: type or str = "json.dumps"
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
         return await self.connector.request(subject, message, timeout, data_type)

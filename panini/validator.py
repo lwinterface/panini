@@ -36,7 +36,9 @@ class Validator:
     @classmethod
     def validated_message(cls, message):
         if not type(message) in [dict, list]:
-            error = f"Unexpected message. Accepted dict or list but got {type(message)}."
+            error = (
+                f"Unexpected message. Accepted dict or list but got {type(message)}."
+            )
             _logger.error(error)
             raise ValidationError(error)
         if type(message) is list:

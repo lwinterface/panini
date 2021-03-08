@@ -24,14 +24,18 @@ message = {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.request(subject="some.request.subject.123", message=json.dumps(message).encode(), data_type=bytes)
+        result = await app.request(
+            subject="some.request.subject.123",
+            message=json.dumps(message).encode(),
+            data_type=bytes,
+        )
         log.warning(result)
 
 
 @app.listen("some.request.subject.123", data_type=str)
 async def subject_for_requests_listener(msg):
     if not type(msg) == str:
-        raise Exception('Wrong datatype!')
+        raise Exception("Wrong datatype!")
     return {"success": True, "data": "request has been processed"}
 
 
