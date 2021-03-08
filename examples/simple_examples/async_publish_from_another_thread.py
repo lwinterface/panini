@@ -1,6 +1,5 @@
-import json
 from panini import app as panini_app
-from panini.utils.logger import get_logger
+from panini.utils.helper import start_thread
 
 app = panini_app.App(
     service_name="async_publish",
@@ -23,26 +22,25 @@ message = {
 }
 
 
-@app.task()
-async def publish():
-    for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=message)
-        log.warning(f"send message {message}")
 
-@app.timer_task(interval=1)
+
+
+@app.timer_task(interval=2)
 async def publish_periodically():
+    start_thread(another_thread_func)
+
+
+def another_thread_func():
     for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=json.dumps(message), data_type=str)
+        app.connector.publish_from_another_thread(subject="some.publish.subject", message=message)
 
-@app.listen("some.publish.subject", data_type=str)
+
+
+@app.listen("some.publish.subject")
 async def receive_messages(msg):
     log.warning(f"got subject {msg.subject}")
     log.warning(f"got message {msg.data}")
 
-@app.listen("some.publish.subject", data_type=bytes)
-async def receive_messages(msg):
-    log.warning(f"got subject {msg.subject}")
-    log.warning(f"got message {msg.data}")
 
 if __name__ == "__main__":
     app.start()
