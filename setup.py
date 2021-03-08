@@ -9,7 +9,7 @@ The framework allows you to work with NATS features and some additional logic us
 - publish messages to subject
 - subscribe to subject
 - request-response
-- request-response to another topic
+- request-response to another subject
 - tasks
 - periodic tasks
 - HTTP server

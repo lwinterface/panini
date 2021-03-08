@@ -120,8 +120,8 @@ class _AsyncioNATSClient(NATSClientInterface):
             self.listen_subjects_callbacks[subject].append(callback)
         return ssid
 
-    def unsubscribe_subject(self, topic: str):
-        self.loop.run_until_complete(self.aio_unsubscribe_subject(topic))
+    def unsubscribe_subject(self, subject: str):
+        self.loop.run_until_complete(self.aio_unsubscribe_subject(subject))
 
     async def aio_unsubscribe_subject(self, subject: str):
         if not subject in self.ssid_map:
@@ -131,20 +131,20 @@ class _AsyncioNATSClient(NATSClientInterface):
         del self.ssid_map[subject]
         del self.listen_subjects_callbacks[subject]
 
-    async def aio_unsubscribe_ssid(self, ssid: int, topic: str = None):
-        if topic and not topic in self.ssid_map:
-            raise Exception(f"Subject {topic} hasn't been subscribed")
+    async def aio_unsubscribe_ssid(self, ssid: int, subject: str = None):
+        if subject and subject not in self.ssid_map:
+            raise Exception(f"Subject {subject} hasn't been subscribed")
         await self.client.unsubscribe(ssid)
-        if topic:
-            del self.ssid_map[topic]
-            del self.listen_subjects_callbacks[topic]
+        if subject:
+            del self.ssid_map[subject]
+            del self.listen_subjects_callbacks[subject]
         else:
-            for topic in self.ssid_map:
-                if ssid in self.ssid_map[topic]:
-                    self.ssid_map[topic].remove(ssid)
-            for topic in self.listen_subjects_callbacks:
-                if ssid in self.listen_subjects_callbacks[topic]:
-                    self.listen_subjects_callbacks[topic].remove(ssid)
+            for subject in self.ssid_map:
+                if ssid in self.ssid_map[subject]:
+                    self.ssid_map[subject].remove(ssid)
+            for subject in self.listen_subjects_callbacks:
+                if ssid in self.listen_subjects_callbacks[subject]:
+                    self.listen_subjects_callbacks[subject].remove(ssid)
 
     def publish_sync(self, subject: str, message: dict, reply_to: str = None):
         if reply_to is not None:
