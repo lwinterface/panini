@@ -1,5 +1,4 @@
 import json
-import aiohttp
 from panini.utils.logger import get_logger
 
 log = get_logger(None)
@@ -60,14 +59,14 @@ class WSSManager:
                             }
                         )
                     )
-                if not "subjects" in body:
+                if "subjects" not in body:
                     raise Exception("subjects required")
                 subjects = body["subjects"]
                 if action == "subscribe":
                     for subject in subjects:
                         cb = await self._get_callback(client_ws_connection)
                         ssid = await self.app.aio_subscribe_new_subject(subject, cb)
-                        if not subject in self.ssid_map:
+                        if subject not in self.ssid_map:
                             self.ssid_map[subject] = []
                         self.ssid_map[subject].append(ssid)
                     await client_ws_connection.send_str(
@@ -116,7 +115,7 @@ class WSSManager:
         else:
             raise Exception("self.callback function for incoming messages expected")
 
-        async def wrapper(subject, message):
-            return await cb(subscriber, subject, message)
+        async def wrapper(msg):
+            return await cb(subscriber, msg)
 
         return wrapper

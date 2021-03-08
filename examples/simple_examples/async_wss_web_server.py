@@ -31,7 +31,7 @@ manager = WSSManager(app)
 
 
 @app.timer_task(interval=1)
-async def publish_pereodically_for_test():
+async def publish_periodically_for_test():
     test_msg["key3"] = random.random()
     await app.publish("test.subject", test_msg)
 
@@ -65,9 +65,9 @@ async def web_endpoint_listener(request):
     return ws
 
 
-async def incoming_messages_callback(subscriber, subject, message, **kwargs):
+async def incoming_messages_callback(subscriber, msg, **kwargs):
     try:
-        await subscriber.send_str(json.dumps({"subject": subject, "data": message}))
+        await subscriber.send_str(json.dumps({"subject": msg.subject, "data": msg.data}))
     except Exception as e:
         log.error(f"error: {str(e)}")
 
