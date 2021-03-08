@@ -53,11 +53,11 @@ class MyView(web.View):
     """
 
     async def get(self):
-        request = self.request
+        # request = self.request
         return web.Response(text="Hello, REST world")
 
     async def post(self):
-        request = self.request
+        # request = self.request
         return web.Response(text="Hello, REST world")
 
 

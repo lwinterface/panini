@@ -175,7 +175,7 @@ def _configure_default_logging(name):
             "app": _basic_file_handler_skeleton("app"),
             "errors": {
                 "class": "logging.FileHandler",
-                "filename": f"errors.log",
+                "filename": "errors.log",
                 "mode": "a",
                 "level": "ERROR",
                 "formatter": "detailed",

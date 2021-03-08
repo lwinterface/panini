@@ -55,7 +55,7 @@ class WSSManager:
                         json.dumps(
                             {
                                 "success": False,
-                                "data": f"The user has to specify action in message ('subscribe' or 'unsubscribe')",
+                                "data": "The user has to specify action in message ('subscribe' or 'unsubscribe')",
                             }
                         )
                     )

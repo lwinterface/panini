@@ -46,4 +46,3 @@ def test_listen_composite_subject_with_response():
     response2 = client.request(subject2, {"data": 2})
     assert response1["data"] == f"{subject1}1"
     assert response2["data"] == f"{subject2}2"
-
