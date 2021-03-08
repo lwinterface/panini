@@ -210,10 +210,11 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
 
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
-        self._start_tasks(loop)
+        self._start_tasks()
 
-    def _start_tasks(self, loop):
+    def _start_tasks(self):
         if self.app_strategy == "asyncio":
+            loop = asyncio.get_event_loop()
             tasks = asyncio.all_tasks(loop)
             for coro in self.tasks:
                 if not asyncio.iscoroutinefunction(coro):
