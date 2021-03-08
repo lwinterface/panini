@@ -75,7 +75,9 @@ class Validator:
                 error = f'Wrong value None for field "{key}" (because null=False)'
                 _logger.error(error)
                 raise ValidationError(error)
-            if field_obj.type is not type(message[key]) and message[key] is not None:
+            if message[key] is not None and not isinstance(
+                message[key], field_obj.type
+            ):
                 error = f'Expected {field_obj.type} type of field "{key}" but got {type(message[key])} instead'
                 _logger.error(error)
                 raise ValidationError(error)
@@ -108,7 +110,7 @@ class Field:
         if (
             "default" in kwargs
             and kwargs["default"] is not None
-            and kwargs["type"] is not type(kwargs["default"])
+            and not isinstance(kwargs["default"], kwargs["type"])
         ):
             error = f'Your default type is {type(kwargs["default"])} but expected {kwargs["type"]}'
             _logger.error(error)

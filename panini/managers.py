@@ -133,7 +133,7 @@ class _IntervalTaskManager:
                 try:
                     await interval_task(**kwargs)
                     await asyncio.sleep(interval)
-                except InitializingIntervalTaskError as e:
+                except InitializingIntervalTaskError:
                     # TODO: warning log
                     pass
 
@@ -146,7 +146,7 @@ class _IntervalTaskManager:
                 try:
                     interval_task(**kwargs)
                     time.sleep(interval)
-                except InitializingIntervalTaskError as e:
+                except InitializingIntervalTaskError:
                     # TODO: warning log
                     pass
 

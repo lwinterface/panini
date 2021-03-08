@@ -272,6 +272,7 @@ class _MultiProcNATSClient(NATSClientInterface):
     def check_connection(self):
         raise NotImplementedError
 
+
 class _ListenerProc:
     def __init__(
         self,
@@ -338,7 +339,7 @@ class _ListenerProc:
             subject = msg.subject
             reply = msg.reply
             data = json.loads(msg.data.decode())
-            if reply == "" and not "reply_to" in data:
+            if reply == "" and "reply_to" not in data:
                 q.put(
                     json.dumps(
                         dict(base_subject=base_subject, subject=subject, data=data)
@@ -498,5 +499,3 @@ class _SenderProc:
                 )
         except Exception as e:
             isr_log.exception("Request error :" + str(e), slack=True)
-
-

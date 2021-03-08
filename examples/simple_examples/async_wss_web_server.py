@@ -56,7 +56,7 @@ async def web_endpoint_listener(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     connection_id = str(uuid.uuid4())[:10]
-    await ws.send_str(json.dumps({"success": True, "data": f"Successfully connected"}))
+    await ws.send_str(json.dumps({"success": True, "data": "Successfully connected"}))
     await manager.client_listener(ws, connection_id)
     try:
         await ws.close()
@@ -67,7 +67,9 @@ async def web_endpoint_listener(request):
 
 async def incoming_messages_callback(subscriber, msg, **kwargs):
     try:
-        await subscriber.send_str(json.dumps({"subject": msg.subject, "data": msg.data}))
+        await subscriber.send_str(
+            json.dumps({"subject": msg.subject, "data": msg.data})
+        )
     except Exception as e:
         log.error(f"error: {str(e)}")
 

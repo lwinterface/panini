@@ -11,13 +11,15 @@ from ._nats_client_interface import NATSClientInterface
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
 
+
 class Msg:
     """
     Alternative implementation of the class with "context" field
     """
-    __slots__ = ('subject', 'reply', 'data', 'sid', 'context')
 
-    def __init__(self, subject='', reply='', data=b'', sid=0, context={}):
+    __slots__ = ("subject", "reply", "data", "sid", "context")
+
+    def __init__(self, subject="", reply="", data=b"", sid=0, context={}):
         self.subject = subject
         self.reply = reply
         self.data = data
@@ -31,6 +33,7 @@ class Msg:
             self.reply,
             self.context,
         )
+
 
 class _AsyncioNATSClient(NATSClientInterface):
     """
@@ -95,27 +98,27 @@ class _AsyncioNATSClient(NATSClientInterface):
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
                     await self.aio_subscribe_new_subject(
-                        subject, callback, init_subscribtion=True
+                        subject, callback, init_subscription=True
                     )
 
     def subscribe_new_subject(self, subject: str, callback: CoroutineType):
         self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
 
     async def aio_subscribe_new_subject(
-        self, subject: str, callback: CoroutineType, init_subscribtion=False
+        self, subject: str, callback: CoroutineType, init_subscription=False
     ):
-        wrapped_callback = _RecievedMessageHandler(self.publish, callback)
+        wrapped_callback = _ReceivedMessageHandler(self.publish, callback)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
         )
-        if not subject in self.ssid_map:
+        if subject not in self.ssid_map:
             self.ssid_map[subject] = []
         self.ssid_map[subject].append(ssid)
-        if init_subscribtion is False:
-            if not subject in self.listen_subjects_callbacks:
+        if init_subscription is False:
+            if subject not in self.listen_subjects_callbacks:
                 self.listen_subjects_callbacks[subject] = []
             self.listen_subjects_callbacks[subject].append(callback)
         return ssid
@@ -124,7 +127,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         self.loop.run_until_complete(self.aio_unsubscribe_subject(subject))
 
     async def aio_unsubscribe_subject(self, subject: str):
-        if not subject in self.ssid_map:
+        if subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
         for ssid in self.ssid_map[subject]:
             await self.client.unsubscribe(ssid)
@@ -252,17 +255,16 @@ class _AsyncioNATSClient(NATSClientInterface):
             return True
         log.warning("NATS Client status: DISCONNECTED")
 
-class _RecievedMessageHandler:
-    def __init__(self, publish_func, cb, parse_format='json'):
+
+class _ReceivedMessageHandler:
+    def __init__(self, publish_func, cb, parse_format="json"):
         self.publish_func = publish_func
         self.cb = cb
         self.parse_format = parse_format
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
     def __call__(self, msg):
-        asyncio.ensure_future(
-            self.call(msg)
-        )
+        asyncio.ensure_future(self.call(msg))
 
     async def call(self, msg):
         self.parse_data(msg)
@@ -275,21 +277,20 @@ class _RecievedMessageHandler:
             await self.publish_func(reply_to, response)
 
     def parse_data(self, msg):
-        if self.parse_format == 'raw' or self.parse_format == bytes:
+        if self.parse_format == "raw" or self.parse_format == bytes:
             return
         if self.parse_format == str:
             msg.data = msg.data.decode()
-        elif self.parse_format == dict or self.parse_format == 'json':
+        elif self.parse_format == dict or self.parse_format == "json":
             msg.data = json.loads(msg.data.decode())
         else:
-            raise Exception(f'{self.parse_format} is unsupported data format')
+            raise Exception(f"{self.parse_format} is unsupported data format")
 
     def match_msg_case(self, msg):
         if not msg.reply == "":
             reply_to = msg.reply
-        elif self.parse_format == 'json' and "reply_to" in msg.data:
+        elif self.parse_format == "json" and "reply_to" in msg.data:
             reply_to = msg.data.pop("reply_to")
         else:
             reply_to = None
         return reply_to
-

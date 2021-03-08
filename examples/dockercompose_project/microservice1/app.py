@@ -3,7 +3,7 @@ from panini import app as panini_app
 
 app = panini_app.App(
     service_name="microservice1",
-    host="nats-server" if 'HOSTNAME' in os.environ else "127.0.0.1",
+    host="nats-server" if "HOSTNAME" in os.environ else "127.0.0.1",
     port=4222,
     app_strategy="asyncio",
 )
