@@ -3,9 +3,11 @@ import time
 import asyncio
 import uuid
 import logging
+
 from aiohttp import web
+
 from .nats_client.nats_client import NATSClient
-from .managers import _EventManager, _TaskManager, _IntervalTaskManager
+from .managers import _EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager
 from .http_server.http_server_app import HTTPServer
 from .exceptions import (
     InitializingEventManagerError,
@@ -22,7 +24,7 @@ from .utils import logger
 _app = None
 
 
-class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
+class App(_EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager, NATSClient):
     def __init__(
         self,
         host: str,
@@ -117,6 +119,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, NATSClient):
             self.log_stop_event = None
             self.log_listener_queue = None
             self.change_logger_config_listener_queue = None
+            self.middleware_list = []
 
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
