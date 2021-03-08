@@ -5,6 +5,7 @@ import typing
 from urllib.parse import urljoin
 
 import requests
+import websocket
 from pynats import NATSClient, NATSMessage
 
 from panini.utils.helper import start_process
@@ -79,6 +80,7 @@ class TestClient:
         self,
         run_panini: typing.Callable = lambda *args, **kwargs: None,
         use_web_server: bool = False,
+        use_web_socket: bool = False,
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
         socket_timeout: int = 2,
@@ -101,6 +103,9 @@ class TestClient:
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
 
+        if use_web_socket:
+            self.websocket_session = websocket.WebSocket()
+
         self.panini_process = None
 
     def __del__(self):
@@ -109,6 +114,9 @@ class TestClient:
             self.panini_process.kill()
         if hasattr(self, "http_session"):
             self.http_session.close()
+
+        if hasattr(self, "websocket_session"):
+            self.websocket_session.close()
 
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
