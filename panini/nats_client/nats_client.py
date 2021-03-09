@@ -2,6 +2,7 @@ from ..exceptions import InitializingNATSError
 from ._nats_client_interface import NATSClientInterface
 from ._multi_proc_cli import _MultiProcNATSClient
 from ._asyncio_cli import _AsyncioNATSClient
+from panini.managers import _MiddlewareManager
 
 
 class NATSClient(NATSClientInterface):
@@ -32,7 +33,7 @@ class NATSClient(NATSClientInterface):
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-
+        listen_subjects_callbacks = self.inject_listen_middlewares(listen_subjects_callbacks)
         if client_strategy == "sync":
             self.connector: NATSClientInterface = _MultiProcNATSClient(
                 client_id,
@@ -69,8 +70,23 @@ class NATSClient(NATSClientInterface):
                 pending_bytes_limit,
                 num_of_queues,
             )
+            self.inject_send_middlewares()
         else:
             raise InitializingNATSError("Client strategy unsupported")
+
+    def inject_listen_middlewares(self, listen_subjects_callbacks):
+        injected = {}
+        for s, callbacks in listen_subjects_callbacks.items():
+            injected[s] = []
+            for cb in callbacks:
+                injected[s].append(_MiddlewareManager._wrap_function_by_middleware(cb, 'listen'))
+        return injected
+
+    def inject_send_middlewares(self):
+        self.connector.publish = _MiddlewareManager._wrap_function_by_middleware(self.connector.publish, 'publish')
+        self.connector.publish_sync = _MiddlewareManager._wrap_function_by_middleware(self.connector.publish_sync, 'publish')
+        self.connector.request = _MiddlewareManager._wrap_function_by_middleware(self.connector.request, 'request')
+        self.connector.request_sync = _MiddlewareManager._wrap_function_by_middleware(self.connector.request_sync, 'request')
 
     def check_connection(self):
         self.connector.check_connection()

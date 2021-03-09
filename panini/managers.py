@@ -26,7 +26,7 @@ class _EventManager:
         data_type=dict,
     ):
         def wrapper(function):
-            function = _MiddlewareManager._wrap_function_by_middleware(function, "listen")
+            # function = _MiddlewareManager._wrap_function_by_middleware(function, "listen")
             function = _EventManager.wrap_function_by_validator(function, validator)
             if type(subject) is list:
                 for t in subject:
