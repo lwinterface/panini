@@ -15,9 +15,9 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
+    @app.listen("test_publish.foo")
     async def publish(msg):
-        await app.publish(subject="bar", message={"data": 1})
+        await app.publish(subject="test_publish.bar", message={"data": 1})
 
     app.start()
 
@@ -28,13 +28,13 @@ global_object = Global()
 client = TestClient(run_panini)
 
 
-@client.listen("bar")
+@client.listen("test_publish.bar")
 def bar_listener1(subject, message):
     print("Got response")
     global_object.public_variable = message["data"]
 
 
-@client.listen("bar")
+@client.listen("test_publish.bar")
 def bar_listener2(subject, message):
     print("Got response")
     global_object.another_variable = message["data"] + 1
@@ -48,7 +48,7 @@ def start_client():
 def test_publish_no_message():
     assert global_object.public_variable == 0
     assert global_object.another_variable == 0
-    client.publish("foo", {})
+    client.publish("test_publish.foo", {})
     client.wait(2)  # wait for 2 messages
     assert global_object.public_variable == 1
     assert global_object.another_variable == 2

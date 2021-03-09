@@ -25,12 +25,12 @@ def run_panini():
 
     log = app.logger
 
-    @app.listen("foo")
+    @app.listen("test_logs.foo")
     async def subject_for_requests(msg):
         log.info(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
 
-    @app.listen("foo.*.bar")
+    @app.listen("test_logs.foo.*.bar")
     async def composite_subject_for_requests(msg):
         log.error(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
@@ -47,22 +47,24 @@ def start_client():
 
 
 def test_simple_log():
-    response = client.request("foo", {"data": 1})
+    response = client.request("test_logs.foo", {"data": 1})
     assert response["success"] is True
     with open(os.path.join(testing_logs_directory_path, "test_logs.log"), "r") as f:
         data = json.loads(f.read())
         assert data["name"] == "test_logs"
         assert data["levelname"] == "INFO"
-        assert data["message"] == "Got subject: foo"
+        assert data["message"] == "Got subject: test_logs.foo"
         assert data["extra"]["message"]["data"] == 1
 
 
 def test_listen_composite_subject_with_response():
-    subject = "foo.some.bar"
+    subject = "test_logs.foo.some.bar"
     response = client.request(subject, {"data": 2})
     assert response["success"] is True
     with open(os.path.join(testing_logs_directory_path, "errors.log"), "r") as f:
-        data = json.loads(f.read())
+        for last_line in f:
+            pass
+        data = json.loads(last_line)
         assert data["name"] == "test_logs"
         assert data["levelname"] == "ERROR"
         assert data["message"] == f"Got subject: {subject}"

@@ -15,9 +15,9 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("start")
+    @app.listen("test_request.start")
     async def publish_request(msg):
-        response = await app.request(subject="foo", message={"data": 1})
+        response = await app.request(subject="test_request.foo", message={"data": 1})
         return response
 
     app.start()
@@ -26,7 +26,7 @@ def run_panini():
 client = TestClient(run_panini)
 
 
-@client.listen("foo")
+@client.listen("test_request.foo")
 def foo_listener(subject, message):
     message["data"] += 1
     return message
@@ -38,5 +38,5 @@ def start_client():
 
 
 def test_publish_request():
-    response = client.request("start", {})
+    response = client.request("test_request.start", {})
     assert response["data"] == 2

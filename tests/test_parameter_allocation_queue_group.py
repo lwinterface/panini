@@ -19,7 +19,7 @@ def run_panini1():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
+    @app.listen("test_parameter_allocation_queue_group.foo")
     async def foo(msg):
         return {"data": 1}
 
@@ -37,7 +37,7 @@ def run_panini2():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
+    @app.listen("test_parameter_allocation_queue_group.foo")
     async def foo(msg):
         return {"data": 2}
 
@@ -58,12 +58,15 @@ client = TestClient()
 
 
 def test_listen_subject_only_if_include_one_request():
-    response = client.request("foo", {})
+    response = client.request("test_parameter_allocation_queue_group.foo", {})
     assert response["data"] in (1, 2)
 
 
 def test_listen_subject_only_if_include_multiple_requests():
     """Tests that some requests are handled by first panini app and some by second"""
-    results = set(client.request("foo", {})["data"] for _ in range(10))
+    results = set(
+        client.request("test_parameter_allocation_queue_group.foo", {})["data"]
+        for _ in range(10)
+    )
     assert 1 in results
     assert 2 in results

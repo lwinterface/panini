@@ -20,11 +20,11 @@ def run_panini():
     class DataValidator(Validator):
         data = Field(type=int)
 
-    @app.listen("foo", validator=DataValidator)
+    @app.listen("test_validator.foo", validator=DataValidator)
     async def publish(msg):
-        await app.publish(subject="bar", message={"data": 1})
+        await app.publish(subject="test_validator.bar", message={"data": 1})
 
-    @app.listen("check")
+    @app.listen("test_validator.check")
     async def check(msg):
         try:
             DataValidator.validated_message(msg.data)
@@ -42,7 +42,7 @@ global_object = Global()
 client = TestClient(run_panini)
 
 
-@client.listen("bar")
+@client.listen("test_validator.bar")
 def bar_listener1(subject, message):
     global_object.public_variable = message["data"]
 
@@ -53,26 +53,26 @@ def start_client():
 
 
 def test_no_message():
-    assert not client.request("check", {})["success"]
+    assert not client.request("test_validator.check", {})["success"]
 
 
 def test_incorrect_message():
-    assert not client.request("check", {"data": "string"})["success"]
+    assert not client.request("test_validator.check", {"data": "string"})["success"]
 
 
 def test_correct_message():
-    assert client.request("check", {"data": 1})["success"]
+    assert client.request("test_validator.check", {"data": 1})["success"]
 
 
 def test_publish_correct_message():
     assert global_object.public_variable == 0
-    client.publish("foo", {"data": "string"})
+    client.publish("test_validator.foo", {"data": "string"})
     client.wait(1)
     assert global_object.public_variable == 1
 
 
 def test_publish_incorrect_message():
     assert global_object.public_variable == 1
-    client.publish("foo", {"data": 1})
+    client.publish("test_validator.foo", {"data": 1})
     client.wait(1)
     assert global_object.public_variable == 1

@@ -20,12 +20,12 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
+    @app.listen("test_web_server.foo")
     async def foo(msg):
         msg.data["data"] += 1
         return msg.data
 
-    @app.http.post("/bar")
+    @app.http.post("/test_web_server/bar")
     async def post_listener(request):
         data = await request.json()
         data["data"] += 2
@@ -50,9 +50,11 @@ def start_client():
 def test_request_and_post():
     response = {"data": 0}
     for i in range(5):
-        response = client.request("foo", message={"data": response["data"]})
+        response = client.request(
+            "test_web_server.foo", message={"data": response["data"]}
+        )
         response = client.http_session.post(
-            "bar", data=json.dumps({"data": response["data"]})
+            "test_web_server/bar", data=json.dumps({"data": response["data"]})
         )
         assert response.status_code == 200, response.text
         response = response.json()

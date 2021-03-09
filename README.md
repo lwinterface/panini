@@ -484,11 +484,8 @@ Panini will automatically detect and set it. After that you can get your logger 
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing
 
-To run tests (notice, that nats-server must be running for tests): 
-```python
-cd tests
-./run_test.sh
-```
+To run tests (notice, that nats-server must be running on port 4222 for tests): 
+`pytest`
  
 ## Contributing
 
