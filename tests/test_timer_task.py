@@ -29,20 +29,19 @@ def run_panini():
 global_object = Global()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_timer_task.foo")
+    def foo_listener(subject, message):
+        global_object.another_variable += 2
 
-@client.listen("test_timer_task.foo")
-def foo_listener(subject, message):
-    global_object.another_variable += 2
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_timer_task():
+def test_timer_task(client):
     assert global_object.another_variable == 0
     client.wait(20)
     start_time = time.time()

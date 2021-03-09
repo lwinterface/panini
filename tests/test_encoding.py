@@ -51,15 +51,14 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start()
+    return client
 
 
-def test_encoding():
+def test_encoding(client):
     response = client.request("test_encoding.foo", {"data": "some correct data"})
     assert response["len"] == 17
 
@@ -67,12 +66,12 @@ def test_encoding():
     assert response["len"] == 20
 
 
-def test_correct_message_format():
+def test_correct_message_format(client):
     response = client.request("test_encoding.correct", {"data": "some data"})
     assert response["success"] is True
 
 
-def test_incorrect_message_format():
+def test_incorrect_message_format(client):
     with pytest.raises(OSError):
         client.request("test_encoding.message.correct", {"data": "some data"})
 

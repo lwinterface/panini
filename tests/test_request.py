@@ -23,20 +23,19 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_request.foo")
+    def foo_listener(subject, message):
+        message["data"] += 1
+        return message
 
-@client.listen("test_request.foo")
-def foo_listener(subject, message):
-    message["data"] += 1
-    return message
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_publish_request():
+def test_publish_request(client):
     response = client.request("test_request.start", {})
     assert response["data"] == 2

@@ -39,39 +39,38 @@ def run_panini():
 global_object = Global()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_validator.bar")
+    def bar_listener1(subject, message):
+        global_object.public_variable = message["data"]
 
-@client.listen("test_validator.bar")
-def bar_listener1(subject, message):
-    global_object.public_variable = message["data"]
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_no_message():
+def test_no_message(client):
     assert not client.request("test_validator.check", {})["success"]
 
 
-def test_incorrect_message():
+def test_incorrect_message(client):
     assert not client.request("test_validator.check", {"data": "string"})["success"]
 
 
-def test_correct_message():
+def test_correct_message(client):
     assert client.request("test_validator.check", {"data": 1})["success"]
 
 
-def test_publish_correct_message():
+def test_publish_correct_message(client):
     assert global_object.public_variable == 0
     client.publish("test_validator.foo", {"data": "string"})
     client.wait(1)
     assert global_object.public_variable == 1
 
 
-def test_publish_incorrect_message():
+def test_publish_incorrect_message(client):
     assert global_object.public_variable == 1
     client.publish("test_validator.foo", {"data": 1})
     client.wait(1)

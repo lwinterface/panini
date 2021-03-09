@@ -44,28 +44,27 @@ def run_panini():
 
 
 # if we use raw HTTPSessionTestClient - we need to run panini manually and wait for setup
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = HTTPSessionTestClient(
+        base_url="http://127.0.0.1:8083"
+    )  # handles only http requests
     start_process(run_panini)
     time.sleep(2)
-
-
-client = HTTPSessionTestClient(
-    base_url="http://127.0.0.1:8083"
-)  # handles only http requests
+    return client
 
 
 @pytest.mark.parametrize(
     "url",
     ["test_web_server_separately/get", "test_web_server_separately/rest/endpoint"],
 )
-def test_get(url):
+def test_get(url, client):
     response = client.get(url)
     assert response.status_code == 200
     assert response.text == "get response"
 
 
-def test_get_invalid():
+def test_get_invalid(client):
     response = client.get("test_web_server_separately/get/invalid")
     assert response.status_code == 404, response.text
 
@@ -74,13 +73,13 @@ def test_get_invalid():
     "url",
     ["test_web_server_separately/post", "test_web_server_separately/rest/endpoint"],
 )
-def test_post(url):
+def test_post(url, client):
     response = client.post(url, data=json.dumps({"data": 1}))
     assert response.status_code == 200
     assert response.json()["data"] == 2
 
 
-def test_post_invalid():
+def test_post_invalid(client):
     response = client.post(
         "test_web_server_separately/post", data=json.dumps({"data": None})
     )

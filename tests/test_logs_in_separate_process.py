@@ -44,15 +44,14 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start(sleep_time=2, is_daemon=False)
+    return client
 
 
-def test_simple_log():
+def test_simple_log(client):
     response = client.request("test_logs_in_separate_process.foo", {"data": 1})
     assert response["success"] is True
 
@@ -69,7 +68,7 @@ def test_simple_log():
         assert data["extra"]["message"]["data"] == 1
 
 
-def test_listen_composite_subject_with_response():
+def test_listen_composite_subject_with_response(client):
     subject = "test_logs_in_separate_process.foo.some.bar"
     response = client.request(subject, {"data": 2})
     assert response["success"] is True
@@ -86,7 +85,7 @@ def test_listen_composite_subject_with_response():
         assert data["extra"]["message"]["data"] == 2
 
 
-def test_kill_logs():
+def test_kill_logs(client):
     response = client.request("test_logs_in_separate_process.kill.logs", {})
     assert response["success"] is True
     client.panini_process.kill()

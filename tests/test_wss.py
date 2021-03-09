@@ -49,16 +49,15 @@ def run_panini():
     app.start()
 
 
-# provide parameter for using web_socket - use_web_socket;
-client = TestClient(run_panini=run_panini, use_web_socket=True)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    # provide parameter for using web_socket - use_web_socket;
+    client = TestClient(run_panini=run_panini, use_web_socket=True)
     client.start(sleep_time=3)
+    return client
 
 
-def test_wss_bridge():
+def test_wss_bridge(client):
     print("Before connect")
     client.websocket_session.connect("ws://127.0.0.1:1111/test_wss/stream")
     print("Connected")

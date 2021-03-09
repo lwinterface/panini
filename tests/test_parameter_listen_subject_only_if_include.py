@@ -31,15 +31,14 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start()
+    return client
 
 
-def test_listen_subject_only_if_include():
+def test_listen_subject_only_if_include(client):
     response = client.request("test_parameter_listen_subject_only_if_include.foo", {})
     assert response["data"] == 2
 

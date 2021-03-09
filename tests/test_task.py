@@ -27,20 +27,19 @@ def run_panini():
 global_object = Global()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_task.foo")
+    def foo_listener(subject, message):
+        global_object.public_variable = message["data"] + 1
 
-@client.listen("test_task.foo")
-def foo_listener(subject, message):
-    global_object.public_variable = message["data"] + 1
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_task():
+def test_task(client):
     assert global_object.public_variable == 0
     client.wait(1)
     assert global_object.public_variable == 2

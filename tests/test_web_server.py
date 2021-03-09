@@ -34,20 +34,19 @@ def run_panini():
     app.start()
 
 
-# provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
-client = TestClient(
-    run_panini=run_panini,
-    use_web_server=True,
-    base_web_server_url="http://127.0.0.1:8084",
-)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    # provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
+    client = TestClient(
+        run_panini=run_panini,
+        use_web_server=True,
+        base_web_server_url="http://127.0.0.1:8084",
+    )
     client.start(sleep_time=3)
+    return client
 
 
-def test_request_and_post():
+def test_request_and_post(client):
     response = {"data": 0}
     for i in range(5):
         response = client.request(

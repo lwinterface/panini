@@ -26,20 +26,19 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start()
+    return client
 
 
-def test_listen_simple_subject_with_response():
+def test_listen_simple_subject_with_response(client):
     response = client.request("test_listen.foo", {"data": 1})
     assert response["data"] == 2
 
 
-def test_listen_composite_subject_with_response():
+def test_listen_composite_subject_with_response(client):
     subject1 = "test_listen.foo.some.bar"
     subject2 = "test_listen.foo.another.bar"
     response1 = client.request(subject1, {"data": 1})

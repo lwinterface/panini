@@ -24,14 +24,13 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start()
+    return client
 
 
-def test_publish_request_timeout():
+def test_publish_request_timeout(client):
     with pytest.raises(OSError):
         client.request("test_timeout.publish.request.not.existing.subject", {})

@@ -25,27 +25,25 @@ def run_panini():
 global_object = Global()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_publish.bar")
+    def bar_listener1(subject, message):
+        print("Got response")
+        global_object.public_variable = message["data"]
 
-@client.listen("test_publish.bar")
-def bar_listener1(subject, message):
-    print("Got response")
-    global_object.public_variable = message["data"]
+    @client.listen("test_publish.bar")
+    def bar_listener2(subject, message):
+        print("Got response")
+        global_object.another_variable = message["data"] + 1
 
-
-@client.listen("test_publish.bar")
-def bar_listener2(subject, message):
-    print("Got response")
-    global_object.another_variable = message["data"] + 1
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_publish_no_message():
+def test_publish_no_message(client):
     assert global_object.public_variable == 0
     assert global_object.another_variable == 0
     client.publish("test_publish.foo", {})

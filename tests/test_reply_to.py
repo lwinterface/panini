@@ -33,22 +33,22 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
 global_object = Global()
 
 
-@client.listen("test_reply_to.bar")
-def bar_listener(subject, message):
-    global_object.public_variable = message["data"] + 3
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_reply_to.bar")
+    def bar_listener(subject, message):
+        global_object.public_variable = message["data"] + 3
 
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_reply_to():
+def test_reply_to(client):
     assert global_object.public_variable == 0
     client.publish("test_reply_to.start", {})
     client.wait(1)  # wait for bar_listener call

@@ -38,15 +38,14 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start(sleep_time=2)
+    return client
 
 
-def test_simple_log():
+def test_simple_log(client):
     response = client.request("test_logs.foo", {"data": 1})
     assert response["success"] is True
     with open(os.path.join(testing_logs_directory_path, "test_logs.log"), "r") as f:
@@ -57,7 +56,7 @@ def test_simple_log():
         assert data["extra"]["message"]["data"] == 1
 
 
-def test_listen_composite_subject_with_response():
+def test_listen_composite_subject_with_response(client):
     subject = "test_logs.foo.some.bar"
     response = client.request(subject, {"data": 2})
     assert response["success"] is True
