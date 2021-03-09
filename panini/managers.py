@@ -200,23 +200,23 @@ class _MiddlewareManager:
 
         if "send_any" in middleware_cls.__dict__:
             if "send_publish" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"send_publish_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["send_publish_middleware"].append(
                     middleware_obj.send_any
                 )
 
             if "send_request" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"send_request_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["send_request_middleware"].append(
                     middleware_obj.send_any
                 )
 
         if "listen_any" in middleware_cls.__dict__:
             if "listen_publish" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"listen_publish_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["listen_publish_middleware"].append(
                     middleware_obj.listen_any
                 )
 
             if "listen_request" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"listen_request_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["listen_request_middleware"].append(
                     middleware_obj.listen_any
                 )
 

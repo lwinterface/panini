@@ -17,55 +17,57 @@ def run_panini():
         logger_in_separate_process=False,
     )
 
-    @app.listen("foo")
+    @app.listen("test_sync.foo")
     def subject_for_requests(msg):
         return {"test": msg.data["test"] + 1}
 
-    @app.listen("foo.*.bar")
+    @app.listen("test_sync.foo.*.bar")
     def composite_subject_for_requests(msg):
         return {"test": msg.subject + str(msg.data["test"])}
 
-    @app.listen("publish")
+    @app.listen("test_sync.publish")
     def publish(msg):
         app.publish_sync(
-            subject="publish.listener", message={"test": msg.data["test"] + 1}
+            subject="test_sync.publish.listener", message={"test": msg.data["test"] + 1}
         )
 
-    @app.listen("publish.request")
+    @app.listen("test_sync.publish.request")
     def publish_request(msg):
         response = app.request_sync(
-            subject="publish.request.helper", message={"test": msg.data["test"] + 1}
+            subject="test_sync.publish.request.helper",
+            message={"test": msg.data["test"] + 1},
         )
         app.publish_sync(
-            subject="publish.request.listener", message={"test": response["test"] + 3}
+            subject="test_sync.publish.request.listener",
+            message={"test": response["test"] + 3},
         )
 
-    @app.listen("publish.request.helper")
+    @app.listen("test_sync.publish.request.helper")
     def publish_request_helper(msg):
         return {"test": msg.data["test"] + 2}
 
-    @app.listen("publish.request.reply")
+    @app.listen("test_sync.publish.request.reply")
     def publish_request(msg):
         app.publish_sync(
-            subject="publish.request.reply.helper",
+            subject="test_sync.publish.request.reply.helper",
             message={"test": msg.data["test"] + 1},
-            reply_to="publish.request.reply.replier",
+            reply_to="test_sync.publish.request.reply.replier",
         )
 
-    @app.listen("publish.request.reply.helper")
+    @app.listen("test_sync.publish.request.reply.helper")
     def publish_request_helper(msg):
         res = {"test": msg.data["test"] + 1}
         print("Send: ", res)
         return res
 
-    @app.listen("publish.request.reply.replier")
+    @app.listen("test_sync.publish.request.reply.replier")
     def publish_request_helper(msg):
         app.publish_sync(
-            subject="publish.request.reply.listener",
+            subject="test_sync.publish.request.reply.listener",
             message={"test": msg.data["test"] + 1},
         )
 
-    @app.listen("finish")
+    @app.listen("test_sync.finish")
     def kill(msg):
         if hasattr(app.connector, "nats_listener_process"):
             app.connector.nats_listener_process.terminate()
@@ -75,71 +77,69 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
 global_object = Global()
 
 
-@client.listen("publish.listener")
-def publish_listener(subject, message):
-    global_object.public_variable = message["test"] + 1
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_sync.publish.listener")
+    def publish_listener(subject, message):
+        global_object.public_variable = message["test"] + 1
 
-@client.listen("publish.request.listener")
-def publish_request_listener(subject, message):
-    global_object.another_variable = message["test"] + 4
+    @client.listen("test_sync.publish.request.listener")
+    def publish_request_listener(subject, message):
+        global_object.another_variable = message["test"] + 4
 
+    @client.listen("test_sync.publish.request.reply.listener")
+    def publish_request_reply_listener(subject, message):
+        print("message: ", message)
+        global_object.additional_variable = message["test"] + 1
 
-@client.listen("publish.request.reply.listener")
-def publish_request_reply_listener(subject, message):
-    print("message: ", message)
-    global_object.additional_variable = message["test"] + 1
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start(is_sync=True)
+    return client
 
 
-def test_listen_simple_subject_with_response():
-    response = client.request("foo", {"test": 1})
+def test_listen_simple_subject_with_response(client):
+    response = client.request("test_sync.foo", {"test": 1})
     assert response["test"] == 2
 
 
-def test_listen_composite_subject_with_response():
-    subject1 = "foo.some.bar"
-    subject2 = "foo.another.bar"
+def test_listen_composite_subject_with_response(client):
+    subject1 = "test_sync.foo.some.bar"
+    subject2 = "test_sync.foo.another.bar"
     response1 = client.request(subject1, {"test": 1})
     response2 = client.request(subject2, {"test": 2})
     assert response1["test"] == f"{subject1}1"
     assert response2["test"] == f"{subject2}2"
 
 
-def test_publish():
+def test_publish(client):
     assert global_object.public_variable == 0
-    client.publish("publish", {"test": 1})
+    client.publish("test_sync.publish", {"test": 1})
     client.wait(1)
     assert global_object.public_variable == 3
 
 
-def test_publish_request():
+def test_publish_request(client):
     assert global_object.another_variable == 0
-    client.publish("publish.request", {"test": 0})
+    client.publish("test_sync.publish.request", {"test": 0})
     client.wait(1)
     assert global_object.another_variable == 10
 
 
 # NotImplemented - raises an error
-# def test_publish_request_reply():
+# def test_publish_request_reply(client):
 #     assert global_object.additional_variable == 0
 #     client.publish("publish.request.reply", {"test": 0})
 #     client.wait(1)
 #     assert global_object.additional_variable == 4
 
 
-def test_finish():
+def test_finish(client):
     # finalize
-    client.publish("finish", {})
+    client.publish("test_sync.finish", {})
     import time
 
     time.sleep(1)

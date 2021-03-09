@@ -15,28 +15,27 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("start")
+    @app.listen("test_request.start")
     async def publish_request(msg):
-        response = await app.request(subject="foo", message={"data": 1})
+        response = await app.request(subject="test_request.foo", message={"data": 1})
         return response
 
     app.start()
 
 
-client = TestClient(run_panini)
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_request.foo")
+    def foo_listener(subject, message):
+        message["data"] += 1
+        return message
 
-@client.listen("foo")
-def foo_listener(subject, message):
-    message["data"] += 1
-    return message
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_publish_request():
-    response = client.request("start", {})
+def test_publish_request(client):
+    response = client.request("test_request.start", {})
     assert response["data"] == 2

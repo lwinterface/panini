@@ -17,11 +17,15 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("start")
+    @app.listen("test_reply_to.start")
     async def reply_to(msg):
-        await app.publish(message={"data": 1}, subject="foo", reply_to="bar")
+        await app.publish(
+            message={"data": 1},
+            subject="test_reply_to.foo",
+            reply_to="test_reply_to.bar",
+        )
 
-    @app.listen("foo")
+    @app.listen("test_reply_to.foo")
     async def helper(msg):
         msg.data["data"] += 2
         return msg.data
@@ -29,23 +33,23 @@ def run_panini():
     app.start()
 
 
-client = TestClient(run_panini)
-
 global_object = Global()
 
 
-@client.listen("bar")
-def bar_listener(subject, message):
-    global_object.public_variable = message["data"] + 3
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
 
+    @client.listen("test_reply_to.bar")
+    def bar_listener(subject, message):
+        global_object.public_variable = message["data"] + 3
 
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
     client.start()
+    return client
 
 
-def test_reply_to():
+def test_reply_to(client):
     assert global_object.public_variable == 0
-    client.publish("start", {})
+    client.publish("test_reply_to.start", {})
     client.wait(1)  # wait for bar_listener call
     assert global_object.public_variable == 6
