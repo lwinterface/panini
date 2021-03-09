@@ -31,11 +31,10 @@ async def publish():
         log.warning(f"send message {message}")
 
 
-# @app.timer_task(interval=2)
-# async def publish_periodically():
-#     for _ in range(10):
-#         await app.publish(subject="some.publish.subject", message=message)
-        # log.warning(f"send message from periodic task {msg}")
+@app.timer_task(interval=2)
+async def request_periodically():
+    response = await app.request(subject="some.request.subject", message=message)
+    log.warning(f"response message from periodic task: {response}")
 
 
 @app.listen("some.publish.subject")
@@ -43,34 +42,34 @@ async def receive_messages(msg):
     log.warning(f"got subject {msg.subject}")
     log.warning(f"got message {msg.data}")
 
+@app.listen("some.request.subject")
+async def receive_messages(msg):
+    return {'success': True, "data":"some data you asked for"}
+
 
 class MyMiddleware(Middleware):
 
-    async def send_publish(self, topic, message, publish_func, **kwargs):
-        #do something before
-        print('something before publish')
-        await publish_func(topic, message, **kwargs)
-        #do something after
-        print('something after publish')
+    async def send_publish(self, subject, message, publish_func, **kwargs):
+        print('do something before publish')
+        await publish_func(subject, message, **kwargs)
+        print('do something after publish')
 
     async def listen_publish(self, msg, cb):
-        #do something before
-        print('something before publish')
+        print('do something before listen')
         await cb(msg)
-        # do something after
-        print('something after publish')
-    #
-    # async def send_request(self, topic, message, request_func, **kwargs):
-    #     # do something before
-    #     result = await request_func(topic, message, **kwargs)
-    #     # do something after
-    #     return result
-    #
-    # async def listen_request(self, msg, cb):
-    #     # do something before
-    #     result = cb(msg)
-    #     # do something after
-    #     return result
+        print('do something after listen')
+
+    async def send_request(self, subject, message, request_func, **kwargs):
+        print('do something before send request')
+        result = await request_func(subject, message, **kwargs)
+        print('do something after send request')
+        return result
+
+    async def listen_request(self, msg, cb):
+        print('do something before listen request')
+        result = await cb(msg)
+        print('do something after listen request')
+        return result
 
 
 

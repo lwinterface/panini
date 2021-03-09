@@ -2,7 +2,7 @@ class Middleware:
     def __init__(self, *args, **kwargs):
         pass
 
-    async def send_publish(self, subject: str, message, publish_func, **kwargs):
+    async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
         """
         :param subject: str
         :param message: any of supported types
@@ -19,7 +19,7 @@ class Middleware:
         """
         pass
 
-    async def send_request(self, subject: str, message, request_func, **kwargs):
+    async def send_request(self, subject: str, message, request_func, *args, **kwargs):
         """
         :param subject: str
         :param message: any of supported types
@@ -36,7 +36,7 @@ class Middleware:
         """
         pass
 
-    async def send_any(self, subject: str, message, send_func, **kwargs):
+    async def send_any(self, subject: str, message, send_func, *args, **kwargs):
         """
         :param subject: str
         :param message: any of supported types
