@@ -1,6 +1,6 @@
 # Panini
   
-Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
+Panini is a modern framework for fast and straightforward microservices development. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
 The framework allows you to work with NATS features and some additional logic using a simple interface:
 *  easy to initialize application
@@ -58,6 +58,35 @@ def your_periodic_task():
 def your_periodic_task():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message={'some':'data'})
+```
+* create middlewares for NATS messages
+
+```python
+from panini.middleware import Middleware
+
+class MyMiddleware(Middleware):
+
+    async def send_publish(self, subject, message, publish_func, **kwargs):
+        print('do something before publish')
+        await publish_func(subject, message, **kwargs)
+        print('do something after publish')
+
+    async def listen_publish(self, msg, cb):
+        print('do something before listen')
+        await cb(msg)
+        print('do something after listen')
+
+    async def send_request(self, subject, message, request_func, **kwargs):
+        print('do something before send request')
+        result = await request_func(subject, message, **kwargs)
+        print('do something after send request')
+        return result
+
+    async def listen_request(self, msg, cb):
+        print('do something before listen request')
+        result = await cb(msg)
+        print('do something after listen request')
+        return result
 ```
 * create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints all together in one microservice
 ```python
