@@ -1,5 +1,4 @@
 from panini import app as panini_app
-from panini.utils.logger import get_logger
 from panini.middleware import Middleware
 
 

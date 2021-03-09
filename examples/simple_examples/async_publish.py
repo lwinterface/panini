@@ -1,6 +1,4 @@
 from panini import app as panini_app
-from panini.utils.logger import get_logger
-
 app = panini_app.App(
     service_name="async_publish",
     host="127.0.0.1",
