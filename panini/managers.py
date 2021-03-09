@@ -26,7 +26,9 @@ class _EventManager:
         data_type=dict,
     ):
         def wrapper(function):
-            function = _MiddlewareManager._wrap_function_by_middleware(function, "listen")
+            function = _MiddlewareManager._wrap_function_by_middleware(
+                function, "listen"
+            )
             function = _EventManager.wrap_function_by_validator(function, validator)
             if type(subject) is list:
                 for t in subject:
@@ -201,23 +203,23 @@ class _MiddlewareManager:
 
         if "send_any" in middleware_cls.__dict__:
             if "send_publish" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"send_publish_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["send_publish_middleware"].append(
                     middleware_obj.send_any
                 )
 
             if "send_request" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"send_request_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["send_request_middleware"].append(
                     middleware_obj.send_any
                 )
 
         if "listen_any" in middleware_cls.__dict__:
             if "listen_publish" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"listen_publish_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["listen_publish_middleware"].append(
                     middleware_obj.listen_any
                 )
 
             if "listen_request" not in middleware_cls.__dict__:
-                _MiddlewareManager.MIDDLEWARE[f"listen_request_middleware"].append(
+                _MiddlewareManager.MIDDLEWARE["listen_request_middleware"].append(
                     middleware_obj.listen_any
                 )
 
@@ -238,11 +240,11 @@ class _MiddlewareManager:
         def wrap_function_by_send_middleware(
             func: Callable, single_middleware
         ) -> Callable:
-            def next_wrapper(subject: str, message, **kwargs):
-                return single_middleware(subject, message, func, **kwargs)
+            def next_wrapper(subject: str, message, *args, **kwargs):
+                return single_middleware(subject, message, func, *args, **kwargs)
 
-            async def aio_next_wrapper(subject: str, message, **kwargs):
-                return await single_middleware(subject, message, func, **kwargs)
+            async def aio_next_wrapper(subject: str, message, *args, **kwargs):
+                return await single_middleware(subject, message, *args, func, **kwargs)
 
             if asyncio.iscoroutinefunction(single_middleware):
                 return aio_next_wrapper
