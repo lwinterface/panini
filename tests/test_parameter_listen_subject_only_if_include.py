@@ -16,15 +16,15 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("start")
+    @app.listen("test_parameter_listen_subject_only_if_include.start")
     async def start(msg):
         return {"data": 1}
 
-    @app.listen("foo")
+    @app.listen("test_parameter_listen_subject_only_if_include.foo")
     async def foo(msg):
         return {"data": 2}
 
-    @app.listen("bar")
+    @app.listen("test_parameter_listen_subject_only_if_include.bar")
     async def start(msg):
         return {"data": 3}
 
@@ -40,11 +40,11 @@ def start_client():
 
 
 def test_listen_subject_only_if_include():
-    response = client.request("foo", {})
+    response = client.request("test_parameter_listen_subject_only_if_include.foo", {})
     assert response["data"] == 2
 
-    response = client.request("bar", {})
+    response = client.request("test_parameter_listen_subject_only_if_include.bar", {})
     assert response["data"] == 3
 
     with pytest.raises(OSError):
-        client.request("start", {})
+        client.request("test_parameter_listen_subject_only_if_include.start", {})

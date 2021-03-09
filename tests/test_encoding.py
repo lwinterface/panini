@@ -15,31 +15,37 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
+    @app.listen("test_encoding.foo")
     async def foo(msg):
         return {"len": len(msg.data["data"])}
 
-    @app.listen("helper.correct")
+    @app.listen("test_encoding.helper.correct")
     async def helper(msg):
         return {"data": "data"}
 
-    @app.listen("helper.incorrect")
+    @app.listen("test_encoding.helper.incorrect")
     async def helper(msg):
         return "message not dict"
 
-    @app.listen("message.incorrect")
+    @app.listen("test_encoding.message.incorrect")
     async def bar(msg):
-        await app.request(subject="helper.correct", message="message not dict")
+        await app.request(
+            subject="test_encoding.helper.correct", message="message not dict"
+        )
         return {"success": True}
 
-    @app.listen("message.correct")
+    @app.listen("test_encoding.message.correct")
     async def bar(msg):
-        await app.request(subject="helper.incorrect", message={"data": "some data"})
+        await app.request(
+            subject="test_encoding.helper.incorrect", message={"data": "some data"}
+        )
         return {"success": True}
 
-    @app.listen("correct")
+    @app.listen("test_encoding.correct")
     async def bar(msg):
-        await app.request(subject="helper.correct", message={"data": "some data"})
+        await app.request(
+            subject="test_encoding.helper.correct", message={"data": "some data"}
+        )
         return {"success": True}
 
     app.start()
@@ -54,21 +60,21 @@ def start_client():
 
 
 def test_encoding():
-    response = client.request("foo", {"data": "some correct data"})
+    response = client.request("test_encoding.foo", {"data": "some correct data"})
     assert response["len"] == 17
 
-    response = client.request("foo", {"data": "не латинские символы"})
+    response = client.request("test_encoding.foo", {"data": "не латинские символы"})
     assert response["len"] == 20
 
 
 def test_correct_message_format():
-    response = client.request("correct", {"data": "some data"})
+    response = client.request("test_encoding.correct", {"data": "some data"})
     assert response["success"] is True
 
 
 def test_incorrect_message_format():
     with pytest.raises(OSError):
-        client.request("message.correct", {"data": "some data"})
+        client.request("test_encoding.message.correct", {"data": "some data"})
 
     with pytest.raises(OSError):
-        client.request("message.incorrect", {"data": "some data"})
+        client.request("test_encoding.message.incorrect", {"data": "some data"})

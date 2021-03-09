@@ -21,7 +21,7 @@ def run_panini():
 
     @app.timer_task(0.1)
     async def publish_periodically():
-        await app.publish(subject="foo", message={})
+        await app.publish(subject="test_timer_task.foo", message={})
 
     app.start()
 
@@ -32,7 +32,7 @@ global_object = Global()
 client = TestClient(run_panini)
 
 
-@client.listen("foo")
+@client.listen("test_timer_task.foo")
 def foo_listener(subject, message):
     global_object.another_variable += 2
 

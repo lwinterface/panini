@@ -15,9 +15,11 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("publish.request.not.existing.subject")
+    @app.listen("test_timeout.publish.request.not.existing.subject")
     async def publish_request(msg):
-        return await app.request(subject="not-existing-subject", message={"data": 1})
+        return await app.request(
+            subject="test_timeout.not-existing-subject", message={"data": 1}
+        )
 
     app.start()
 
@@ -32,4 +34,4 @@ def start_client():
 
 def test_publish_request_timeout():
     with pytest.raises(OSError):
-        client.request("publish.request.not.existing.subject", {})
+        client.request("test_timeout.publish.request.not.existing.subject", {})

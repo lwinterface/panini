@@ -11,7 +11,7 @@ from tests.helper import get_testing_logs_directory_path
 
 def run_panini():
     app = ant_app.App(
-        service_name="async_NATS_WSS_bridge",
+        service_name="test_wss",
         host="127.0.0.1",
         port=4222,
         app_strategy="asyncio",
@@ -23,11 +23,11 @@ def run_panini():
 
     manager = WSSManager(app)
 
-    @app.listen("start")
+    @app.listen("test_wss.start")
     async def publish(msg):
-        await app.publish(subject="foo.bar", message={"data": 1})
+        await app.publish(subject="test_wss.foo.bar", message={"data": 1})
 
-    @app.http.get("/stream")
+    @app.http.get("/test_wss/stream")
     async def web_endpoint_listener(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
@@ -60,10 +60,10 @@ def start_client():
 
 def test_wss_bridge():
     print("Before connect")
-    client.websocket_session.connect("ws://127.0.0.1:1111/stream")
+    client.websocket_session.connect("ws://127.0.0.1:1111/test_wss/stream")
     print("Connected")
     subscribe_message = {
-        "subjects": ["foo.bar"],
+        "subjects": ["test_wss.foo.bar"],
         "action": "subscribe",
     }  # subscribe to all subjects with .
     client.websocket_session.send(json.dumps(subscribe_message))
@@ -72,20 +72,20 @@ def test_wss_bridge():
     assert response["data"] == "Successfully connected"
 
     response = json.loads(client.websocket_session.recv())
-    assert response["data"] == "Successfully connected to events: 'foo.bar'"
+    assert response["data"] == "Successfully connected to events: 'test_wss.foo.bar'"
 
-    client.publish("start", {})
+    client.publish("test_wss.start", {})
     response = json.loads(client.websocket_session.recv())["data"]
     assert response["data"] == 1
 
     unsubscribe_message = {
-        "subjects": ["foo.bar"],
+        "subjects": ["test_wss.foo.bar"],
         "action": "unsubscribe",
     }  # unsubscribe
     client.websocket_session.send(json.dumps(unsubscribe_message))
     response = json.loads(client.websocket_session.recv())
 
     assert response["success"] is True
-    assert response["data"] == "Successfully unsubscribed from event: foo.bar"
+    assert response["data"] == "Successfully unsubscribed from event: test_wss.foo.bar"
 
     client.websocket_session.close()
