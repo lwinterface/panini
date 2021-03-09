@@ -34,7 +34,7 @@ async def request():
 
 @app.listen("some.request.subject.123", data_type=str)
 async def subject_for_requests_listener(msg):
-    if not type(msg) == str:
+    if not type(msg.data) == str:
         raise Exception("Wrong datatype!")
     return {"success": True, "data": "request has been processed"}
 
