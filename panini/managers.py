@@ -23,12 +23,9 @@ class _EventManager:
         subject: list or str,
         validator: type = None,
         dynamic_subscription=False,
-        data_type=dict,
+        data_type='json.loads',
     ):
         def wrapper(function):
-            function = _MiddlewareManager._wrap_function_by_middleware(
-                function, "listen"
-            )
             function = _EventManager.wrap_function_by_validator(function, validator)
             if type(subject) is list:
                 for t in subject:
@@ -244,7 +241,7 @@ class _MiddlewareManager:
                 return single_middleware(subject, message, func, *args, **kwargs)
 
             async def aio_next_wrapper(subject: str, message, *args, **kwargs):
-                return await single_middleware(subject, message, *args, func, **kwargs)
+                return await single_middleware(subject, message, func, *args, **kwargs)
 
             if asyncio.iscoroutinefunction(single_middleware):
                 return aio_next_wrapper
