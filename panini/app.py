@@ -7,7 +7,12 @@ import logging
 from aiohttp import web
 
 from .nats_client.nats_client import NATSClient
-from .managers import _EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager
+from .managers import (
+    _EventManager,
+    _TaskManager,
+    _IntervalTaskManager,
+    _MiddlewareManager,
+)
 from .http_server.http_server_app import HTTPServer
 from .exceptions import (
     InitializingEventManagerError,
@@ -24,7 +29,9 @@ from .utils import logger
 _app = None
 
 
-class App(_EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager, NATSClient):
+class App(
+    _EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager, NATSClient
+):
     def __init__(
         self,
         host: str,
@@ -119,7 +126,14 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager,
             self.log_stop_event = None
             self.log_listener_queue = None
             self.change_logger_config_listener_queue = None
-            self.middleware_list = []
+            if self.logger_required and not self.logger_in_separate_process:
+                self.set_logger(
+                    self.service_name,
+                    self.app_root_path,
+                    self.logger_files_path,
+                    self.logger_in_separate_process,
+                    self._client_id,
+                )
 
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
@@ -182,7 +196,7 @@ class App(_EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager,
             start_thread(self._start())
 
     def _start(self):
-        if self.logger_required:
+        if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,
                 self.app_root_path,

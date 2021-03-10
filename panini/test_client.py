@@ -126,13 +126,25 @@ class TestClient:
     def _bytes_to_dict(payload: bytes) -> dict:
         return json.loads(payload)
 
+    @staticmethod
+    def wrap_run_panini(run_panini):
+        from .utils.logger import get_logger
+
+        test_logger = get_logger("app")
+        try:
+            run_panini()
+        except Exception as e:
+            test_logger.exception(f"Run panini error: {e}")
+
     def start(
         self, is_sync: bool = False, sleep_time: float = None, is_daemon: bool = None
     ):
         if is_daemon is None:
             is_daemon = False if is_sync else True
 
-        self.panini_process = start_process(self.run_panini, daemon=is_daemon)
+        self.panini_process = start_process(
+            self.wrap_run_panini, args=(self.run_panini,), daemon=is_daemon
+        )
         if sleep_time is None:
             time.sleep(6) if is_sync else time.sleep(1)
         else:
