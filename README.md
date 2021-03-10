@@ -18,13 +18,15 @@ app = panini_app.App(
 @app.task()
 async def publish():
     while True:
-        msg = get_some_update()
-        await app.publish(subject='some.subject', message=msg)
+        message = get_some_update()
+        await app.publish(subject='some.subject', message=message)
 ```
 *  subscribe to subject
 ```python
 @app.listen('some.subject')
-async def subject_for_requests_listener(subject, message):
+async def subject_for_requests_listener(msg):
+    subject = msg.subject
+    message = msg.data
     # handle incoming message
 ```
 *  request to subject
@@ -34,7 +36,9 @@ response = await app.request(subject='some.request.subject.123', message={'reque
 * receive a request from another microservice and return a response like HTTP request-response
 ```python
 @app.listen('some.request.subject.123')
-async def request_listener(subject, message):
+async def request_listener(msg):
+    subject = msg.subject
+    message = msg.data
     # handle request
     return {'success': True, 'data': 'request has been processed'}
 ```
@@ -57,7 +61,7 @@ def your_periodic_task():
 @app.timer_task(interval=2)
 def your_periodic_task():
     for _ in range(10):
-        app.publish_sync(subject='some.publish.subject', message={'some':'data'})
+        app.publish_sync(subject='some.publish.subject', message=b'messageinbytesrequiresminimumoftimetosend', data_type=bytes)
 ```
 * create middlewares for NATS messages
 
@@ -93,8 +97,8 @@ class MyMiddleware(Middleware):
 from aiohttp import web
 
 @app.listen('some.publish.subject')
-async def subject_for_requests_listener(subject, message):
-    handle_incoming_message(subject, message)
+async def subject_for_requests_listener(msg):
+    handle_incoming_message(msg.subject, msg.data)
 
 @app.http.get('/get')
 async def web_endpoint_listener(request):
@@ -213,8 +217,8 @@ async def publish_periodically():
 
 
 @app.listen('some.publish.subject')
-async def receive_messages(subject, message):
-    log.warning(f'got message {message}')
+async def receive_messages(msg):
+    log.warning(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()
@@ -255,9 +259,9 @@ async def request():
         log.warning(f'response: {result}')
 
 @app.listen('some.request.subject.123')
-async def request_listener(subject, message):
+async def request_listener(msg):
     log.warning('request has been processed')
-    return {'success': True, 'data': 'request has been processed'}
+    return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 
 if __name__ == "__main__":
@@ -293,13 +297,13 @@ async def request_to_another_subject():
         log.warning('sent request')
 
 @app.listen('some.subject.for.request.with.response.to.another.subject')
-async def request_listener(subject, message):
+async def request_listener(msg):
     log.warning('request has been processed')
-    return {'success': True, 'data': 'request has been processed'}
+    return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 @app.listen('reply.to.subject')
-async def another_subject_listener(subject, message):
-    log.warning(f'received response: {subject} {message}')
+async def another_subject_listener(msg):
+    log.warning(f'received response: {msg.subject} {msg.data}')
 
 
 if __name__ == "__main__":
@@ -359,8 +363,8 @@ async def publish_periodically():
 
 
 @app.listen('some.publish.subject', validator=TestValidator)
-async def subject_for_requests_listener(subject, message):
-    log.warning(f'got message {message}')
+async def subject_for_requests_listener(msg):
+    log.warning(f'got message {msg.data}')
 
 
 if __name__ == "__main__":
@@ -451,8 +455,8 @@ def publish_periodically():
 
 
 @app.listen('some.publish.subject')
-def subject_for_requests_listener(subject, message):
-    log.warning(f'got message {message}')
+def subject_for_requests_listener(msg):
+    log.warning(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()
