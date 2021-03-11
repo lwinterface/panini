@@ -1,8 +1,5 @@
-from nats.aio.errors import ErrTimeout
-
 from panini import app as panini_app
-from panini.middleware import Middleware
-from panini.middleware.error_middleware import ErrorMiddleware
+from panini.middleware.nats_timeout_middleware import NATSTimeoutMiddleware
 
 app = panini_app.App(
     service_name="async_nats_timeout_middleware",
@@ -26,22 +23,22 @@ message = {
 
 @app.task()
 async def request_periodically():
+    log.info("Send request to not existing subject - expecting NATS Timeout")
     response = await app.request(subject="not.existing.subject", message=message)
     log.warning(f"response message from periodic task: {response}")
 
 
 @app.listen("handle.nats.timeout.subject")
 async def handle_timeout(msg):
-    log.error(f"NATS timeout handled: {msg.data['error']}")
-    return {'success': True, "data": "successfully handled NATS timeout"}
+    log.error(f"NATS timeout handled: {msg.data}")
+    return {"success": True, "data": "successfully handled NATS timeout"}
 
 
 if __name__ == "__main__":
-    handle_nats_timeout_subject = "handle.nats.timeout.subject"
-
-    async def handle_nats_timeout(error: Exception):
-        response = await app.request(handle_nats_timeout_subject, {"error": str(error)})
-        log.info(f"Response from response handle_timeout function: {response}")
-
-    app.add_middleware(ErrorMiddleware, error=ErrTimeout, callback=handle_nats_timeout)
+    app.add_middleware(
+        NATSTimeoutMiddleware,
+        app=app,
+        subject="handle.nats.timeout.subject",
+        send_func_type="request",
+    )
     app.start()

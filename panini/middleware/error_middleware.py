@@ -5,7 +5,14 @@ from . import Middleware
 
 
 class ErrorMiddleware(Middleware):
-    def __init__(self, error: Exception, callback: typing.Callable):
+    def __init__(self, error: Exception, callback: typing.Callable, *args, **kwargs):
+        """
+        :param error: Exception to catch
+        :param callback: callback, that will handle an error if raises
+                         callback must accept error, subject, message, msg parameters
+                         in order to provide full data about the error case
+        """
+        super().__init__(*args, **kwargs)
         self.error = error
         self.callback = callback
 
@@ -15,9 +22,9 @@ class ErrorMiddleware(Middleware):
             return response
         except self.error as e:
             if asyncio.iscoroutinefunction(self.callback):
-                await self.callback(e)
+                await self.callback(e, subject=subject, message=message)
             else:
-                self.callback(e)
+                self.callback(e, subject=subject, message=message)
 
     async def listen_any(self, msg, callback):
         try:
@@ -25,6 +32,6 @@ class ErrorMiddleware(Middleware):
             return response
         except self.error as e:
             if asyncio.iscoroutinefunction(self.callback):
-                await self.callback(e)
+                await self.callback(e, msg=msg)
             else:
-                self.callback(e)
+                self.callback(e, msg=msg)
