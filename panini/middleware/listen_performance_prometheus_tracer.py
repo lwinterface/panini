@@ -34,7 +34,7 @@ class ListenPerformancePrometheusTracerMiddleware(Middleware):
             gauges = {}
             for metric in ("min", "max", "count", "avg"):
                 gauges[metric] = Gauge(
-                    f"{app.service_name}__{subject.replace('.', '_')}__{metric_key_suffix}__{metric}",
+                    f"{app.service_name}__{subject.replace('.', '_').replace('/','')}__{metric_key_suffix}__{metric}",
                     f"{metric} duration time",  # description
                     registry=self.registry,
                 )
