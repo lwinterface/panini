@@ -104,9 +104,11 @@ class NATSClient(NATSClientInterface):
         self.connector.check_connection()
 
     def subscribe_new_subject(self, subject: str, callback):
+        callback = _MiddlewareManager._wrap_function_by_middleware(callback, "listen")
         self.connector.subscribe_new_subject(subject, callback)
 
     async def aio_subscribe_new_subject(self, subject: str, callback):
+        callback = _MiddlewareManager._wrap_function_by_middleware(callback, "listen")
         return await self.connector.aio_subscribe_new_subject(subject, callback)
 
     async def aio_unsubscribe_subject(self, subject: str):
