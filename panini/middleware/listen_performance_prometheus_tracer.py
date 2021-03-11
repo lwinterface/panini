@@ -10,7 +10,7 @@ from ..app import get_app
 class ListenPerformancePrometheusTracerMiddleware(Middleware):
     def __init__(
         self,
-        prometheus_url: str = "localhost:9091",
+        pushgateway_url: str = "localhost:9091",
         app=None,
         frequency: float = 30.0,
         metric_key_suffix: str = "listen_duration",
@@ -19,7 +19,7 @@ class ListenPerformancePrometheusTracerMiddleware(Middleware):
         if app is None:
             app = get_app()
         assert app is not None
-        self.prometheus_url = prometheus_url
+        self.pushgateway_url = pushgateway_url
         self.registry = CollectorRegistry()
         self.metric_key_suffix = metric_key_suffix
         self._empty_subject_report = {
@@ -59,7 +59,7 @@ class ListenPerformancePrometheusTracerMiddleware(Middleware):
                     report.update(deepcopy(self._empty_subject_report))
 
             if at_least_one_listen:
-                push_to_gateway(prometheus_url, job=job, registry=self.registry)
+                push_to_gateway(pushgateway_url, job=job, registry=self.registry)
 
     async def listen_any(self, msg, callback):
         start_time = time.time()
