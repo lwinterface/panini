@@ -9,7 +9,7 @@ app = panini_app.App(
 
 log = app.logger
 
-msg = {
+message = {
     "key1": "value1",
     "key2": 2,
     "key3": 3.0,
@@ -23,20 +23,20 @@ msg = {
 @app.task()
 def publish():
     for _ in range(10):
-        app.publish_sync(subject="some.publish.subject", message=msg)
-        log.warning(f"send message {msg}")
+        app.publish_sync(subject="some.publish.subject", message=message)
+        log.warning(f"send message {message}")
 
 
 @app.timer_task(interval=2)
 def publish_periodically():
     for _ in range(10):
-        app.publish_sync(subject="some.publish.subject", message=msg)
-        log.warning(f"send message from periodic task {msg}")
+        app.publish_sync(subject="some.publish.subject", message=message)
+        log.warning(f"send message from periodic task {message}")
 
 
 @app.listen("some.publish.subject")
-def subject_for_requests_listener(subject, message):
-    log.warning(f"got message {message}")
+def subject_for_requests_listener(msg):
+    log.warning(f"got message {msg.subject}")
 
 
 if __name__ == "__main__":

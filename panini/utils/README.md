@@ -60,7 +60,7 @@ In the logger we use simple default config, that fit majority of logger needs:
   "handlers": {
     "console": {
       "class": "logging.StreamHandler",
-      "level": "WARNING",
+      "level": "INFO",
       "formatter": "simple",
       "stream": "ext://sys.stdout"
     },

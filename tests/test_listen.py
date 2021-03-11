@@ -15,37 +15,33 @@ def run_panini():
         logger_files_path=get_testing_logs_directory_path(),
     )
 
-    @app.listen("foo")
-    async def subject_for_requests(subject, message):
-        return {"data": message["data"] + 1}
+    @app.listen("test_listen.foo")
+    async def subject_for_requests(msg):
+        return {"data": msg.data["data"] + 1}
 
-    @app.listen("foo.*.bar")
-    async def composite_subject_for_requests(subject, message):
-        return {"data": subject + str(message["data"])}
+    @app.listen("test_listen.foo.*.bar")
+    async def composite_subject_for_requests(msg):
+        return {"data": msg.subject + str(msg.data["data"])}
 
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start()
+    return client
 
 
-def test_listen_simple_subject_with_response():
-    response = client.request("foo", {"data": 1})
+def test_listen_simple_subject_with_response(client):
+    response = client.request("test_listen.foo", {"data": 1})
     assert response["data"] == 2
-    assert "isr-id" in response  # will be present in each response
 
 
-def test_listen_composite_subject_with_response():
-    subject1 = "foo.some.bar"
-    subject2 = "foo.another.bar"
+def test_listen_composite_subject_with_response(client):
+    subject1 = "test_listen.foo.some.bar"
+    subject2 = "test_listen.foo.another.bar"
     response1 = client.request(subject1, {"data": 1})
     response2 = client.request(subject2, {"data": 2})
     assert response1["data"] == f"{subject1}1"
     assert response2["data"] == f"{subject2}2"
-    assert "isr-id" in response1
-    assert "isr-id" in response2

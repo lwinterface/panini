@@ -1,3 +1,4 @@
+import json
 from panini import app as panini_app
 
 app = panini_app.App(
@@ -9,7 +10,7 @@ app = panini_app.App(
 
 log = app.logger
 
-msg = {
+message = {
     "key1": "value1",
     "key2": 2,
     "key3": 3.0,
@@ -23,12 +24,16 @@ msg = {
 @app.task()
 async def request():
     for _ in range(10):
-        result = await app.request(subject="some.request.subject.123", message=msg)
+        result = await app.request(
+            subject="some.request.subject.123",
+            message=json.dumps(message).encode(),
+            data_type=bytes,
+        )
         log.warning(result)
 
 
-@app.listen("some.request.subject.123")
-async def subject_for_requests_listener(subject, message):
+@app.listen("some.request.subject.123", data_type=str)
+async def subject_for_requests_listener(msg):
     return {"success": True, "data": "request has been processed"}
 
 

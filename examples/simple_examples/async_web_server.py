@@ -11,7 +11,7 @@ app = panini_app.App(
 
 log = app.logger
 
-msg = {
+message = {
     "key1": "value1",
     "key2": 2,
     "key3": 3.0,
@@ -25,17 +25,17 @@ msg = {
 @app.task()
 async def publish():
     for _ in range(10):
-        await app.publish(subject="some.publish.subject", message=msg)
+        await app.publish(subject="some.publish.subject", message=message)
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
-    await app.publish(subject="some.publish.subject", message=msg)
+    await app.publish(subject="some.publish.subject", message=message)
 
 
 @app.listen("some.publish.subject")
-async def subject_for_requests_listener(subject, message):
-    log.warning(f"got message {message}")
+async def subject_for_requests_listener(msg):
+    log.warning(f"got message {msg}")
 
 
 @app.http.get("/get")
@@ -53,11 +53,11 @@ class MyView(web.View):
     """
 
     async def get(self):
-        request = self.request
+        # request = self.request
         return web.Response(text="Hello, REST world")
 
     async def post(self):
-        request = self.request
+        # request = self.request
         return web.Response(text="Hello, REST world")
 
 

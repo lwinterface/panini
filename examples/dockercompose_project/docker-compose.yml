@@ -41,9 +41,15 @@ services:
     build: microservice1/.
     networks:
       - internet
+    depends_on:
+      - nats-server
+      - redis
   microservice2:
     volumes:
       - ./microservice2:/app/microservice2
     build: microservice2/.
     networks:
       - internet
+    depends_on:
+      - nats-server
+      - redis

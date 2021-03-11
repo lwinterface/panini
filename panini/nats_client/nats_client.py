@@ -2,6 +2,7 @@ from ..exceptions import InitializingNATSError
 from ._nats_client_interface import NATSClientInterface
 from ._multi_proc_cli import _MultiProcNATSClient
 from ._asyncio_cli import _AsyncioNATSClient
+from panini.managers import _MiddlewareManager
 
 
 class NATSClient(NATSClientInterface):
@@ -32,7 +33,9 @@ class NATSClient(NATSClientInterface):
         :param reconnecting_time_wait:
         :return: {'success': True} if success otherwise  {'success': False, 'error': 'error description'}
         """
-
+        listen_subjects_callbacks = self.inject_listen_middlewares(
+            listen_subjects_callbacks
+        )
         if client_strategy == "sync":
             self.connector: NATSClientInterface = _MultiProcNATSClient(
                 client_id,
@@ -69,8 +72,33 @@ class NATSClient(NATSClientInterface):
                 pending_bytes_limit,
                 num_of_queues,
             )
+            self.inject_send_middlewares()
         else:
             raise InitializingNATSError("Client strategy unsupported")
+
+    def inject_listen_middlewares(self, listen_subjects_callbacks):
+        injected = {}
+        for s, callbacks in listen_subjects_callbacks.items():
+            injected[s] = []
+            for cb in callbacks:
+                injected[s].append(
+                    _MiddlewareManager._wrap_function_by_middleware(cb, "listen")
+                )
+        return injected
+
+    def inject_send_middlewares(self):
+        self.connector.publish = _MiddlewareManager._wrap_function_by_middleware(
+            self.connector.publish, "publish"
+        )
+        self.connector.publish_sync = _MiddlewareManager._wrap_function_by_middleware(
+            self.connector.publish_sync, "publish"
+        )
+        self.connector.request = _MiddlewareManager._wrap_function_by_middleware(
+            self.connector.request, "request"
+        )
+        self.connector.request_sync = _MiddlewareManager._wrap_function_by_middleware(
+            self.connector.request_sync, "request"
+        )
 
     def check_connection(self):
         self.connector.check_connection()
@@ -78,11 +106,11 @@ class NATSClient(NATSClientInterface):
     def subscribe_new_subject(self, subject: str, callback):
         self.connector.subscribe_new_subject(subject, callback)
 
-    async def aio_subscribe_new_subject(self, topic: str, callback):
-        return await self.connector.aio_subscribe_new_subject(topic, callback)
+    async def aio_subscribe_new_subject(self, subject: str, callback):
+        return await self.connector.aio_subscribe_new_subject(subject, callback)
 
-    async def aio_unsubscribe_subject(self, topic: str):
-        await self.connector.aio_unsubscribe_subject(topic)
+    async def aio_unsubscribe_subject(self, subject: str):
+        await self.connector.aio_unsubscribe_subject(subject)
 
     def unsubscribe_ssid(self, ssid: int):
         self.connector.unsubscribe_ssid(ssid)
@@ -93,20 +121,48 @@ class NATSClient(NATSClientInterface):
     def disconnect(self):
         self.connector.disconnect()
 
-    def publish_sync(self, subject: str, message: dict, reply_to: str = None):
-        self.connector.publish_sync(subject, message, reply_to)
+    def publish_sync(
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
+        self.connector.publish_sync(
+            subject, message, reply_to=reply_to, force=force, data_type=data_type
+        )
 
     def request_sync(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
-        return self.connector.request_sync(subject, message, timeout, unpack)
+        return self.connector.request_sync(
+            subject, message, timeout=timeout, data_type=data_type
+        )
 
     async def publish(
-        self, subject: str, message: dict, reply_to: str = None, force: bool = False
+        self,
+        subject: str,
+        message: dict,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
     ):
-        await self.connector.publish(subject, message, reply_to, force)
+        await self.connector.publish(
+            subject, message, reply_to=reply_to, force=force, data_type=data_type
+        )
 
     async def request(
-        self, subject: str, message: dict, timeout: int = 10, unpack: bool = True
+        self,
+        subject: str,
+        message: dict,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
     ):
-        return await self.connector.request(subject, message, timeout, unpack)
+        return await self.connector.request(
+            subject, message, timeout=timeout, data_type=data_type
+        )

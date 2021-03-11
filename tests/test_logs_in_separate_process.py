@@ -26,34 +26,33 @@ def run_panini():
 
     log = app.logger
 
-    @app.listen("foo")
-    async def subject_for_requests(subject, message):
-        log.info(f"Got subject: {subject}", message=message)
+    @app.listen("test_logs_in_separate_process.foo")
+    async def subject_for_requests(msg):
+        log.info(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
 
-    @app.listen("foo.*.bar")
-    async def composite_subject_for_requests(subject, message):
-        log.error(f"Got subject: {subject}", message=message)
+    @app.listen("test_logs_in_separate_process.foo.*.bar")
+    async def composite_subject_for_requests(msg):
+        log.error(f"Got subject: {msg.subject}", message=msg.data)
         return {"success": True}
 
-    @app.listen("kill.logs")
-    async def kill_logs(subject, message):
+    @app.listen("test_logs_in_separate_process.kill.logs")
+    async def kill_logs(msg):
         app.logger_process.kill()
         return {"success": True}
 
     app.start()
 
 
-client = TestClient(run_panini)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def start_client():
+@pytest.fixture(scope="session")
+def client():
+    client = TestClient(run_panini)
     client.start(sleep_time=2, is_daemon=False)
+    return client
 
 
-def test_simple_log():
-    response = client.request("foo", {"data": 1})
+def test_simple_log(client):
+    response = client.request("test_logs_in_separate_process.foo", {"data": 1})
     assert response["success"] is True
 
     # wait for log being written
@@ -65,26 +64,28 @@ def test_simple_log():
         data = json.loads(f.read())
         assert data["name"] == "test_logs_in_separate_process"
         assert data["levelname"] == "INFO"
-        assert data["message"] == "Got subject: foo"
+        assert data["message"] == "Got subject: test_logs_in_separate_process.foo"
         assert data["extra"]["message"]["data"] == 1
 
 
-def test_listen_composite_subject_with_response():
-    subject = "foo.some.bar"
+def test_listen_composite_subject_with_response(client):
+    subject = "test_logs_in_separate_process.foo.some.bar"
     response = client.request(subject, {"data": 2})
     assert response["success"] is True
 
     # wait for log being written
     time.sleep(0.1)
     with open(os.path.join(testing_logs_directory_path, "errors.log"), "r") as f:
-        data = json.loads(f.read())
+        for last_line in f:
+            pass
+        data = json.loads(last_line)
         assert data["name"] == "test_logs_in_separate_process"
         assert data["levelname"] == "ERROR"
         assert data["message"] == f"Got subject: {subject}"
         assert data["extra"]["message"]["data"] == 2
 
 
-def test_kill_logs():
-    response = client.request("kill.logs", {})
+def test_kill_logs(client):
+    response = client.request("test_logs_in_separate_process.kill.logs", {})
     assert response["success"] is True
     client.panini_process.kill()

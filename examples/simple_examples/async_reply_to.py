@@ -9,7 +9,7 @@ app = panini_app.App(
 
 log = app.logger
 
-msg = {
+message = {
     "key1": "value1",
     "key2": 2,
     "key3": 3.0,
@@ -25,21 +25,21 @@ async def request_to_another_subject():
     for _ in range(10):
         await app.publish(
             subject="some.subject.for.request.with.response.to" ".another.subject",
-            message=msg,
+            message=message,
             reply_to="reply.to.subject",
         )
         log.warning("sent request")
 
 
 @app.listen("some.subject.for.request.with.response.to.another.subject")
-async def subject_for_requests_listener(subject, message):
+async def subject_for_requests_listener(msg):
     log.warning("request has been processed")
     return {"success": True, "data": "request has been processed"}
 
 
 @app.listen("reply.to.subject")
-async def another_subject_listener(subject, message):
-    log.warning(f"received response: {subject} {message}")
+async def another_subject_listener(msg):
+    log.warning(f"received response: {msg.subject} {msg.data}")
 
 
 if __name__ == "__main__":

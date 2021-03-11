@@ -1,9 +1,9 @@
 # Panini
   
-Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
+Panini is a modern framework for fast and straightforward microservices development. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
 The framework allows you to work with NATS features and some additional logic using a simple interface:
-*  easily initialize application
+*  easy to initialize application
 ```python
 from panini import app as panini_app
 
@@ -18,13 +18,15 @@ app = panini_app.App(
 @app.task()
 async def publish():
     while True:
-        msg = get_some_update()
-        await app.publish(subject='some.subject', message=msg)
+        message = get_some_update()
+        await app.publish(subject='some.subject', message=message)
 ```
 *  subscribe to subject
 ```python
 @app.listen('some.subject')
-async def subject_for_requests_listener(subject, message):
+async def subject_for_requests_listener(msg):
+    subject = msg.subject
+    message = msg.data
     # handle incoming message
 ```
 *  request to subject
@@ -34,31 +36,69 @@ response = await app.request(subject='some.request.subject.123', message={'reque
 * receive a request from another microservice and return a response like HTTP request-response
 ```python
 @app.listen('some.request.subject.123')
-async def request_listener(subject, message):
+async def request_listener(msg):
+    subject = msg.subject
+    message = msg.data
     # handle request
     return {'success': True, 'data': 'request has been processed'}
 ```
-* create some additional periodic tasks
+* create periodic tasks
 ```python
 @app.timer_task(interval=2)
 async def your_periodic_task():
     for _ in range(10):
         await app.publish(subject='some.publish.subject', message={'some':'data'})
 ```
-* sync & async
+* synchronous and asynchronous endpoints
 ```python
 @app.timer_task(interval=2)
 def your_periodic_task():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message={'some':'data'})
 ```
+* accept different datatypes: dict, str, bytes
+```python
+@app.timer_task(interval=2)
+def your_periodic_task():
+    for _ in range(10):
+        app.publish_sync(subject='some.publish.subject', message=b'messageinbytesrequiresminimumoftimetosend', data_type=bytes)
+```
+* create middlewares for NATS messages
+
+```python
+from panini.middleware import Middleware
+
+class MyMiddleware(Middleware):
+
+    async def send_publish(self, subject, message, publish_func, **kwargs):
+        print('do something before publish')
+        await publish_func(subject, message, **kwargs)
+        print('do something after publish')
+
+    async def listen_publish(self, msg, cb):
+        print('do something before listen')
+        await cb(msg)
+        print('do something after listen')
+
+    async def send_request(self, subject, message, request_func, **kwargs):
+        print('do something before send request')
+        result = await request_func(subject, message, **kwargs)
+        print('do something after send request')
+        return result
+
+    async def listen_request(self, msg, cb):
+        print('do something before listen request')
+        result = await cb(msg)
+        print('do something after listen request')
+        return result
+```
 * create HTTP endpoints with [aiohttp](https://github.com/aio-libs/aiohttp) and NATS endpoints all together in one microservice
 ```python
 from aiohttp import web
 
 @app.listen('some.publish.subject')
-async def subject_for_requests_listener(subject, message):
-    handle_incoming_message(subject, message)
+async def subject_for_requests_listener(msg):
+    handle_incoming_message(msg.subject, msg.data)
 
 @app.http.get('/get')
 async def web_endpoint_listener(request):
@@ -125,7 +165,7 @@ pip install panini
 ```
 
 Additional requirements:
-- docker >= 19.03.8
+- python >= 3.8.2
 
 ## Broker
 
@@ -177,8 +217,8 @@ async def publish_periodically():
 
 
 @app.listen('some.publish.subject')
-async def receive_messages(subject, message):
-    log.warning(f'got message {message}')
+async def receive_messages(msg):
+    log.warning(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()
@@ -219,9 +259,9 @@ async def request():
         log.warning(f'response: {result}')
 
 @app.listen('some.request.subject.123')
-async def request_listener(subject, message):
+async def request_listener(msg):
     log.warning('request has been processed')
-    return {'success': True, 'data': 'request has been processed'}
+    return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 
 if __name__ == "__main__":
@@ -257,13 +297,13 @@ async def request_to_another_subject():
         log.warning('sent request')
 
 @app.listen('some.subject.for.request.with.response.to.another.subject')
-async def request_listener(subject, message):
+async def request_listener(msg):
     log.warning('request has been processed')
-    return {'success': True, 'data': 'request has been processed'}
+    return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 @app.listen('reply.to.subject')
-async def another_subject_listener(subject, message):
-    log.warning(f'received response: {subject} {message}')
+async def another_subject_listener(msg):
+    log.warning(f'received response: {msg.subject} {msg.data}')
 
 
 if __name__ == "__main__":
@@ -323,8 +363,8 @@ async def publish_periodically():
 
 
 @app.listen('some.publish.subject', validator=TestValidator)
-async def subject_for_requests_listener(subject, message):
-    log.warning(f'got message {message}')
+async def subject_for_requests_listener(msg):
+    log.warning(f'got message {msg.data}')
 
 
 if __name__ == "__main__":
@@ -415,8 +455,8 @@ def publish_periodically():
 
 
 @app.listen('some.publish.subject')
-def subject_for_requests_listener(subject, message):
-    log.warning(f'got message {message}')
+def subject_for_requests_listener(msg):
+    log.warning(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()
@@ -484,9 +524,9 @@ Panini will automatically detect and set it. After that you can get your logger 
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing
 
-To run tests (notice, that nats-server must be running for tests): 
-```python
-cd tests
+To run tests (notice, that nats-server must be running on port 4222 for tests): 
+```shell
+cd tests/
 ./run_test.sh
 ```
  

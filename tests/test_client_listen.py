@@ -8,13 +8,13 @@ client = TestClient()
 global_object = Global()
 
 
-@client.listen("foo")
+@client.listen("test_client_listen.foo")
 def foo_listener(subject, message):
     global_object.public_variable = message["data"] + 1
 
 
 def test_client_listener():
-    client.publish("foo", {"data": 1})
+    client.publish("test_client_listen.foo", {"data": 1})
     client.wait(count=1)
 
     assert global_object.public_variable == 2

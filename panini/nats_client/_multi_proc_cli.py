@@ -8,6 +8,7 @@ from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
 from ._nats_client_interface import NATSClientInterface
+from ._asyncio_cli import Msg
 from ..utils.logger import get_logger
 from ..utils.helper import (
     start_thread,
@@ -78,7 +79,6 @@ class _MultiProcNATSClient(NATSClientInterface):
             num_of_queues,
         )
         self.listen_message_queue = {}
-        # [self.listen_message_queue.update({subject: multiprocessing.Queue()}) for subject in self.listen_subjects_callbacks]
         [
             self.listen_message_queue.update(
                 {
@@ -179,17 +179,20 @@ class _MultiProcNATSClient(NATSClientInterface):
                 new_msg = json.loads(new_msg.decode())
                 base_subject = new_msg.pop("base_subject")
                 if "reply" in new_msg:
-                    reply_key = new_msg.pop("reply")
-                    # isr_log.info(f"3RECIEVED REQUEST msg: {new_msg['message']}, {base_subject}")
+                    reply_key = new_msg["reply"]
+                new_msg_obj = Msg(**new_msg)
                 callbacks = self.listen_subjects_callbacks[base_subject]
                 for callback in callbacks:
-                    reply = callback(**new_msg)
+                    data_type = getattr(callback, "data_type", "json.loads")
+                    print(data_type)
+                    self.parse_data(new_msg_obj, data_type)
+                    reply = callback(new_msg_obj)
                     if "reply_key" in locals():
+                        reply = json.dumps(reply)
                         if type(reply) is dict:
                             reply = json.dumps(reply)
                         else:
                             reply = str(reply)
-                        # isr_log.info(f"4SENDING RESPONSE msg: {new_msg['message']} {base_subject}")
                         RedisResponse(reply_key).put(str(reply))
             except Empty:
                 pass
@@ -200,6 +203,16 @@ class _MultiProcNATSClient(NATSClientInterface):
                     new_msg = "hasn't handled"
                 error = f"incoming message handling error {str(e)}, reply: {reply}, new_msg type: {type(new_msg)} new_msg: {new_msg}"
                 isr_log.error(error, slack=True)
+
+    def parse_data(self, msg, data_type):
+        if data_type == "raw" or data_type == bytes:
+            msg.data = str(msg.data).encode()
+        elif data_type == str:
+            msg.data = str(msg.data)
+        elif data_type == dict or data_type == "json.loads":
+            return
+        else:
+            raise Exception(f"{data_type} is unsupported data format")
 
     def publish_sync(self, subject: str, message, reply_to: str = None):
         if reply_to:
@@ -213,8 +226,6 @@ class _MultiProcNATSClient(NATSClientInterface):
         message["subject"] = subject
         message = json.dumps(message)
         q = self.publish_queue_circle.__next__()
-        # isr_log.info(f'1BPUBLISH', subject=subject,
-        #         redis_subject=transform_subject(subject))
         q.put(message)
 
     def request_sync(
@@ -230,13 +241,10 @@ class _MultiProcNATSClient(NATSClientInterface):
                 message = json.loads(message)
                 message["reply"] = reply
                 message["timeout"] = timeout
-            # isr_log.info(f'1BRREQUEST reply {reply} timeout {timeout}', phase='request', subject=subject,
-            # redis_subject=transform_subject(subject))
             self.publish_sync(subject, message)
             response = redis_response.return_response_when_appeared(
                 subject=reply, timeout=timeout
             )
-            # isr_log.info(f'6ARREQUEST reply {reply}', phase='response', subject=subject)
             if unpack:
                 return json.loads(response.decode())
             return response.decode()
@@ -344,10 +352,10 @@ class _ListenerProc:
             subject = msg.subject
             reply = msg.reply
             data = json.loads(msg.data.decode())
-            if reply == "" and not "reply_to" in data:
+            if reply == "" and "reply_to" not in data:
                 q.put(
                     json.dumps(
-                        dict(base_subject=base_subject, subject=subject, message=data)
+                        dict(base_subject=base_subject, subject=subject, data=data)
                     )
                 )
             elif "reply_to" in data:
@@ -357,7 +365,7 @@ class _ListenerProc:
                         dict(
                             base_subject=base_subject,
                             subject=subject,
-                            message=data,
+                            data=data,
                             reply=reply,
                         )
                     )
@@ -376,7 +384,7 @@ class _ListenerProc:
                         dict(
                             base_subject=base_subject,
                             subject=subject,
-                            message=data,
+                            data=data,
                             reply=reply,
                         )
                     )
@@ -481,11 +489,9 @@ class _SenderProc:
                         timeout = message.pop("timeout", 10)
                         isr_id = reply
                         message = register_msg(message, isr_id)
-                        # isr_log(f'2REQUEST: isr_id: {isr_id} message: {message} subject: {subject} timeout {timeout}', phase='request')#, subject=subject, subject=redis_subject)
                         response = await self.client.request(
                             subject, message.encode(), timeout=timeout
                         )
-                        # isr_log(f"5RESPONSE: isr_id: {isr_id} subject: {subject} response:"+str(response.data[:300]), phase='response')#, subject=subject, subject=redis_subject)
                         r.put(response.data)
                     except Exception as e:
                         if "isr_log" in locals():
@@ -497,8 +503,6 @@ class _SenderProc:
                             slack=True,
                         )
                 else:
-                    # isr_log(f'2PUBLISH: message: {message} subject: {subject} ')
-                    # self.loop.call_soon(self.client.publish(subject, json.dumps(message).encode()))
                     await self.client.publish(subject, json.dumps(message).encode())
             else:
                 isr_log.error(

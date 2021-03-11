@@ -1,11 +1,13 @@
-aiohttp==3.6.3
+aiohttp==3.7.4
 aiohttp-cors==0.7.0
 async-timeout==3.0.1
 asyncio-nats-client==0.11.2
 redis==3.5.3
 requests==2.24.0
 six==1.15.0
-yarl==1.6.1
 nats-python==0.8.0
+nest-asyncio==1.5.1
 pytest==6.2.1
+websocket-client==0.58.0
 python-json-logger==2.0.1
+yarl==1.6.1
