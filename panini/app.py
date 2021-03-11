@@ -266,3 +266,7 @@ class App(
                     start_thread(task)
             if self.http_server:
                 self.http_server.start_server()
+
+
+def get_app() -> App:
+    return _app

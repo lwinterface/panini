@@ -2,17 +2,22 @@ import traceback
 
 from nats.aio.errors import ErrTimeout
 
+from ..app import get_app
 from .error import ErrorMiddleware
 
 
 class NATSTimeoutMiddleware(ErrorMiddleware):
-    def __init__(self, app, subject, send_func_type: str = "request"):
+    def __init__(self, subject, app=None, send_func_type: str = "request"):
+        if app is None:
+            app = get_app()
+        assert app is not None
+
         async def handle_nats_timeout_callback(error: Exception, **kwargs):
             error_msg = {"error": traceback.format_exc(), "error_msg": str(error)}
             error_msg.update(kwargs)
             if send_func_type == "request":
                 response = await app.request(subject, error_msg)
-                print("Response:", response)
+                app.logger.info(f"Response from nats_timeout subject: {response}")
             else:
                 await app.publish(subject, error_msg)
 

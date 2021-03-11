@@ -1,5 +1,5 @@
 from panini import app as panini_app
-from panini.middleware.nats_timeout_middleware import NATSTimeoutMiddleware
+from panini.middleware.nats_timeout import NATSTimeoutMiddleware
 
 app = panini_app.App(
     service_name="async_nats_timeout_middleware",
@@ -37,7 +37,6 @@ async def handle_timeout(msg):
 if __name__ == "__main__":
     app.add_middleware(
         NATSTimeoutMiddleware,
-        app=app,
         subject="handle.nats.timeout.subject",
         send_func_type="request",
     )
