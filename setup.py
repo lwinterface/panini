@@ -18,9 +18,10 @@ The framework allows you to work with NATS features and some additional logic us
 
 setup(
     name="panini",
-    version="0.2.0rc",
+    version="0.2.0rc1",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
+    long_description_content_type="text/x-rst",
     url="https://github.com/lwinterface/panini",
     author="Op Return SA, developers: Andrew Volotskov, Danylo Tiutiushkin",
     author_email="example@example.com",
@@ -38,9 +39,9 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client"],
+    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client", "panini.middleware",],
     install_requires=[
-        "aiohttp>=3.6.2",
+        "aiohttp>=3.7.4",
         "aiohttp-cors>=0.7.0",
         "async-timeout>=3.0.1",
         "asyncio-nats-client>=0.11.2",
