@@ -30,14 +30,12 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_publish.bar")
-    def bar_listener1(subject, message):
-        print("Got response")
-        global_object.public_variable = message["data"]
+    def bar_listener1(msg):
+        global_object.public_variable = msg.data["data"]
 
     @client.listen("test_publish.bar")
-    def bar_listener2(subject, message):
-        print("Got response")
-        global_object.another_variable = message["data"] + 1
+    def bar_listener2(msg):
+        global_object.another_variable = msg.data["data"] + 1
 
     client.start()
     return client

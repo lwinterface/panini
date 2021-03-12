@@ -9,8 +9,8 @@ global_object = Global()
 
 
 @client.listen("test_client_listen.foo")
-def foo_listener(subject, message):
-    global_object.public_variable = message["data"] + 1
+def foo_listener(msg):
+    global_object.public_variable = msg.data["data"] + 1
 
 
 def test_client_listener():
