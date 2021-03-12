@@ -55,7 +55,7 @@ class ListenMonitoringMiddleware(Middleware):
     def create_histogram(self, subject: str):
 
         return Histogram(
-            f"{self.app_name}__{subject.replace('.', '_').replace('/', '').replace('*', 'ANY')}__{self.metric_key_suffix}",
+            f"{self.app_name}__{subject.replace('.', '_').replace('/', '').replace('*', 'ANY').replace('>', 'ANY_LINE_CONTINUATION')}__{self.metric_key_suffix}",
             "Listen latency in seconds",  # description
             registry=self.registry,
             buckets=self.buckets,
