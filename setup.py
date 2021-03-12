@@ -12,13 +12,14 @@ The framework allows you to work with NATS features and some additional logic us
 - request-response to another subject
 - tasks
 - periodic tasks
+- middlewares
 - HTTP server
 
 """
 
 setup(
     name="panini",
-    version="0.1.2c",
+    version="0.2.0",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -39,7 +40,7 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client"],
+    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client", "panini.middleware"],
     install_requires=[
         "aiohttp>=3.6.2",
         "aiohttp-cors>=0.7.0",
@@ -51,6 +52,8 @@ setup(
         "six>=1.15.0",
         "yarl>=1.6.1",
         "python-json-logger>=2.0.1",
+        "nest-asyncio==1.5.1",
+        "prometheus-client==0.9.0",
         "nats-python>=0.8.0",
     ],
     keywords=[
