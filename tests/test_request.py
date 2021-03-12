@@ -28,9 +28,9 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_request.foo")
-    def foo_listener(subject, message):
-        message["data"] += 1
-        return message
+    def foo_listener(msg):
+        msg.data["data"] += 1
+        return msg.data
 
     client.start()
     return client

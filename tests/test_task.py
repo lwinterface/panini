@@ -32,8 +32,8 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_task.foo")
-    def foo_listener(subject, message):
-        global_object.public_variable = message["data"] + 1
+    def foo_listener(msg):
+        global_object.public_variable = msg.data["data"] + 1
 
     client.start()
     return client

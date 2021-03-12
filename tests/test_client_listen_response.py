@@ -9,8 +9,8 @@ global_object = Global()
 
 
 @client.listen("test_client_listen_response.foo")
-def foo_listener(subject, message):
-    return {"data": message["data"] + 5}
+def foo_listener(msg):
+    return {"data": msg.data["data"] + 5}
 
 
 def test_client_response_listener():

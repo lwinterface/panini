@@ -105,8 +105,8 @@ def client():
     client = TestClient(run_panini).start()
 
     @client.listen("test_diff_datatypes.publish.listener")
-    def dict_listener(subject, message):
-        global_object.public_variable = message["type"]
+    def dict_listener(msg):
+        global_object.public_variable = msg.data["type"]
 
     return client
 

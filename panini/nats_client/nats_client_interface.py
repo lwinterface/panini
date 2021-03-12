@@ -3,6 +3,29 @@ from abc import ABC, abstractmethod
 from ..utils.logger import get_logger
 
 
+class Msg:
+    """
+    Alternative implementation of the class with "context" field
+    """
+
+    __slots__ = ("subject", "reply", "data", "sid", "context")
+
+    def __init__(self, subject="", reply="", data=b"", sid=0, context={}):
+        self.subject = subject
+        self.reply = reply
+        self.data = data
+        self.sid = sid
+        self.context = context
+
+    def __repr__(self):
+        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
+            self.__class__.__name__,
+            self.subject,
+            self.reply,
+            self.context,
+        )
+
+
 class NATSClientInterface(ABC):
     def __init__(
         self,
