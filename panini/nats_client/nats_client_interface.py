@@ -2,7 +2,28 @@ from abc import ABC, abstractmethod
 
 from ..utils.logger import get_logger
 
-message = None
+
+class Msg:
+    """
+    Alternative implementation of the class with "context" field
+    """
+
+    __slots__ = ("subject", "reply", "data", "sid", "context")
+
+    def __init__(self, subject="", reply="", data=b"", sid=0, context={}):
+        self.subject = subject
+        self.reply = reply
+        self.data = data
+        self.sid = sid
+        self.context = context
+
+    def __repr__(self):
+        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
+            self.__class__.__name__,
+            self.subject,
+            self.reply,
+            self.context,
+        )
 
 
 class NATSClientInterface(ABC):
@@ -50,9 +71,6 @@ class NATSClientInterface(ABC):
         self.redis_host = redis_host
         self.redis_port = redis_port
         self.num_of_queues = num_of_queues
-        # TODO: check that connect/sub/pub interface exist
-        global message
-        message = self
 
     @abstractmethod
     def check_connection(self):
@@ -70,7 +88,7 @@ class NATSClientInterface(ABC):
     def publish_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
@@ -81,7 +99,7 @@ class NATSClientInterface(ABC):
     def request_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
@@ -91,7 +109,7 @@ class NATSClientInterface(ABC):
     async def publish(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
@@ -102,8 +120,26 @@ class NATSClientInterface(ABC):
     async def request(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+    ):
+        pass
+
+    @abstractmethod
+    def request_from_another_thread_sync(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
+    ):
+        pass
+
+    @abstractmethod
+    async def request_from_another_thread(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
     ):
         pass

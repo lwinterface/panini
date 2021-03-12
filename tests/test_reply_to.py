@@ -41,8 +41,8 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_reply_to.bar")
-    def bar_listener(subject, message):
-        global_object.public_variable = message["data"] + 3
+    def bar_listener(msg):
+        global_object.public_variable = msg.data["data"] + 3
 
     client.start()
     return client

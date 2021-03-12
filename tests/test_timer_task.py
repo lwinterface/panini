@@ -34,7 +34,7 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_timer_task.foo")
-    def foo_listener(subject, message):
+    def foo_listener(msg):
         global_object.another_variable += 2
 
     client.start()

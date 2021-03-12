@@ -44,8 +44,8 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_validator.bar")
-    def bar_listener1(subject, message):
-        global_object.public_variable = message["data"]
+    def bar_listener1(msg):
+        global_object.public_variable = msg.data["data"]
 
     client.start()
     return client
