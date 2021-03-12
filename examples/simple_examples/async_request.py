@@ -29,7 +29,7 @@ async def request():
             message=json.dumps(message).encode(),
             data_type=bytes,
         )
-        log.warning(result)
+        log.info(result)
 
 
 @app.listen("some.request.subject.123", data_type=str)

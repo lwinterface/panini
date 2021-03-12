@@ -7,8 +7,7 @@ from itertools import cycle
 from queue import Empty
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ._nats_client_interface import NATSClientInterface
-from ._asyncio_cli import Msg
+from .nats_client_interface import NATSClientInterface, Msg
 from ..utils.logger import get_logger
 from ..utils.helper import (
     start_thread,
@@ -42,6 +41,16 @@ class _MultiProcNATSClient(NATSClientInterface):
     """
     Sub interface for NATSClient, create additional processes for sending and listening
     """
+
+    async def request_from_another_thread(
+        self, subject: str, message, timeout: int = 10
+    ):
+        raise NotImplementedError
+
+    def request_from_another_thread_sync(
+        self, subject: str, message, timeout: int = 10
+    ):
+        raise NotImplementedError
 
     def __init__(
         self,

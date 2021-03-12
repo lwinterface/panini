@@ -85,17 +85,16 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_sync.publish.listener")
-    def publish_listener(subject, message):
-        global_object.public_variable = message["test"] + 1
+    def publish_listener(msg):
+        global_object.public_variable = msg.data["test"] + 1
 
     @client.listen("test_sync.publish.request.listener")
-    def publish_request_listener(subject, message):
-        global_object.another_variable = message["test"] + 4
+    def publish_request_listener(msg):
+        global_object.another_variable = msg.data["test"] + 4
 
     @client.listen("test_sync.publish.request.reply.listener")
-    def publish_request_reply_listener(subject, message):
-        print("message: ", message)
-        global_object.additional_variable = message["test"] + 1
+    def publish_request_reply_listener(msg):
+        global_object.additional_variable = msg.data["test"] + 1
 
     client.start(is_sync=True)
     return client

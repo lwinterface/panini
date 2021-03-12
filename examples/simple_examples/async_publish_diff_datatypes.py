@@ -8,7 +8,6 @@ app = panini_app.App(
     app_strategy="asyncio",
 )
 
-# that is equal to get_logger('async_publish')
 log = app.logger
 
 message = {
@@ -26,7 +25,7 @@ message = {
 async def publish():
     for _ in range(10):
         await app.publish(subject="some.publish.subject", message=message)
-        log.warning(f"send message {message}")
+        log.info(f"send message {message}")
 
 
 @app.timer_task(interval=1)
@@ -39,14 +38,14 @@ async def publish_periodically():
 
 @app.listen("some.publish.subject", data_type=str)
 async def receive_messages(msg):
-    log.warning(f"got subject {msg.subject}")
-    log.warning(f"got message {msg.data}")
+    log.info(f"got subject {msg.subject}")
+    log.info(f"got message {msg.data}")
 
 
 @app.listen("some.publish.subject", data_type=bytes)
 async def receive_messages(msg):
-    log.warning(f"got subject {msg.subject}")
-    log.warning(f"got message {msg.data}")
+    log.info(f"got subject {msg.subject}")
+    log.info(f"got message {msg.data}")
 
 
 if __name__ == "__main__":

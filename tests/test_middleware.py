@@ -92,12 +92,12 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_middleware.publish.response")
-    def publish_listener(subject, message):
-        global_object.public_variable = message["data"] + 1
+    def publish_listener(msg):
+        global_object.public_variable = msg.data["data"] + 1
 
     @client.listen("test_middleware.listen.publish.response")
-    def listen_publish_listener(subject, message):
-        global_object.another_variable = message["data"] + 3
+    def listen_publish_listener(msg):
+        global_object.another_variable = msg.data["data"] + 3
 
     client.start()
     return client

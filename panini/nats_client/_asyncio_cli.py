@@ -8,35 +8,12 @@ from nats.aio.client import Client as NATS
 from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
 from ..exceptions import DataTypeError
 from ..utils.logger import get_logger
-from ._nats_client_interface import NATSClientInterface
+from .nats_client_interface import NATSClientInterface, Msg
 
 nest_asyncio.apply()
 
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
-
-
-class Msg:
-    """
-    Alternative implementation of the class with "context" field
-    """
-
-    __slots__ = ("subject", "reply", "data", "sid", "context")
-
-    def __init__(self, subject="", reply="", data=b"", sid=0, context={}):
-        self.subject = subject
-        self.reply = reply
-        self.data = data
-        self.sid = sid
-        self.context = context
-
-    def __repr__(self):
-        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
-            self.__class__.__name__,
-            self.subject,
-            self.reply,
-            self.context,
-        )
 
 
 class _AsyncioNATSClient(NATSClientInterface):
@@ -156,7 +133,7 @@ class _AsyncioNATSClient(NATSClientInterface):
     def publish_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
@@ -173,24 +150,24 @@ class _AsyncioNATSClient(NATSClientInterface):
     def _publish_request_with_reply_to_another_subject(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
     ):
         asyncio.ensure_future(
-            self.aio_publish_request_with_reply_to_another_subject(
+            self._aio_publish_request_with_reply_to_another_subject(
                 subject, message, reply_to, force, data_type
             )
         )
 
-    def publish_from_another_thread(self, subject: str, message: dict):
+    def publish_from_another_thread(self, subject: str, message):
         self.loop.call_soon_threadsafe(self.publish_sync, subject, message)
 
     def request_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
@@ -199,7 +176,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             self.request(subject, message, timeout, data_type)
         )
 
-    def request_from_another_thread(
+    def request_from_another_thread_sync(
         self,
         subject: str,
         message,
@@ -210,10 +187,10 @@ class _AsyncioNATSClient(NATSClientInterface):
         except RuntimeError:
             loop = asyncio.new_event_loop()
         return loop.run_until_complete(
-            self.aio_request_from_another_thread(subject, message, timeout)
+            self.request_from_another_thread(subject, message, timeout)
         )
 
-    async def aio_request_from_another_thread(
+    async def request_from_another_thread(
         self,
         subject: str,
         message,
@@ -235,13 +212,13 @@ class _AsyncioNATSClient(NATSClientInterface):
     async def publish(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
     ):
         if reply_to is not None:
-            return await self.aio_publish_request_with_reply_to_another_subject(
+            return await self._aio_publish_request_with_reply_to_another_subject(
                 subject, message, reply_to, force, data_type
             )
 
@@ -263,7 +240,7 @@ class _AsyncioNATSClient(NATSClientInterface):
     async def request(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
@@ -286,7 +263,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             response = response.decode()
         return response
 
-    async def aio_publish_request_with_reply_to_another_subject(
+    async def _aio_publish_request_with_reply_to_another_subject(
         self,
         subject: str,
         message,
@@ -322,6 +299,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             log.info("NATS Client status: CONNECTED")
             return True
         log.warning("NATS Client status: DISCONNECTED")
+
 
 class _ReceivedMessageHandler:
     def __init__(self, publish_func, cb):
