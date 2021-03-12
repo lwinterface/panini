@@ -28,18 +28,18 @@ async def request_to_another_subject():
             message=message,
             reply_to="reply.to.subject",
         )
-        log.warning("sent request")
+        log.info("sent request")
 
 
 @app.listen("some.subject.for.request.with.response.to.another.subject")
 async def subject_for_requests_listener(msg):
-    log.warning("request has been processed")
+    log.info("request has been processed")
     return {"success": True, "data": "request has been processed"}
 
 
 @app.listen("reply.to.subject")
 async def another_subject_listener(msg):
-    log.warning(f"received response: {msg.subject} {msg.data}")
+    log.info(f"received response: {msg.subject} {msg.data}")
 
 
 if __name__ == "__main__":

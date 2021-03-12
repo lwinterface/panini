@@ -53,7 +53,7 @@ async def publish_periodically():
 
 @app.listen("some.publish.subject", validator=TestValidator)
 async def requests_listener(msg):
-    log.warning(f"got message {msg.data}")
+    log.info(f"got message {msg.data}")
     await asyncio.sleep(1)
 
 
