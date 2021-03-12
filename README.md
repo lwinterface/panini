@@ -206,19 +206,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 async def publish():
     for _ in range(10):
         await app.publish(subject='some.publish.subject', message=msg)
-        log.warning(f'send message {msg}')
+        log.info(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 async def publish_periodically():
     for _ in range(10):
         await app.publish(subject='some.publish.subject', message=msg)
-        log.warning(f'send message from periodic task {msg}')
+        log.info(f'send message from periodic task {msg}')
 
 
 @app.listen('some.publish.subject')
 async def receive_messages(msg):
-    log.warning(f'got message {msg.data}')
+    log.info(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()
@@ -256,11 +256,11 @@ msg = {'key1': 'value1', 'key2': 2, 'key3': 3.0, 'key4': [1, 2, 3, 4], 'key5': {
 async def request():
     for _ in range(10):
         result = await app.request(subject='some.request.subject.123', message=msg)
-        log.warning(f'response: {result}')
+        log.info(f'response: {result}')
 
 @app.listen('some.request.subject.123')
 async def request_listener(msg):
-    log.warning('request has been processed')
+    log.info('request has been processed')
     return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 
@@ -294,16 +294,16 @@ async def request_to_another_subject():
         await app.publish(subject='some.subject.for.request.with.response.to.another.subject',
                           message=msg,
                           reply_to='reply.to.subject')
-        log.warning('sent request')
+        log.info('sent request')
 
 @app.listen('some.subject.for.request.with.response.to.another.subject')
 async def request_listener(msg):
-    log.warning('request has been processed')
+    log.info('request has been processed')
     return {'success': True, 'data': f'request from {msg.subject} has been processed'}
 
 @app.listen('reply.to.subject')
 async def another_subject_listener(msg):
-    log.warning(f'received response: {msg.subject} {msg.data}')
+    log.info(f'received response: {msg.subject} {msg.data}')
 
 
 if __name__ == "__main__":
@@ -364,7 +364,7 @@ async def publish_periodically():
 
 @app.listen('some.publish.subject', validator=TestValidator)
 async def subject_for_requests_listener(msg):
-    log.warning(f'got message {msg.data}')
+    log.info(f'got message {msg.data}')
 
 
 if __name__ == "__main__":
@@ -444,19 +444,19 @@ msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '
 def publish():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message=msg)
-        log.warning(f'send message {msg}')
+        log.info(f'send message {msg}')
 
 
 @app.timer_task(interval=2)
 def publish_periodically():
     for _ in range(10):
         app.publish_sync(subject='some.publish.subject', message=msg)
-        log.warning(f'send message from periodic task {msg}')
+        log.info(f'send message from periodic task {msg}')
 
 
 @app.listen('some.publish.subject')
 def subject_for_requests_listener(msg):
-    log.warning(f'got message {msg.data}')
+    log.info(f'got message {msg.data}')
 
 if __name__ == "__main__":
     app.start()

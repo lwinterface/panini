@@ -25,14 +25,14 @@ message = {
 async def request():
     for _ in range(10):
         response = app.request_sync(subject="some.publish.subject", message=message)
-        log.warning(f"send message, got response {response}")
+        log.info(f"send message, got response {response}")
 
 
 @app.timer_task(interval=2)
 async def request_periodically():
     for _ in range(10):
         app.publish_sync(subject="some.publish.subject", message=message)
-        log.warning(f"send message from periodic task {message}")
+        log.info(f"send message from periodic task {message}")
 
 
 @app.timer_task(interval=2)
@@ -50,7 +50,7 @@ def another_thread_func():
 
 @app.listen("some.publish.subject")
 def subject_for_requests_listener(msg):
-    log.warning(f"got request {msg.subject}")
+    log.info(f"got request {msg.subject}")
     return {"success": True}
 
 

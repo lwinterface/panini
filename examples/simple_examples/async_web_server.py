@@ -35,7 +35,7 @@ async def publish_periodically():
 
 @app.listen("some.publish.subject")
 async def subject_for_requests_listener(msg):
-    log.warning(f"got message {msg}")
+    log.info(f"got message {msg}")
 
 
 @app.http.get("/get")

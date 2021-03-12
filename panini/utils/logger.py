@@ -80,7 +80,7 @@ def set_logger(
         return
 
 
-def get_logger(name) -> Logger:
+def get_logger(name: str = "panini") -> Logger:
     return Logger(logging.getLogger(name))
 
 

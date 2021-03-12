@@ -8,7 +8,6 @@ app = panini_app.App(
     app_strategy="asyncio",
 )
 
-# that is equal to get_logger('async_publish')
 log = app.logger
 
 message = {
@@ -36,8 +35,8 @@ def another_thread_func():
 
 @app.listen("some.publish.subject")
 async def receive_messages(msg):
-    log.warning(f"got subject {msg.subject}")
-    log.warning(f"got message {msg.data}")
+    log.info(f"got subject {msg.subject}")
+    log.info(f"got message {msg.data}")
 
 
 if __name__ == "__main__":

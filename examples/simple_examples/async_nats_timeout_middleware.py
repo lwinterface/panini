@@ -25,7 +25,7 @@ message = {
 async def request_periodically():
     log.info("Send request to not existing subject - expecting NATS Timeout")
     response = await app.request(subject="not.existing.subject", message=message)
-    log.warning(f"response message from periodic task: {response}")
+    log.info(f"response message from periodic task: {response}")
 
 
 @app.listen("handle.nats.timeout.subject")
