@@ -53,13 +53,14 @@ class ListenMonitoringMiddleware(Middleware):
             push_to_gateway(pushgateway_url, job=job, registry=self.registry)
 
     def create_histogram(self, subject: str):
-
-        return Histogram(
-            f"{self.app_name}__{subject.replace('.', '_').replace('/', '').replace('*', 'ANY').replace('>', 'ANY_LINE_CONTINUATION')}__{self.metric_key_suffix}",
+        histagram = Histogram(
+            f"{self.app_name}",
             "Listen latency in seconds",  # description
             registry=self.registry,
             buckets=self.buckets,
+            labelnames=("microservice_name", "subject", "metric"),
         )
+        return histagram.labels(microservice_name=self.app_name, subject=subject, metric=self.metric_key_suffix)
 
     async def listen_any(self, msg, callback):
         start_time = time.time()
