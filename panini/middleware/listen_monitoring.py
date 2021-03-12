@@ -7,7 +7,7 @@ from . import Middleware
 from ..app import get_app
 
 
-class ListenPerformancePrometheusTracerMiddleware(Middleware):
+class ListenMonitoring(Middleware):
     def __init__(
         self,
         pushgateway_url: str = "localhost:9091",

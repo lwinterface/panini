@@ -2,12 +2,12 @@ import random
 import time
 
 from panini import app as panini_app
-from panini.middleware.listen_performance_prometheus_tracer import (
-    ListenPerformancePrometheusTracerMiddleware,
+from panini.middleware.listen_monitoring import (
+    ListenMonitoring,
 )
 
 app = panini_app.App(
-    service_name="async_listen_performance_prometheus_tracer_middleware",
+    service_name="async_listen_monitoring_middleware",
     host="127.0.0.1",
     port=4222,
 )
@@ -27,5 +27,5 @@ async def listen(msg):
 
 
 if __name__ == "__main__":
-    app.add_middleware(ListenPerformancePrometheusTracerMiddleware, frequency=4)
+    app.add_middleware(ListenMonitoring, frequency=4)
     app.start()
