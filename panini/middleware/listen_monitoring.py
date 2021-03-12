@@ -1,20 +1,41 @@
 import time
-from copy import deepcopy
 
-from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+from prometheus_client import CollectorRegistry, Histogram, push_to_gateway
+from prometheus_client.utils import INF
 
 from . import Middleware
 from ..app import get_app
 
 
-class ListenMonitoring(Middleware):
+DEFAULT_BUCKETS = (
+    0.001,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    INF,
+)
+
+
+class ListenMonitoringMiddleware(Middleware):
     def __init__(
         self,
         pushgateway_url: str = "localhost:9091",
         app=None,
-        frequency: float = 30.0,
-        metric_key_suffix: str = "listen_duration",
+        frequency: float = 10.0,
+        metric_key_suffix: str = "listen_latency",
         job: str = "microservices_activity",
+        buckets=DEFAULT_BUCKETS,
     ):
         if app is None:
             app = get_app()
@@ -22,58 +43,31 @@ class ListenMonitoring(Middleware):
         self.pushgateway_url = pushgateway_url
         self.registry = CollectorRegistry()
         self.metric_key_suffix = metric_key_suffix
-        self._empty_subject_report = {
-            "min": None,
-            "max": None,
-            "count": 0,
-            "total_duration": 0.0,
-        }
-        self.report = {}
-
-        def create_gauges(subject: str):
-            gauges = {}
-            for metric in ("min", "max", "count", "avg"):
-                gauges[metric] = Gauge(
-                    f"{app.service_name}__{subject.replace('.', '_').replace('/','')}__{metric_key_suffix}__{metric}",
-                    f"{metric} duration time",  # description
-                    registry=self.registry,
-                )
-            return gauges
+        self.app_name = app.service_name
+        self.metric_key_suffix = metric_key_suffix
+        self.histograms = {}
+        self.buckets = buckets
 
         @app.timer_task(frequency)
         async def push_to_prometheus():
-            at_least_one_listen = False
-            for subject in self.report:
-                report = self.report[subject]
-                if report["count"] != 0:
-                    at_least_one_listen = True
-                    if "gauges" not in report:
-                        report["gauges"] = create_gauges(subject)
+            push_to_gateway(pushgateway_url, job=job, registry=self.registry)
 
-                    for metric, gauge in report["gauges"].items():
-                        if metric == "avg":
-                            gauge.set(report["total_duration"] / report["count"])
-                        else:
-                            gauge.set(report[metric])
+    def create_histogram(self, subject: str):
 
-                    report.update(deepcopy(self._empty_subject_report))
-
-            if at_least_one_listen:
-                push_to_gateway(pushgateway_url, job=job, registry=self.registry)
+        return Histogram(
+            f"{self.app_name}__{subject.replace('.', '_').replace('/', '').replace('*', 'ANY')}__{self.metric_key_suffix}",
+            "Listen latency in seconds",  # description
+            registry=self.registry,
+            buckets=self.buckets,
+        )
 
     async def listen_any(self, msg, callback):
         start_time = time.time()
-        await callback(msg)
+        response = await callback(msg)
         duration = time.time() - start_time
-        if msg.subject not in self.report:
-            self.report[msg.subject] = deepcopy(self._empty_subject_report)
+        if msg.subject not in self.histograms:
+            self.histograms[msg.subject] = self.create_histogram(msg.subject)
 
-        report = self.report[msg.subject]
-        if report["count"] == 0:
-            report["max"] = report["min"] = duration
-        else:
-            report["max"] = max(report["max"], duration)
-            report["min"] = min(report["min"], duration)
+        self.histograms[msg.subject].observe(duration)
 
-        report["count"] += 1
-        report["total_duration"] += duration
+        return response

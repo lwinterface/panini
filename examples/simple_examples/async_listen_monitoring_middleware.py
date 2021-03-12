@@ -3,7 +3,7 @@ import time
 
 from panini import app as panini_app
 from panini.middleware.listen_monitoring import (
-    ListenMonitoring,
+    ListenMonitoringMiddleware,
 )
 
 app = panini_app.App(
@@ -27,5 +27,5 @@ async def listen(msg):
 
 
 if __name__ == "__main__":
-    app.add_middleware(ListenMonitoring, frequency=4)
+    app.add_middleware(ListenMonitoringMiddleware, frequency=4)
     app.start()
