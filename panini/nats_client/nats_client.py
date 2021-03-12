@@ -2,7 +2,7 @@ from ..exceptions import InitializingNATSError
 from ._nats_client_interface import NATSClientInterface
 from ._multi_proc_cli import _MultiProcNATSClient
 from ._asyncio_cli import _AsyncioNATSClient
-from panini.managers import _MiddlewareManager
+from ..managers import _MiddlewareManager
 
 
 class NATSClient(NATSClientInterface):
@@ -126,7 +126,7 @@ class NATSClient(NATSClientInterface):
     def publish_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
@@ -138,7 +138,7 @@ class NATSClient(NATSClientInterface):
     def request_sync(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
@@ -149,7 +149,7 @@ class NATSClient(NATSClientInterface):
     async def publish(
         self,
         subject: str,
-        message: dict,
+        message,
         reply_to: str = None,
         force: bool = False,
         data_type: type or str = "json.dumps",
@@ -161,10 +161,24 @@ class NATSClient(NATSClientInterface):
     async def request(
         self,
         subject: str,
-        message: dict,
+        message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
         return await self.connector.request(
             subject, message, timeout=timeout, data_type=data_type
+        )
+
+    def request_from_another_thread_sync(
+        self, subject: str, message, timeout: int = 10
+    ):
+        return self.connector.request_from_another_thread_sync(
+            subject, message, timeout
+        )
+
+    async def request_from_another_thread(
+        self, subject: str, message, timeout: int = 10
+    ):
+        return await self.connector.request_from_another_thread(
+            subject, message, timeout
         )

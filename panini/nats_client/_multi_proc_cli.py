@@ -43,6 +43,16 @@ class _MultiProcNATSClient(NATSClientInterface):
     Sub interface for NATSClient, create additional processes for sending and listening
     """
 
+    async def request_from_another_thread(
+        self, subject: str, message, timeout: int = 10
+    ):
+        raise NotImplementedError
+
+    def request_from_another_thread_sync(
+        self, subject: str, message, timeout: int = 10
+    ):
+        raise NotImplementedError
+
     def __init__(
         self,
         client_id: str,
