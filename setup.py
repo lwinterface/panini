@@ -42,7 +42,7 @@ setup(
     ],
     packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client", "panini.middleware"],
     install_requires=[
-        "aiohttp>=3.6.2",
+        "aiohttp>=3.7.4",
         "aiohttp-cors>=0.7.0",
         "async-timeout>=3.0.1",
         "asyncio-nats-client>=0.11.2",
