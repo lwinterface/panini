@@ -1,5 +1,5 @@
 from ..exceptions import InitializingNATSError
-from ._nats_client_interface import NATSClientInterface
+from .nats_client_interface import NATSClientInterface
 from ._multi_proc_cli import _MultiProcNATSClient
 from ._asyncio_cli import _AsyncioNATSClient
 from ..managers import _MiddlewareManager

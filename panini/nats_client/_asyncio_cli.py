@@ -8,35 +8,12 @@ from nats.aio.client import Client as NATS
 from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
 from ..exceptions import DataTypeError
 from ..utils.logger import get_logger
-from ._nats_client_interface import NATSClientInterface
+from .nats_client_interface import NATSClientInterface, Msg
 
 nest_asyncio.apply()
 
 log = get_logger("panini")
 isr_log = get_logger("inter_services_request")
-
-
-class Msg:
-    """
-    Alternative implementation of the class with "context" field
-    """
-
-    __slots__ = ("subject", "reply", "data", "sid", "context")
-
-    def __init__(self, subject="", reply="", data=b"", sid=0, context={}):
-        self.subject = subject
-        self.reply = reply
-        self.data = data
-        self.sid = sid
-        self.context = context
-
-    def __repr__(self):
-        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
-            self.__class__.__name__,
-            self.subject,
-            self.reply,
-            self.context,
-        )
 
 
 class _AsyncioNATSClient(NATSClientInterface):

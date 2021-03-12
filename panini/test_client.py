@@ -8,7 +8,8 @@ import requests
 import websocket
 from pynats import NATSClient, NATSMessage
 
-from panini.utils.helper import start_process
+from .utils.helper import start_process
+from .nats_client.nats_client_interface import Msg
 
 
 # Annotations for `Session.request()`
@@ -130,7 +131,7 @@ class TestClient:
     def wrap_run_panini(run_panini):
         from .utils.logger import get_logger
 
-        test_logger = get_logger("app")
+        test_logger = get_logger("panini")
         try:
             run_panini()
         except Exception as e:
@@ -186,10 +187,13 @@ class TestClient:
 
             def wrapper(incoming_response):
                 assert isinstance(incoming_response, NATSMessage)
-                wrapper_response = func(
+                msg = Msg(
                     subject=incoming_response.subject,
-                    message=self._bytes_to_dict(incoming_response.payload),
+                    data=self._bytes_to_dict(incoming_response.payload),
+                    reply=incoming_response.reply,
+                    sid=incoming_response.sid,
                 )
+                wrapper_response = func(msg)
                 if wrapper_response is not None and incoming_response.reply != "":
                     self.publish(
                         subject=incoming_response.reply, message=wrapper_response
