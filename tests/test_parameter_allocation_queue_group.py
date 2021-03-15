@@ -1,9 +1,8 @@
 import time
 import pytest
 
-from panini.test_client import TestClient
+from panini.test_client import TestClient, get_logger_files_path
 from panini import app as panini_app
-from .helper import get_testing_logs_directory_path
 
 from panini.utils.helper import start_process
 
@@ -16,7 +15,7 @@ def run_panini1():
         allocation_queue_group="group1",
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_parameter_allocation_queue_group.foo")
@@ -34,7 +33,7 @@ def run_panini2():
         allocation_queue_group="group1",
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_parameter_allocation_queue_group.foo")
@@ -44,7 +43,7 @@ def run_panini2():
     app.start()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = TestClient()
     # if you want to run more that 1 panini app in testing, please use start_process function for each app
@@ -52,7 +51,8 @@ def client():
     start_process(run_panini2)
     # wait for panini apps to setup
     time.sleep(2)
-    return client
+    yield client
+    client.stop()
 
 
 def test_listen_subject_only_if_include_one_request(client):

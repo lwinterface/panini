@@ -1,8 +1,7 @@
 import pytest
 
-from panini.test_client import TestClient
+from panini.test_client import TestClient, get_logger_files_path
 from panini import app as panini_app
-from .helper import get_testing_logs_directory_path
 
 
 def run_panini():
@@ -12,7 +11,7 @@ def run_panini():
         port=4222,
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_listen.foo")
@@ -26,11 +25,12 @@ def run_panini():
     app.start()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
     client.start()
-    return client
+    yield client
+    client.stop()
 
 
 def test_listen_simple_subject_with_response(client):
