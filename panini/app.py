@@ -193,9 +193,10 @@ class App(
         if self.http_server and from_another_thread is False:
             self._start()
         else:
-            start_thread(self._start())
+            start_thread(self._start)
 
     def _start(self):
+
         if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,
