@@ -126,14 +126,6 @@ class App(
             self.log_stop_event = None
             self.log_listener_queue = None
             self.change_logger_config_listener_queue = None
-            if self.logger_required and not self.logger_in_separate_process:
-                self.set_logger(
-                    self.service_name,
-                    self.app_root_path,
-                    self.logger_files_path,
-                    self.logger_in_separate_process,
-                    self._client_id,
-                )
 
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
@@ -196,7 +188,7 @@ class App(
             start_thread(self._start())
 
     def _start(self):
-        if self.logger_required and self.logger_in_separate_process:
+        if self.logger_required:
             self.set_logger(
                 self.service_name,
                 self.app_root_path,
