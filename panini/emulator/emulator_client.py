@@ -18,9 +18,9 @@ class EmulatorClient:
     def __init__(
         self,
         filepath: str,
-        emulate_timeout=True,
-        compare_output=False,
-        ignore_map=None,
+        prefix: str = "emulator",
+        emulate_timeout: bool = True,
+        compare_output: bool = False
     ):
         self._filepath = filepath
 
@@ -29,11 +29,12 @@ class EmulatorClient:
 
         self._emulate_timeout = emulate_timeout
         self._compare_output = compare_output
-        self._ignore_map = ignore_map
         self._client = NATS()
-        self._load()
 
+        self._prefix = prefix
         self._subscriptions = []
+
+        self._load()
 
     def _load(self):
         with open(self._filepath) as file:
@@ -42,7 +43,8 @@ class EmulatorClient:
         for line in lines:
             event = json.loads(line)
             event_type = event["event_type"]
-            subject = event["subject"]
+            subject = self._prefix + "." + event["subject"]
+            # subject = event["subject"]
 
             if event_type.startswith("listen"):
                 self._publish_queue.append(event)
@@ -85,7 +87,7 @@ class EmulatorClient:
 
         return decorator
 
-    async def run(self, wait: bool = False, wait_timeout: int = 20):
+    async def run(self):
         await self._client.connect()
 
         for subject in self._listen_queues:
@@ -103,8 +105,8 @@ class EmulatorClient:
             event = self._publish_queue.pop(0)
 
             event_type = event["event_type"]
-            subject = event["subject"]
-            # timestamp = event["timestamp"]
+            subject = self._prefix + "." + event["subject"]
+            timestamp = event["timestamp"]
             message = _dict_to_bytes(event["message"])
 
             if event_type == "listen_publish":
@@ -115,12 +117,12 @@ class EmulatorClient:
                 if self._compare_output:
                     assert response == event["response"]
 
-            # if self._emulate_timeout:
-            #     if last_timestamp:
-            #         wait = timestamp - last_timestamp
-            #         time.sleep(wait)
-            #
-            #     last_timestamp = timestamp
+            if self._emulate_timeout:
+                if last_timestamp:
+                    wait = timestamp - last_timestamp
+                    time.sleep(wait)
+
+                last_timestamp = timestamp
 
     async def wait(self, max_timeout: int = None):
         start = time.time()

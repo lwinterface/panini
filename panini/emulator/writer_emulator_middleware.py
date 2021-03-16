@@ -60,12 +60,14 @@ class _Writer(threading.Thread):
                 print(f"exception: {ex}")
 
 
-class EventStorageMiddleware(middleware.Middleware):
+class WriterEmulatorMiddleware(middleware.Middleware):
 
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
 
         filename = kwargs.get("filename")
+
+        self._prefix = kwargs.get("prefix", "emulator")
         self._writer = _Writer(filename)
         self._writer.start()
 
