@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from panini.emulator.event_storage_middleware import EventStorageMiddleware
+from panini.emulator.writer_emulator_middleware import WriterEmulatorMiddleware
 from panini.middleware import Middleware
 from panini.test_client import TestClient
 from panini import app as panini_app
@@ -63,7 +63,7 @@ def run_panini():
         except Exception:
             app.logger.exception("test_middleware.listen.request")
 
-    app.add_middleware(EventStorageMiddleware, filename="tests/resources/events.jsonl")
+    app.add_middleware(WriterEmulatorMiddleware, filename="tests/resources/events.jsonl")
     app.start()
 
 
