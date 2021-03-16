@@ -33,7 +33,6 @@ class ListenMonitoringMiddleware(Middleware):
         pushgateway_url: str = "localhost:9091",
         app=None,
         frequency: float = 10.0,
-        metric_key_suffix: str = "listen_latency",
         job: str = "microservices_activity",
         buckets=DEFAULT_BUCKETS,
     ):
@@ -42,33 +41,32 @@ class ListenMonitoringMiddleware(Middleware):
         assert app is not None
         self.pushgateway_url = pushgateway_url
         self.registry = CollectorRegistry()
-        self.metric_key_suffix = metric_key_suffix
         self.app_name = app.service_name
-        self.metric_key_suffix = metric_key_suffix
-        self.histograms = {}
+        self.app_client_id = app._client_id
         self.buckets = buckets
+        self.histogram = self.create_histogram()
 
         @app.timer_task(frequency)
         async def push_to_prometheus():
             push_to_gateway(pushgateway_url, job=job, registry=self.registry)
 
-    def create_histogram(self, subject: str):
-        histagram = Histogram(
-            f"{self.app_name}",
-            "Listen latency in seconds",  # description
+    def create_histogram(self):
+        histogram = Histogram(
+            "microservices_listen_latency_seconds",
+            "Listen duration in seconds",  # description
             registry=self.registry,
             buckets=self.buckets,
-            labelnames=("microservice_name", "subject", "metric"),
+            labelnames=("app_name", "client_id", "subject"),
         )
-        return histagram.labels(microservice_name=self.app_name, subject=subject, metric=self.metric_key_suffix)
+        return histogram
 
     async def listen_any(self, msg, callback):
         start_time = time.time()
         response = await callback(msg)
         duration = time.time() - start_time
-        if msg.subject not in self.histograms:
-            self.histograms[msg.subject] = self.create_histogram(msg.subject)
 
-        self.histograms[msg.subject].observe(duration)
+        self.histogram.labels(
+            app_name=self.app_name, client_id=self.app_client_id, subject=msg.subject
+        ).observe(duration)
 
         return response

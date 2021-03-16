@@ -20,12 +20,23 @@ async def publish():
     await app.publish("some.publish.subject", {"time_to_sleep": random.random()})
 
 
+@app.timer_task(7)
+async def publish():
+    await app.publish("another.publish.subject", {"time_to_sleep": random.random() * 4})
+
+
 @app.listen("some.publish.subject")
 async def listen(msg):
     log.info(f"Got publish and sleep for {msg.data['time_to_sleep']}")
     time.sleep(msg.data["time_to_sleep"])
 
 
+@app.listen("another.publish.subject")
+async def listen(msg):
+    log.info(f"Another got publish and sleep for {msg.data['time_to_sleep']}")
+    time.sleep(msg.data["time_to_sleep"])
+
+
 if __name__ == "__main__":
-    app.add_middleware(ListenMonitoringMiddleware, frequency=4)
+    app.add_middleware(ListenMonitoringMiddleware, frequency=5)
     app.start()
