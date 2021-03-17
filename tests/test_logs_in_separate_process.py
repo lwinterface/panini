@@ -4,12 +4,11 @@ import json
 
 import pytest
 
-from panini.test_client import TestClient
+from panini.test_client import TestClient, get_logger_files_path
 from panini import app as panini_app
-from .helper import get_testing_logs_directory_path
 
-testing_logs_directory_path = get_testing_logs_directory_path(
-    "logs_test_logs", remove_if_exist=True
+testing_logs_directory_path = get_logger_files_path(
+    "test_logger_logs", remove_if_exist=True
 )
 
 
@@ -44,11 +43,12 @@ def run_panini():
     app.start()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
     client.start(sleep_time=2, is_daemon=False)
-    return client
+    yield client
+    client.stop()
 
 
 def test_simple_log(client):

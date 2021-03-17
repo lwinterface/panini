@@ -3,8 +3,7 @@ import json
 import pytest
 from aiohttp import web
 from panini import app as panini_app
-from panini.test_client import TestClient
-from .helper import get_testing_logs_directory_path
+from panini.test_client import TestClient, get_logger_files_path
 
 
 def run_panini():
@@ -17,7 +16,7 @@ def run_panini():
         web_server=True,
         web_port=8084,
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_web_server.foo")
@@ -34,7 +33,7 @@ def run_panini():
     app.start()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     # provide parameter for using web_server - use_web_server; for waiting for web_server setup - sleep_time;
     client = TestClient(
@@ -43,7 +42,8 @@ def client():
         base_web_server_url="http://127.0.0.1:8084",
     )
     client.start(sleep_time=3)
-    return client
+    yield client
+    client.stop()
 
 
 def test_request_and_post(client):

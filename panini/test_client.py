@@ -1,3 +1,5 @@
+import os
+import shutil
 import time
 import json
 import random
@@ -109,16 +111,6 @@ class TestClient:
 
         self.panini_process = None
 
-    def __del__(self):
-        self.nats_client.close()
-        if self.panini_process:
-            self.panini_process.kill()
-        if hasattr(self, "http_session"):
-            self.http_session.close()
-
-        if hasattr(self, "websocket_session"):
-            self.websocket_session.close()
-
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
         return json.dumps(message).encode("utf-8")
@@ -151,6 +143,16 @@ class TestClient:
         else:
             time.sleep(sleep_time)
         return self
+
+    def stop(self):
+        self.nats_client.close()
+        if self.panini_process:
+            self.panini_process.kill()
+        if hasattr(self, "http_session"):
+            self.http_session.close()
+
+        if hasattr(self, "websocket_session"):
+            self.websocket_session.close()
 
     def publish(self, subject: str, message: dict, reply: str = "") -> None:
         self.nats_client.publish(
@@ -205,3 +207,13 @@ class TestClient:
             return wrapper
 
         return decorator
+
+
+def get_logger_files_path(folder: str = "test_logs", remove_if_exist: bool = False):
+    testing_directory_path = os.getcwd()
+    testing_logs_directory_path = os.path.join(testing_directory_path, folder)
+    if remove_if_exist:
+        if os.path.exists(testing_logs_directory_path):
+            shutil.rmtree(testing_logs_directory_path)
+
+    return testing_logs_directory_path
