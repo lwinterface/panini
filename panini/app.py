@@ -216,7 +216,8 @@ class App(
         self.nats_config["listen_subjects_callbacks"] = subjects_and_callbacks
 
         NATSClient.__init__(self, **self.nats_config)
-        self.connector.publish_sync(f'panini_events.{self.service_name}.{self._client_id}.started', {})
+        if self.app_strategy == "asyncio":
+            self.connector.publish_sync(f'panini_events.{self.service_name}.{self._client_id}.started', {})
         
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
