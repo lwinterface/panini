@@ -3,9 +3,11 @@ import os
 import threading
 import time
 import collections
+from datetime import datetime
 from typing import Any
 
 from panini import middleware
+from panini.app import get_app
 
 
 class _Writer(threading.Thread):
@@ -65,8 +67,9 @@ class WriterEmulatorMiddleware(middleware.Middleware):
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
 
-        filename = kwargs.get("filename")
-
+        app = get_app()
+        folder = kwargs.get("folder")
+        filename = f"{folder}/events.{app.service_name}.{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}.jsonl"
         self._prefix = kwargs.get("prefix", "emulator")
         self._writer = _Writer(filename)
         self._writer.start()
