@@ -4,6 +4,9 @@ import time
 
 from nats.aio.client import Client as NATS
 
+from panini.app import get_app
+from panini.nats_client.nats_client_interface import Msg
+
 
 def _dict_to_bytes(message: dict) -> bytes:
     return json.dumps(message).encode('utf-8')
@@ -16,12 +19,13 @@ def _bytes_to_dict(payload: bytes) -> dict:
 class EmulatorClient:
 
     def __init__(
-        self,
-        filepath: str,
-        prefix: str = "emulator",
-        emulate_timeout: bool = True,
-        compare_output: bool = False
+            self,
+            filepath: str,
+            prefix: str,
+            emulate_timeout: bool = True,
+            compare_output: bool = False
     ):
+        self._name = "emulator_client" + prefix
         self._filepath = filepath
 
         self._publish_queue = []
@@ -34,6 +38,9 @@ class EmulatorClient:
         self._prefix = prefix
         self._subscriptions = []
 
+        self._is_app_started = False
+        self._is_emulator_ready = False
+
         self._load()
 
     def _load(self):
@@ -44,7 +51,6 @@ class EmulatorClient:
             event = json.loads(line)
             event_type = event["event_type"]
             subject = self._prefix + "." + event["subject"]
-            # subject = event["subject"]
 
             if event_type.startswith("listen"):
                 self._publish_queue.append(event)
@@ -55,21 +61,16 @@ class EmulatorClient:
 
                 self._listen_queues[subject].append(event)
 
-    async def _mock_requests(self, data):
-        subject = data.subject
-        message = _bytes_to_dict(data.data)
-        reply_to = data.reply
+    async def _mock_requests(self, message):
+        subject = message.subject
+        reply_to = message.reply
+        body = _bytes_to_dict(message.data)
         event = self._listen_queues[subject].pop(0)
-
         if self._compare_output:
-            assert message == event["message"]
+            assert body == event["message"], f"'{body}' vs '{event['message']}'"
 
-        if event["event_type"] == "listen_request":
-            response_message = event["response"]
-            response_message["isr-id"] = message["isr-id"]
-
-            # return response_message
-            await self._client.publish(reply_to, _dict_to_bytes(response_message))
+        if event["event_type"].endswith("request"):
+            await self._client.publish(reply_to, _dict_to_bytes(event["response"]))
 
     def listen(self, subject: str):
         def decorator(func):
@@ -87,7 +88,15 @@ class EmulatorClient:
 
         return decorator
 
-    async def run(self):
+    def start(self, max_timeout_after_start: float = 20):
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(self._run())
+        loop.run_until_complete(self._wait_after(max_timeout_after_start))
+
+    async def _on_app_started(self, message: Msg):
+        self._is_app_started = True
+
+    async def _run(self):
         await self._client.connect()
 
         for subject in self._listen_queues:
@@ -96,10 +105,16 @@ class EmulatorClient:
         for subject, callback in self._subscriptions:
             await self._client.subscribe(subject, cb=callback)
 
-        # publish all the events
-        await self.run_publish()
+        app = get_app()
+        subject = f"{self._prefix}.panini_events.{app.service_name}.{app.client_id}.started"
+        await self._client.subscribe(subject, cb=self._on_app_started)
 
-    async def run_publish(self):
+        self._is_emulator_ready = True
+        await self._wait_for_app_to_start()
+        # publish all the events
+        await self._run_publish()
+
+    async def _run_publish(self):
         last_timestamp = None
         while len(self._publish_queue) > 0:
             event = self._publish_queue.pop(0)
@@ -109,13 +124,13 @@ class EmulatorClient:
             timestamp = event["timestamp"]
             message = _dict_to_bytes(event["message"])
 
-            if event_type == "listen_publish":
+            if event_type.endswith("publish"):
                 await self._client.publish(subject, message)
 
-            elif event_type == "listen_request":
+            elif event_type.endswith("request"):
                 response = await self._client.request(subject, message, timeout=5)
                 if self._compare_output:
-                    assert response == event["response"]
+                    assert json.loads(response.data) == event["response"]
 
             if self._emulate_timeout:
                 if last_timestamp:
@@ -124,7 +139,15 @@ class EmulatorClient:
 
                 last_timestamp = timestamp
 
-    async def wait(self, max_timeout: int = None):
+    def wait_for_readiness(self):
+        while not self._is_emulator_ready:
+            time.sleep(0.1)
+
+    async def _wait_for_app_to_start(self):
+        while not self._is_app_started:
+            await asyncio.sleep(0.1)
+
+    async def _wait_after(self, max_timeout: float = None):
         start = time.time()
         while True:
             if sum(len(queue) for queue in self._listen_queues.values()) == 0:
