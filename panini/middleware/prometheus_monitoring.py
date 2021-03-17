@@ -66,7 +66,7 @@ class PrometheusMonitoringMiddleware(Middleware):
 
     def create_listen_counter(self):
         counter = Counter(
-            "microservices_listen_total",
+            "panini_listen_total",
             "Listen duration in seconds",  # description
             registry=self.registry,
             labelnames=self.labels,
@@ -75,7 +75,7 @@ class PrometheusMonitoringMiddleware(Middleware):
 
     def create_listen_latency_histogram(self):
         histogram = Histogram(
-            "microservices_listen_latency_seconds",
+            "panini_listen_latency_seconds",
             "Listen duration in seconds",  # description
             registry=self.registry,
             buckets=self.buckets,
