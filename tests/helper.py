@@ -11,14 +11,3 @@ class Global:
 
 
 testing_directory_path = pathlib.Path(__file__).parent.absolute()
-
-
-def get_testing_logs_directory_path(
-    folder: str = "logs", remove_if_exist: bool = False
-):
-    testing_logs_directory_path = os.path.join(testing_directory_path, folder)
-    if remove_if_exist:
-        if os.path.exists(testing_logs_directory_path):
-            shutil.rmtree(testing_logs_directory_path)
-
-    return testing_logs_directory_path

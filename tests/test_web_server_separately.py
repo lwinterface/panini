@@ -4,9 +4,8 @@ import json
 import pytest
 from aiohttp import web
 from panini import app as panini_app
-from panini.test_client import HTTPSessionTestClient
+from panini.test_client import HTTPSessionTestClient, get_logger_files_path
 from panini.utils.helper import start_process
-from .helper import get_testing_logs_directory_path
 
 
 def run_panini():
@@ -19,7 +18,7 @@ def run_panini():
         web_server=True,
         web_port=8083,
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.http.get("/test_web_server_separately/get")
@@ -44,14 +43,15 @@ def run_panini():
 
 
 # if we use raw HTTPSessionTestClient - we need to run panini manually and wait for setup
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = HTTPSessionTestClient(
         base_url="http://127.0.0.1:8083"
     )  # handles only http requests
     start_process(run_panini)
     time.sleep(2)
-    return client
+    yield client
+    client.close()
 
 
 @pytest.mark.parametrize(

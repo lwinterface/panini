@@ -1,9 +1,9 @@
 import pytest
 
 from panini.middleware import Middleware
-from panini.test_client import TestClient
+from panini.test_client import TestClient, get_logger_files_path
 from panini import app as panini_app
-from .helper import get_testing_logs_directory_path, Global
+from .helper import Global
 
 
 class AddMiddleware(Middleware):
@@ -32,7 +32,7 @@ def run_panini():
         host="127.0.0.1",
         port=4222,
         logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_middleware.publish")
@@ -87,7 +87,7 @@ def run_panini():
 global_object = Global()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
 
@@ -100,7 +100,8 @@ def client():
         global_object.another_variable = msg.data["data"] + 3
 
     client.start()
-    return client
+    yield client
+    client.stop()
 
 
 def test_send_publish_middleware(client):
