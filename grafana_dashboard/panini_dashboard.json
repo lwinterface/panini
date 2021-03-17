@@ -15,8 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 18,
-  "iteration": 1615983008527,
+  "iteration": 1616009181782,
   "links": [],
   "panels": [
     {
@@ -557,19 +556,19 @@
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.95, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[5m])) by (le, app_name))",
           "interval": "",
-          "legendFormat": "p=0.95",
+          "legendFormat": "p=95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.90, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.90, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.90",
           "refId": "C"
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.50, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.50",
           "refId": "D"
@@ -626,9 +625,9 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "async_listen_monitoring_middleware",
-          "value": "async_listen_monitoring_middleware"
+          "selected": false,
+          "text": "wss_NATS_listener",
+          "value": "wss_NATS_listener"
         },
         "datasource": "Prometheus",
         "definition": "label_values(panini_listen_latency_seconds_bucket, app_name)",
@@ -638,15 +637,9 @@
         "label": "app",
         "multi": false,
         "name": "app_name",
-        "options": [
-          {
-            "selected": true,
-            "text": "async_listen_monitoring_middleware",
-            "value": "async_listen_monitoring_middleware"
-          }
-        ],
+        "options": [],
         "query": "label_values(panini_listen_latency_seconds_bucket, app_name)",
-        "refresh": 0,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
@@ -659,7 +652,6 @@
       {
         "allValue": null,
         "current": {
-          "isNone": true,
           "selected": false,
           "text": "None",
           "value": ""
@@ -687,7 +679,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
