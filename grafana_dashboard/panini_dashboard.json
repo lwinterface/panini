@@ -15,8 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 18,
-  "iteration": 1615983008527,
+  "iteration": 1616003108721,
   "links": [],
   "panels": [
     {
@@ -617,6 +616,7 @@
       }
     }
   ],
+  "refresh": "5s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [],
@@ -693,5 +693,5 @@
   "timezone": "",
   "title": "Panini microservice",
   "uid": "U-8PwmQMz",
-  "version": 2
+  "version": 3
 }
