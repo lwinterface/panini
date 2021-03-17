@@ -1,13 +1,21 @@
+import uuid
+
 from panini import middleware
 from panini.app import get_app
 import copy
 
-class ReaderEmulatorMiddleware(middleware.Middleware):
+from panini.emulator.emulator_client import EmulatorClient
+from panini.middleware import Middleware
+from panini.nats_client.nats_client_interface import Msg
+from panini.utils.helper import start_thread
+
+
+class ReaderEmulatorMiddleware(Middleware):
 
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
 
-        self._prefix = kwargs.get("prefix", "emulator")
+        self._prefix = kwargs.get("prefix", str(uuid.uuid4()))
 
         app = get_app()
         assert app is not None
@@ -17,28 +25,24 @@ class ReaderEmulatorMiddleware(middleware.Middleware):
             subject_with_prefix = self._prefix + "." + subject
             app.SUBSCRIPTIONS[subject_with_prefix] = app.SUBSCRIPTIONS.pop(subject)
 
-    async def send_publish(self, subject: str, message, publish_func, **kwargs):
-        # add prefix
-        # subject = self._prefix + "." + subject
+        self._run_emulator = kwargs.get("run_emulator", True)
 
-        await publish_func(subject, message, **kwargs)
+        if self._run_emulator:
+            emulator = EmulatorClient(
+                prefix=self._prefix,
+                filepath=kwargs.get("filename"),
+                emulate_timeout=kwargs.get("emulate_timeout", True),
+                compare_output=kwargs.get("compare_output", False),
+            )
+            start_thread(emulator.start)
+            emulator.wait_for_readiness()
 
-    async def send_request(self, subject: str, message, request_func, **kwargs):
-        # add prefix
-        # subject = self._prefix + "." + subject
-
-        response = await request_func(subject, message, **kwargs)
+    async def listen_any(self, message: Msg, callback):
+        message.subject = message.subject[len(self._prefix) + 1:]
+        response = await callback(message)
         return response
 
-    async def listen_publish(self, msg, callback):
-        # remove prefix
-        msg.subject = msg.subject[len(self._prefix) + 1:]
-
-        await callback(msg)
-
-    async def listen_request(self, msg, callback):
-        # remove prefix
-        msg.subject = msg.subject[len(self._prefix) + 1:]
-
-        response = await callback(msg)
+    async def send_any(self, subject: str, message, send_func, *args, **kwargs):
+        subject = self._prefix + "." + subject
+        response = await send_func(subject, message, *args, **kwargs)
         return response
