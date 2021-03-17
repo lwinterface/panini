@@ -79,7 +79,7 @@
       "pluginVersion": "7.3.1",
       "targets": [
         {
-          "expr": "sum(irate(microservices_listen_total{app_name=~\"^$app_name$\"}[1m]))",
+          "expr": "sum(irate(panini_listen_total{app_name=~\"^$app_name$\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -136,7 +136,7 @@
       "pluginVersion": "7.3.1",
       "targets": [
         {
-          "expr": "sum(irate(microservices_listen_total{status=\"success\", app_name=~\"^$app_name$\"}[1m]))",
+          "expr": "sum(irate(panini_listen_total{status=\"success\", app_name=~\"^$app_name$\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -193,7 +193,7 @@
       "pluginVersion": "7.3.1",
       "targets": [
         {
-          "expr": "sum(irate(microservices_listen_total{status=\"failed\", app_name=~\"^$app_name$\"}[1m]))",
+          "expr": "sum(irate(panini_listen_total{status=\"failed\", app_name=~\"^$app_name$\"}[1m]))",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -266,7 +266,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(microservices_listen_total{app_name=~\"^$app_name$\"}[1m]))by (subject)",
+          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[1m]))by (subject)",
           "interval": "",
           "legendFormat": "{{subject}}",
           "refId": "A"
@@ -361,7 +361,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(microservices_listen_total{app_name=~\"^$app_name$\"}[1m])) by (status, app_name)",
+          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[1m])) by (status, app_name)",
           "interval": "",
           "legendFormat": "{{status}}",
           "refId": "A"
@@ -456,7 +456,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(microservices_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[1m])) by (le, app_name, subject))",
+          "expr": "histogram_quantile(0.99, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[1m])) by (le, app_name, subject))",
           "interval": "",
           "legendFormat": "{{subject}}",
           "refId": "A"
@@ -551,25 +551,25 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(microservices_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.99, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.99",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(microservices_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.95, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.90, sum(rate(microservices_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.90, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.90",
           "refId": "C"
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(microservices_listen_latency_seconds_bucket[5m])) by (le, app_name))",
+          "expr": "histogram_quantile(0.50, sum(rate(panini_listen_latency_seconds_bucket[5m])) by (le, app_name))",
           "interval": "",
           "legendFormat": "p=0.50",
           "refId": "D"
@@ -617,6 +617,7 @@
       }
     }
   ],
+  "refresh": "5s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [],
@@ -630,7 +631,7 @@
           "value": "async_listen_monitoring_middleware"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(microservices_listen_latency_seconds_bucket, app_name)",
+        "definition": "label_values(panini_listen_latency_seconds_bucket, app_name)",
         "error": null,
         "hide": 0,
         "includeAll": false,
@@ -644,7 +645,7 @@
             "value": "async_listen_monitoring_middleware"
           }
         ],
-        "query": "label_values(microservices_listen_latency_seconds_bucket, app_name)",
+        "query": "label_values(panini_listen_latency_seconds_bucket, app_name)",
         "refresh": 0,
         "regex": "",
         "skipUrlSync": false,
@@ -664,7 +665,7 @@
           "value": ""
         },
         "datasource": "Prometheus",
-        "definition": "label_values(microservices_listen_latency_seconds_bucket, server)",
+        "definition": "label_values(panini_listen_latency_seconds_bucket, server)",
         "error": null,
         "hide": 0,
         "includeAll": false,
@@ -672,7 +673,7 @@
         "multi": false,
         "name": "server",
         "options": [],
-        "query": "label_values(microservices_listen_latency_seconds_bucket, server)",
+        "query": "label_values(panini_listen_latency_seconds_bucket, server)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -693,5 +694,5 @@
   "timezone": "",
   "title": "Panini microservice",
   "uid": "U-8PwmQMz",
-  "version": 2
+  "version": 3
 }
