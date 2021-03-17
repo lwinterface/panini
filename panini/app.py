@@ -95,7 +95,7 @@ class App(
             else:
                 client_id = client_id
             os.environ["CLIENT_ID"] = client_id
-            self._client_id = client_id
+            self.client_id = client_id
             self.service_name = service_name
             self.nats_config = {
                 "host": host,
@@ -194,7 +194,7 @@ class App(
                 self.app_root_path,
                 self.logger_files_path,
                 self.logger_in_separate_process,
-                self._client_id,
+                self.client_id,
             )
 
         try:
@@ -214,12 +214,14 @@ class App(
             raise InitializingEventManagerError(error)
 
         self.nats_config["listen_subjects_callbacks"] = subjects_and_callbacks
-
         NATSClient.__init__(self, **self.nats_config)
-        self.connector.publish_sync(f'panini_events.{self.service_name}.{self._client_id}.started', {})
-
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
+
+        loop = asyncio.get_event_loop()
+        subject = f'panini_events.{self.service_name}.{self.client_id}.started'
+        loop.run_until_complete(self.connector.publish(subject, {}))
+
         self._start_tasks()
 
     def _start_tasks(self):
