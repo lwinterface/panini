@@ -41,7 +41,7 @@ def client():
         use_web_server=True,
         base_web_server_url="http://127.0.0.1:8084",
     )
-    client.start(sleep_time=3)
+    client.start()
     yield client
     client.stop()
 

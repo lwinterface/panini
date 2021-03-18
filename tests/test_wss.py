@@ -52,7 +52,7 @@ def run_panini():
 def client():
     # provide parameter for using web_socket - use_web_socket;
     client = TestClient(run_panini=run_panini, use_web_socket=True)
-    client.start(sleep_time=3)
+    client.start()
     yield client
     client.stop()
 

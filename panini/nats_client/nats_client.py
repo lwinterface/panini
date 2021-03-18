@@ -90,14 +90,8 @@ class NATSClient(NATSClientInterface):
         self.connector.publish = _MiddlewareManager._wrap_function_by_middleware(
             self.connector.publish, "publish"
         )
-        self.connector.publish_sync = _MiddlewareManager._wrap_function_by_middleware(
-            self.connector.publish_sync, "publish"
-        )
         self.connector.request = _MiddlewareManager._wrap_function_by_middleware(
             self.connector.request, "request"
-        )
-        self.connector.request_sync = _MiddlewareManager._wrap_function_by_middleware(
-            self.connector.request_sync, "request"
         )
 
     def check_connection(self):

@@ -46,7 +46,7 @@ def run_panini():
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
-    client.start(sleep_time=2, is_daemon=False)
+    client.start(is_daemon=False)
     yield client
     client.stop()
 
