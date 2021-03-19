@@ -33,6 +33,7 @@ class ReaderEmulatorMiddleware(Middleware):
                 filepath=kwargs.get("filename"),
                 emulate_timeout=kwargs.get("emulate_timeout", True),
                 compare_output=kwargs.get("compare_output", False),
+                app_name=app.service_name
             )
             start_thread(emulator.start)
             emulator.wait_for_readiness()

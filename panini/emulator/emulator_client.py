@@ -5,8 +5,6 @@ import time
 
 from nats.aio.client import Client as NATS
 
-from panini.app import get_app
-from panini.nats_client.nats_client_interface import Msg
 
 
 def _dict_to_bytes(message: dict) -> bytes:
@@ -23,9 +21,10 @@ class EmulatorClient(threading.Thread):
             self,
             filepath: str,
             prefix: str,
+            app_name: str,
             emulate_timeout: bool = True,
             compare_output: bool = False,
-            max_timeout_after_start: float = 20.0
+            max_timeout_after_start: float = 20.0,
     ):
         threading.Thread.__init__(self)
 
@@ -40,7 +39,10 @@ class EmulatorClient(threading.Thread):
         self._max_timeout_after_start = max_timeout_after_start
         self._client = NATS()
 
+        self._app_name = app_name
+
         self._prefix = prefix
+        self._reply_to_suffix = "reply"
         self._subscriptions = []
 
         self._is_app_started = False
@@ -66,7 +68,7 @@ class EmulatorClient(threading.Thread):
 
                 self._listen_queues[subject].append(event)
 
-    async def _mock_requests(self, message):
+    async def _mock_request(self, message):
         subject = message.subject
         reply_to = message.reply
         body = _bytes_to_dict(message.data)
@@ -87,7 +89,7 @@ class EmulatorClient(threading.Thread):
                 if wrapper_response is not None and incoming_response.reply != "":
                     self._client.publish(incoming_response.reply, wrapper_response)
 
-            self._subscriptions.append([subject, wrapper])
+            self._subscriptions.append([self._prefix + "." + subject, wrapper])
 
             return wrapper
 
@@ -97,20 +99,19 @@ class EmulatorClient(threading.Thread):
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self._run())
 
-    async def _on_app_started(self, message: Msg):
+    async def _on_app_started(self, message):
         self._is_app_started = True
 
     async def _run(self):
         await self._client.connect()
 
         for subject in self._listen_queues:
-            await self._client.subscribe(subject, cb=self._mock_requests)
+            await self._client.subscribe(subject, cb=self._mock_request)
 
         for subject, callback in self._subscriptions:
             await self._client.subscribe(subject, cb=callback)
 
-        app = get_app()
-        subject = f"{self._prefix}.panini_events.{app.service_name}.{app.client_id}.started"
+        subject = f"{self._prefix}.panini_events.{self._app_name}.*.started"
         await self._client.subscribe(subject, cb=self._on_app_started)
 
         self._is_emulator_ready = True
@@ -135,6 +136,11 @@ class EmulatorClient(threading.Thread):
 
             elif event_type.endswith("request"):
                 response = await self._client.request(subject, message, timeout=5)
+
+                if self._reply_to_suffix:
+                    await self._client.publish(f"{subject}.{self._reply_to_suffix}",
+                                               _dict_to_bytes(event["response"]))
+
                 if self._compare_output:
                     assert json.loads(response.data) == event["response"]
 
