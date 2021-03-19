@@ -102,13 +102,15 @@ global_object = Global()
 
 @pytest.fixture(scope="module")
 def client():
-    client = TestClient(run_panini).start()
+    client = TestClient(run_panini)
 
     @client.listen("test_diff_datatypes.publish.listener")
     def dict_listener(msg):
         global_object.public_variable = msg.data["type"]
 
+    client.start()
     yield client
+    client.stop()
 
 
 def test_listen_dict(client):
