@@ -10,6 +10,7 @@ import requests
 import websocket
 from pynats import NATSClient, NATSMessage
 
+from .exceptions import TestClientError
 from .utils.helper import start_process
 from .nats_client.nats_client_interface import Msg
 
@@ -82,11 +83,13 @@ class TestClient:
     def __init__(
         self,
         run_panini: typing.Callable = lambda *args, **kwargs: None,
+        panini_service_name: str = "*",
+        panini_client_id: str = "*",
         use_web_server: bool = False,
         use_web_socket: bool = False,
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
-        socket_timeout: int = 2,
+        socket_timeout: int = 5,
         name: str = "__".join(
             [
                 "test_client",
@@ -96,6 +99,11 @@ class TestClient:
         ),
     ):
         self.run_panini = run_panini
+        self.panini_service_name = panini_service_name
+        self.panini_client_id = panini_client_id
+        self.base_web_server_url = base_web_server_url
+        self.use_web_server = use_web_server
+        self.use_web_socket = use_web_socket
         self.nats_client = NATSClient(
             url=base_nats_url,
             name=name,
@@ -129,19 +137,33 @@ class TestClient:
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(
-        self, is_sync: bool = False, sleep_time: float = None, is_daemon: bool = None
-    ):
+    def start(self, is_sync: bool = False, is_daemon: bool = None):
         if is_daemon is None:
             is_daemon = False if is_sync else True
+
+        @self.listen(
+            f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started"
+        )
+        def panini_started(msg):
+            pass
 
         self.panini_process = start_process(
             self.wrap_run_panini, args=(self.run_panini,), daemon=is_daemon
         )
-        if sleep_time is None:
-            time.sleep(6) if is_sync else time.sleep(1)
+
+        if is_sync:
+            time.sleep(5)
         else:
-            time.sleep(sleep_time)
+            try:
+                self.wait(1)  # wait for panini to start
+            except OSError:
+                raise TestClientError(
+                    "TestClient was waiting panini to start, but panini does not started"
+                )
+
+        if self.use_web_server:
+            pass  # TODO: understand, why don't we need to wait for web_server
+
         return self
 
     def stop(self):
@@ -200,7 +222,13 @@ class TestClient:
                     self.publish(
                         subject=incoming_response.reply, message=wrapper_response
                     )
-                    self.wait(count=1)
+                    try:
+                        self.wait(count=1)
+                    except OSError:
+                        raise TestClientError(
+                            f"TestClient listen subject: {incoming_response.subject},"
+                            f"Response was sent, but it was not correctly handled"
+                        )
 
             self.subscribe(subject, wrapper)
 

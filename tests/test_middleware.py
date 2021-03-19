@@ -7,12 +7,12 @@ from .helper import Global
 
 
 class AddMiddleware(Middleware):
-    async def send_publish(self, subject: str, message, publish_func, **kwargs):
+    async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
         message["data"] += 1
-        await publish_func(subject, message, **kwargs)
+        await publish_func(subject, message, *args, **kwargs)
 
-    async def send_request(self, subject: str, message, request_func, **kwargs):
-        response = await request_func(subject, message, **kwargs)
+    async def send_request(self, subject: str, message, request_func, *args, **kwargs):
+        response = await request_func(subject, message, *args, **kwargs)
         response["data"] += 2
         return response
 

@@ -95,3 +95,7 @@ class DecodeError(BaseError):
 
 class DataTypeError(BaseError):
     pass
+
+
+class TestClientError(BaseError):
+    pass

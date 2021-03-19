@@ -217,8 +217,13 @@ class App(
 
         NATSClient.__init__(self, **self.nats_config)
         if self.app_strategy == "asyncio":
-            self.connector.publish_sync(f'panini_events.{self.service_name}.{self._client_id}.started', {})
-        
+            asyncio.ensure_future(
+                self.connector.client.publish(
+                    f"panini_events.{self.service_name}.{self._client_id}.started",
+                    b"{}",
+                )
+            )
+
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
         self._start_tasks()

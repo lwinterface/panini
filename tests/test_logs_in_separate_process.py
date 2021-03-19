@@ -46,7 +46,7 @@ def run_panini():
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
-    client.start(sleep_time=2, is_daemon=False)
+    client.start(is_daemon=False)
     yield client
     client.stop()
 
@@ -56,7 +56,7 @@ def test_simple_log(client):
     assert response["success"] is True
 
     # wait for log being written
-    time.sleep(0.1)
+    time.sleep(1)
     with open(
         os.path.join(testing_logs_directory_path, "test_logs_in_separate_process.log"),
         "r",

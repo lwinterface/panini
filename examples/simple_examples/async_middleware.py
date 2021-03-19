@@ -47,9 +47,9 @@ async def receive_messages(msg):
 
 
 class MyMiddleware(Middleware):
-    async def send_publish(self, subject, message, publish_func, **kwargs):
+    async def send_publish(self, subject, message, publish_func, *args, **kwargs):
         print("do something before publish")
-        await publish_func(subject, message, **kwargs)
+        await publish_func(subject, message, *args, **kwargs)
         print("do something after publish")
 
     async def listen_publish(self, msg, cb):
@@ -57,9 +57,9 @@ class MyMiddleware(Middleware):
         await cb(msg)
         print("do something after listen")
 
-    async def send_request(self, subject, message, request_func, **kwargs):
+    async def send_request(self, subject, message, request_func, *args, **kwargs):
         print("do something before send request")
-        result = await request_func(subject, message, **kwargs)
+        result = await request_func(subject, message, *args, **kwargs)
         print("do something after send request")
         return result
 
