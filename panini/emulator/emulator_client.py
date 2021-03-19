@@ -1,5 +1,6 @@
 import asyncio
 import json
+import threading
 import time
 
 from nats.aio.client import Client as NATS
@@ -16,15 +17,18 @@ def _bytes_to_dict(payload: bytes) -> dict:
     return json.loads(payload)
 
 
-class EmulatorClient:
+class EmulatorClient(threading.Thread):
 
     def __init__(
             self,
             filepath: str,
             prefix: str,
             emulate_timeout: bool = True,
-            compare_output: bool = False
+            compare_output: bool = False,
+            max_timeout_after_start: float = 20.0
     ):
+        threading.Thread.__init__(self)
+
         self._name = "emulator_client" + prefix
         self._filepath = filepath
 
@@ -33,6 +37,7 @@ class EmulatorClient:
 
         self._emulate_timeout = emulate_timeout
         self._compare_output = compare_output
+        self._max_timeout_after_start = max_timeout_after_start
         self._client = NATS()
 
         self._prefix = prefix
@@ -88,10 +93,9 @@ class EmulatorClient:
 
         return decorator
 
-    def start(self, max_timeout_after_start: float = 20):
+    def run(self):
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self._run())
-        loop.run_until_complete(self._wait_after(max_timeout_after_start))
 
     async def _on_app_started(self, message: Msg):
         self._is_app_started = True
@@ -113,6 +117,8 @@ class EmulatorClient:
         await self._wait_for_app_to_start()
         # publish all the events
         await self._run_publish()
+
+        await self._wait_after()
 
     async def _run_publish(self):
         last_timestamp = None
@@ -147,13 +153,13 @@ class EmulatorClient:
         while not self._is_app_started:
             await asyncio.sleep(0.1)
 
-    async def _wait_after(self, max_timeout: float = None):
+    async def _wait_after(self):
         start = time.time()
         while True:
             if sum(len(queue) for queue in self._listen_queues.values()) == 0:
                 break
 
-            if max_timeout and time.time() - start > max_timeout:
+            if self._max_timeout_after_start and time.time() - start > self._max_timeout_after_start:
                 break
 
             await asyncio.sleep(0.1)
