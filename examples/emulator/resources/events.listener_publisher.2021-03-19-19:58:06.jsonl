@@ -1,0 +1,31 @@
+{"event_type": "send_publish", "subject": "panini_events.listener_publisher.listener_publisher__non_docker_env_649030__659046.started", "message": {}, "timestamp": 1616176686.77689}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.0"}, "timestamp": 1616176686.7773812}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.0"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176686.778959}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.0"}, "context": {}, "timestamp": 1616176686.7790248}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.0"}, "response": {"data": "request"}, "timestamp": 1616176686.7810292}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.1"}, "timestamp": 1616176687.781695}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.1"}, "context": {}, "timestamp": 1616176687.784008}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.1"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176688.288361}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.1"}, "response": {"data": "request"}, "timestamp": 1616176688.290153}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.2"}, "timestamp": 1616176688.784297}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.2"}, "context": {}, "timestamp": 1616176688.787374}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.3"}, "timestamp": 1616176689.7869911}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.3"}, "context": {}, "timestamp": 1616176689.7897978}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.2"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176689.792532}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.2"}, "response": {"data": "request"}, "timestamp": 1616176689.794294}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.4"}, "timestamp": 1616176690.78984}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.4"}, "context": {}, "timestamp": 1616176690.792812}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.3"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176691.302924}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.3"}, "response": {"data": "request"}, "timestamp": 1616176691.305665}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.5"}, "timestamp": 1616176691.794452}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.5"}, "context": {}, "timestamp": 1616176691.796705}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.6"}, "timestamp": 1616176692.794969}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.6"}, "context": {}, "timestamp": 1616176692.7976089}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.4"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176692.81003}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.4"}, "response": {"data": "request"}, "timestamp": 1616176692.8121521}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.7"}, "timestamp": 1616176693.797626}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.7"}, "context": {}, "timestamp": 1616176693.8000078}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.5"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616176694.317716}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.5"}, "response": {"data": "request"}, "timestamp": 1616176694.320859}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.8"}, "timestamp": 1616176694.800283}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.8"}, "context": {}, "timestamp": 1616176694.802691}
