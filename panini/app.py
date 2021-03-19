@@ -181,13 +181,7 @@ class App(
             )
         self.logger.logger = logging.getLogger(service_name)
 
-    def start(self, from_another_thread=False):
-        if self.http_server and from_another_thread is False:
-            self._start()
-        else:
-            start_thread(self._start)
-
-    def _start(self):
+    def start(self):
         if self.logger_required:
             self.set_logger(
                 self.service_name,
