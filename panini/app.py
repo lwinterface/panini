@@ -212,7 +212,8 @@ class App(
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
 
-        self.connector.publish_sync(f'panini_events.{self.service_name}.{self.client_id}.started', {})
+        # self.connector.publish_sync(f'panini_events.{self.service_name}.{self.client_id}.started', {})
+        asyncio.get_event_loop().run_until_complete(self.connector.publish(f'panini_events.{self.service_name}.{self.client_id}.started', {}))
 
         self._start_tasks()
 
