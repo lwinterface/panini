@@ -69,6 +69,9 @@ class WriterEmulatorMiddleware(middleware.Middleware):
 
         app = get_app()
         folder = kwargs.get("folder")
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+
         filename = f"{folder}/events.{app.service_name}.{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}.jsonl"
         self._prefix = kwargs.get("prefix", "emulator")
         self._writer = _Writer(filename)

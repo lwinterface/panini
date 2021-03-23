@@ -6,7 +6,7 @@ from panini.emulator.writer_emulator_middleware import WriterEmulatorMiddleware
 from panini.middleware import Middleware
 from panini.test_client import TestClient
 from panini import app as panini_app
-from tests.helper import get_testing_logs_directory_path, Global
+from tests.helper import Global
 
 
 def run_panini():
@@ -14,8 +14,7 @@ def run_panini():
         service_name="test_middleware",
         host="127.0.0.1",
         port=4222,
-        logger_in_separate_process=False,
-        logger_files_path=get_testing_logs_directory_path(),
+        logger_in_separate_process=False
     )
 
     @app.listen("test_middleware.publish")
@@ -63,7 +62,8 @@ def run_panini():
         except Exception:
             app.logger.exception("test_middleware.listen.request")
 
-    app.add_middleware(WriterEmulatorMiddleware, filename="tests/resources/events.jsonl")
+    folder = "../resources"
+    app.add_middleware(WriterEmulatorMiddleware, folder=folder)
     app.start()
 
 
@@ -75,12 +75,12 @@ def client():
     client = TestClient(run_panini)
 
     @client.listen("test_middleware.publish.response")
-    def publish_listener(subject, message):
+    def publish_listener(msg):
         pass
 
 
     @client.listen("test_middleware.listen.publish.response")
-    def listen_publish_listener(subject, message):
+    def listen_publish_listener(msg):
         pass
 
     client.start()
@@ -89,7 +89,7 @@ def client():
 
 def test_send_publish_middleware(client):
     client.publish("test_middleware.publish", {"data": 1})
-    client.wait(1)
+    time.sleep(2)
 
 
 def test_send_request_middleware(client):
@@ -98,7 +98,7 @@ def test_send_request_middleware(client):
 
 def test_listen_publish_middleware(client):
     client.publish("test_middleware.listen.publish", {"data": 3})
-    client.wait(1)
+    time.sleep(2)
 
 
 def test_listen_request_middleware(client):

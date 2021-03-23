@@ -212,7 +212,7 @@ class App(
         if self.app_strategy == "asyncio":
             asyncio.ensure_future(
                 self.connector.client.publish(
-                    f"panini_events.{self.service_name}.{self._client_id}.started",
+                    f"panini_events.{self.service_name}.{self.client_id}.started",
                     b"{}",
                 )
             )
