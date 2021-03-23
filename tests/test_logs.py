@@ -40,8 +40,9 @@ def run_panini():
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
-    client.start(sleep_time=2)
+    client.start()
     yield client
+    client.stop()
 
 
 def test_simple_log(client):
