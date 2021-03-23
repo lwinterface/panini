@@ -89,8 +89,7 @@ def client():
 
 def test_send_publish_middleware(client):
     client.publish("test_middleware.publish", {"data": 1})
-    time.sleep(2)
-
+    client.wait(1)
 
 def test_send_request_middleware(client):
     response = client.request("test_middleware.request", {"data": 2})
@@ -98,7 +97,7 @@ def test_send_request_middleware(client):
 
 def test_listen_publish_middleware(client):
     client.publish("test_middleware.listen.publish", {"data": 3})
-    time.sleep(2)
+    client.wait(1)
 
 
 def test_listen_request_middleware(client):
