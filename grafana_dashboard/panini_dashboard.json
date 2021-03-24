@@ -15,7 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "iteration": 1616009181782,
+  "iteration": 1616590977569,
   "links": [],
   "panels": [
     {
@@ -265,7 +265,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[1m]))by (subject)",
+          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[15m]))by (subject)",
           "interval": "",
           "legendFormat": "{{subject}}",
           "refId": "A"
@@ -360,7 +360,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[1m])) by (status, app_name)",
+          "expr": "sum(rate(panini_listen_total{app_name=~\"^$app_name$\"}[15m])) by (status, app_name)",
           "interval": "",
           "legendFormat": "{{status}}",
           "refId": "A"
@@ -455,7 +455,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[1m])) by (le, app_name, subject))",
+          "expr": "histogram_quantile(0.99, sum(rate(panini_listen_latency_seconds_bucket{app_name=~\"^$app_name$\"}[15m])) by (le, app_name, subject))",
           "interval": "",
           "legendFormat": "{{subject}}",
           "refId": "A"
@@ -652,6 +652,7 @@
       {
         "allValue": null,
         "current": {
+          "isNone": true,
           "selected": false,
           "text": "None",
           "value": ""
@@ -679,12 +680,12 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Panini microservice",
   "uid": "U-8PwmQMz",
-  "version": 3
+  "version": 4
 }
