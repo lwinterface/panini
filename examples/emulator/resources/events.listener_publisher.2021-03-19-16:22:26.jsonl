@@ -1,0 +1,40 @@
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.0"}, "timestamp": 1616163746.40906}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.0"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163746.411051}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.0"}, "context": {}, "timestamp": 1616163746.411084}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.0"}, "response": {"data": "request"}, "timestamp": 1616163746.4127538}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.1"}, "timestamp": 1616163747.413412}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.1"}, "context": {}, "timestamp": 1616163747.415643}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.1"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163747.918144}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.1"}, "response": {"data": "request"}, "timestamp": 1616163747.920809}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.2"}, "timestamp": 1616163748.4150531}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.2"}, "context": {}, "timestamp": 1616163748.417831}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.3"}, "timestamp": 1616163749.418966}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.3"}, "context": {}, "timestamp": 1616163749.42243}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.2"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163749.424376}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.2"}, "response": {"data": "request"}, "timestamp": 1616163749.4262688}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.4"}, "timestamp": 1616163750.423672}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.4"}, "context": {}, "timestamp": 1616163750.428416}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.3"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163750.933328}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.3"}, "response": {"data": "request"}, "timestamp": 1616163750.935594}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.5"}, "timestamp": 1616163751.426971}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.5"}, "context": {}, "timestamp": 1616163751.4310882}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.6"}, "timestamp": 1616163752.4306839}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.6"}, "context": {}, "timestamp": 1616163752.433504}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.4"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163752.4387121}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.4"}, "response": {"data": "request"}, "timestamp": 1616163752.440761}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.7"}, "timestamp": 1616163753.4312801}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.7"}, "context": {}, "timestamp": 1616163753.434462}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.5"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163753.948512}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.5"}, "response": {"data": "request"}, "timestamp": 1616163753.951016}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.8"}, "timestamp": 1616163754.4349}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.8"}, "context": {}, "timestamp": 1616163754.4377851}
+{"event_type": "send_publish", "subject": "store.listen", "message": {"data": "publish.data.9"}, "timestamp": 1616163755.439557}
+{"event_type": "listen_publish", "subject": "store.listen", "message": {"data": "publish.data.9"}, "context": {}, "timestamp": 1616163755.4424572}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.6"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163755.455765}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.6"}, "response": {"data": "request"}, "timestamp": 1616163755.458336}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.7"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163756.966461}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.7"}, "response": {"data": "request"}, "timestamp": 1616163756.968477}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.8"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163758.4733608}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.8"}, "response": {"data": "request"}, "timestamp": 1616163758.475225}
+{"event_type": "listen_request", "subject": "store.request", "message": {"data": "request.data.9"}, "context": {}, "response": {"data": "request"}, "timestamp": 1616163759.9795651}
+{"event_type": "send_request", "subject": "store.request", "message": {"data": "request.data.9"}, "response": {"data": "request"}, "timestamp": 1616163759.981707}
