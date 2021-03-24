@@ -2,8 +2,7 @@ import time
 
 import pytest
 
-from panini.emulator.writer_emulator_middleware import WriterEmulatorMiddleware
-from panini.middleware import Middleware
+from panini.middleware.writer_emulator_middleware import WriterEmulatorMiddleware
 from panini.test_client import TestClient
 from panini import app as panini_app
 from tests.helper import Global

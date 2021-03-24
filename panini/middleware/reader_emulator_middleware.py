@@ -1,10 +1,9 @@
 import uuid
 
-from panini import middleware
 from panini.app import get_app
 import copy
 
-from panini.emulator.emulator_client import EmulatorClient
+from panini.emulator_client import EmulatorClient
 from panini.middleware import Middleware
 from panini.nats_client.nats_client_interface import Msg
 from panini.utils.helper import start_thread
