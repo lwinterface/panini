@@ -1,4 +1,4 @@
-from panini.emulator.emulator_client import EmulatorClient
+from panini.emulator_client import EmulatorClient
 
 filename = "resources/events.publisher.2021-03-19-16:21:30.jsonl"
 
