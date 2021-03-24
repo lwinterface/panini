@@ -28,9 +28,9 @@ async def response(message: Msg):
 
 
 if __name__ == "__main__":
-    # folder = "resources"
-    # filename = "resources/events.listener.2021-03-17-12:52:07.jsonl"
-    # app.add_middleware(WriterEmulatorMiddleware, folder=folder, filename=filename)
-    # app.add_middleware(ReaderEmulatorMiddleware, prefix='prefix)
-    app.add_middleware(ReaderEmulatorMiddleware, prefix='prefix', run_emulator=False)
+    folder = "resources"
+    filename = "resources/events.listener.2021-03-22-16:30:18.jsonl"
+    # app.add_middleware(WriterEmulatorMiddleware, folder=folder)
+    app.add_middleware(ReaderEmulatorMiddleware, filename=filename)
+    # app.add_middleware(ReaderEmulatorMiddleware, prefix='prefix', run_emulator=False)
     app.start()
