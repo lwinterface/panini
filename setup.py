@@ -2,8 +2,8 @@
 from setuptools import setup, find_packages
 
 long_description = """
-Panini is a modern framework for quick development of streaming microservices. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
- 
+Panini is a modern framework for quick development of streaming microservices. 
+Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
 The framework allows you to work with NATS features and some additional logic using a simple interface:
 
 - publish messages to subject
@@ -19,12 +19,12 @@ The framework allows you to work with NATS features and some additional logic us
 
 setup(
     name="panini",
-    version="0.2.1",
+    version="0.2.2",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url="https://github.com/lwinterface/panini",
-    author="Op Return SA, developers: Andrew Volotskov, Danylo Tiutiushkin",
+    author="Op Return SA, developers: Andrii Volotskov, Danylo Tiutiushkin, Oleksii Volotskov",
     author_email="example@example.com",
     python_requires=">=3.8.2",
     license="MIT",
