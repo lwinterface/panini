@@ -133,3 +133,5 @@ dmypy.json
 **/logfiles
 **/logs
 **/log_config.json
+**/test_logs
+**/test_logger_logs

@@ -4,6 +4,10 @@ networks:
   internet:
     name: "internet"
     driver: bridge
+  no-internet:
+    name: "no-internet"
+    internal: true
+    driver: bridge
 
 
 services:
@@ -15,8 +19,8 @@ services:
       - "4222"
       - "-m"
       - "8222"
-      - "-c"
-      - "/config/nats-server.conf"
+#      - "-c"
+#      - "/config/nats-server.conf"
     ports:
       - 4222:4222
       - 8222:8222
