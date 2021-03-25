@@ -83,6 +83,8 @@ class TestClient:
     def __init__(
         self,
         run_panini: typing.Callable = lambda *args, **kwargs: None,
+        run_panini_args: list = None,
+        run_panini_kwargs: dict = None,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
         use_web_server: bool = False,
@@ -99,6 +101,8 @@ class TestClient:
         ),
     ):
         self.run_panini = run_panini
+        self.run_panini_args = run_panini_args or []
+        self.run_panini_kwargs = run_panini_kwargs or {}
         self.panini_service_name = panini_service_name
         self.panini_client_id = panini_client_id
         self.base_web_server_url = base_web_server_url
@@ -128,12 +132,12 @@ class TestClient:
         return json.loads(payload)
 
     @staticmethod
-    def wrap_run_panini(run_panini):
+    def wrap_run_panini(run_panini, run_panini_args: list, run_panini_kwargs: dict):
         from .utils.logger import get_logger
 
         test_logger = get_logger("panini")
         try:
-            run_panini()
+            run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
@@ -148,7 +152,7 @@ class TestClient:
             pass
 
         self.panini_process = start_process(
-            self.wrap_run_panini, args=(self.run_panini,), daemon=is_daemon
+            self.wrap_run_panini, args=(self.run_panini, self.run_panini_args, self.run_panini_kwargs), daemon=is_daemon
         )
 
         if is_sync:
