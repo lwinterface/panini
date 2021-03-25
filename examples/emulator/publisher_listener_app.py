@@ -50,6 +50,6 @@ async def publish_task():
 
 if __name__ == "__main__":
     folder = "resources"
-    filename = "resources/events.listener_publisher.2021-03-19-16:22:26.jsonl"
+    filename = "resources/events.listener_publisher.2021-03-19-16-22-26.jsonl"
     app.add_middleware(WriterEmulatorMiddleware, folder=folder)
     app.start()

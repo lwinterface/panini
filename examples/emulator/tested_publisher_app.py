@@ -1,6 +1,6 @@
 from panini.emulator_client import EmulatorClient
 
-filename = "resources/events.publisher.2021-03-19-16:21:30.jsonl"
+filename = "resources/events.publisher.2021-03-19-16-21-30.jsonl"
 
 client = EmulatorClient(
     filepath=filename,

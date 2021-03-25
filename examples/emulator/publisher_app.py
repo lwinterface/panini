@@ -38,7 +38,7 @@ async def publish_task():
 
 if __name__ == "__main__":
     # folder = "resources"
-    # filename = "events.publisher.2021-03-19-16:21:30.jsonl"
+    # filename = "events.publisher.2021-03-19-16-21-30.jsonl"
     # app.add_middleware(ReaderEmulatorMiddleware, folder=folder, filename=f"{folder}/{filename}", compare_output=True)
     # app.add_middleware(ReaderEmulatorMiddleware, prefix='prefix', run_emulator=False)
     app.start()
