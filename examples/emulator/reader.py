@@ -30,7 +30,7 @@ async def response(message):
         app.logger.exception(message.subject)
 
 
-emulator = EmulatorClient('resources/events.writer.2021-03-16-13:06.jsonl', emulate_timeout=False)
+emulator = EmulatorClient('resources/events.writer.2021-03-16-13-06.jsonl', emulate_timeout=False)
 app.add_middleware(ReaderEmulatorMiddleware)
 
 if __name__ == "__main__":
