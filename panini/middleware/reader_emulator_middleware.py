@@ -18,7 +18,7 @@ class ReaderEmulatorMiddleware(Middleware):
 
         app = get_app()
         assert app is not None
-        app.logger.warning('Emulator is experimental feature!')
+        print('Emulator is experimental feature!')
         subjects = copy.copy(list(app.SUBSCRIPTIONS.keys()))
         for subject in subjects:
             subject_with_prefix = self._prefix + "." + subject

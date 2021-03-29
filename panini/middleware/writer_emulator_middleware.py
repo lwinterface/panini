@@ -68,7 +68,7 @@ class WriterEmulatorMiddleware(middleware.Middleware):
         super().__init__(args, kwargs)
 
         app = get_app()
-        app.logger.warning('Emulator is experimental feature!')
+        print('Emulator is experimental feature!')
         folder = kwargs.get("folder")
         if not os.path.isdir(folder):
             os.makedirs(folder)
