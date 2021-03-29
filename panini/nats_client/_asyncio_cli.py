@@ -1,11 +1,10 @@
-import json
+import ujson
 import asyncio
 import uuid
 import threading
 import nest_asyncio
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..utils.helper import is_json, run_coro_threadsafe, validate_msg, register_msg
 from ..exceptions import DataTypeError
 from ..utils.logger import get_logger
 from .nats_client_interface import NATSClientInterface, Msg
@@ -223,7 +222,7 @@ class _AsyncioNATSClient(NATSClientInterface):
             )
 
         if type(message) is dict and data_type == "json.dumps":
-            message = json.dumps(message)
+            message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
             message = message.encode()
@@ -245,7 +244,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         data_type: type or str = "json.dumps",
     ):
         if type(message) is dict and data_type == "json.dumps":
-            message = json.dumps(message)
+            message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
             message = message.encode()
@@ -258,7 +257,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         response = await self.client.request(subject, message, timeout=timeout)
         response = response.data
         if data_type == "json.dumps":
-            response = json.loads(response)
+            response = ujson.loads(response)
         elif data_type is str:
             response = response.decode()
         return response
@@ -272,7 +271,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         data_type: type or str = "json.dumps",
     ):
         if type(message) is dict and data_type == "json.dumps":
-            message = json.dumps(message)
+            message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
             message = message.encode()
@@ -327,7 +326,7 @@ class _ReceivedMessageHandler:
         if self.data_type == str:
             msg.data = msg.data.decode()
         elif self.data_type == dict or self.data_type == "json.loads":
-            msg.data = json.loads(msg.data.decode())
+            msg.data = ujson.loads(msg.data.decode())
         else:
             raise Exception(f"{self.data_type} is unsupported data format")
 
