@@ -55,6 +55,7 @@ setup(
         "nest-asyncio==1.5.1",
         "prometheus-client==0.9.0",
         "nats-python>=0.8.0",
+        "ujson==4.0.2",
     ],
     keywords=[
         "nats",
