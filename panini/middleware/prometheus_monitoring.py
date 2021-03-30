@@ -51,7 +51,7 @@ class PrometheusMonitoringMiddleware(Middleware):
         self.pushgateway_url = pushgateway_url
         self.registry = CollectorRegistry()
         self.app_name = app.service_name
-        self.app_client_id = app._client_id
+        self.app_client_id = app.client_id
         self.buckets = buckets
         assert set(labels).issubset(
             set(DEFAULT_LABELS)
