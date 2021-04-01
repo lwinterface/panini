@@ -22,7 +22,7 @@ jobs:
           name: Start containers nats and redis
           command: | 
             cd ~/ms_general
-            sed -i.bak -e 's/#\(.*- internet\)/\1/' docker-compose.yml
+            sed -i.bak '/redis:$/,/- internet/s/^#\(.*- internet\)/\1/' docker-compose.yml
             docker-compose --compatibility up -d nats-server redis
       - run:
           name: Run Tests
