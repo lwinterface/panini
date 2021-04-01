@@ -88,7 +88,7 @@ class DecMiddleware(Middleware):
 @pytest.fixture
 def app():
     app = panini_app.App(
-        service_name="test_middleware_dict_factory",
+        service_name="test_middleware_manager",
         host="127.0.0.1",
         port=4222,
     )
@@ -98,7 +98,13 @@ def app():
         "send_request_middleware": [],
         "listen_request_middleware": [],
     }
-    return app
+    yield app
+    _MiddlewareManager.MIDDLEWARE = {
+        "send_publish_middleware": [],
+        "listen_publish_middleware": [],
+        "send_request_middleware": [],
+        "listen_request_middleware": [],
+    }
 
 
 def test_foo_middleware(app):
