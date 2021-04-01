@@ -1,21 +1,39 @@
 version: 2.1
-
 orbs:
-  python: circleci/python@0.2.1
-
+  slack: circleci/slack@3.4.2
 jobs:
-  build-and-test:
-    executor: python/default
+  build-and-run:
+    machine:
+      image: ubuntu-2004:202010-01
+      docker_layer_caching: true
+    working_directory: ~/panini/
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
+      - add_ssh_keys:
+          fingerprints:
+          - "ab:7e:3c:c0:a4:58:90:59:73:1c:0e:c3:6a:f9:4e:b5"
+      - run: git clone -b develop git@github.com:lwinterface/ms_general.git ~/ms_general/
       - run:
-          command: ./manage.py test
-          name: Test
-
+          name: Installing libraries
+          command: |
+            pip3 install pytest
+            pip3 install -r requirements/defaults.txt
+      - run: 
+          name: Start containers nats and redis
+          command: | 
+            cd ~/ms_general
+            sed -i.bak -e 's/#\(.*- internet\)/\1/' docker-compose.yml
+            docker-compose --compatibility up -d nats-server redis
+      - run:
+          name: Run Tests
+          command: |
+            cd ~/panini
+            mkdir results
+            timeout 300 python3 -m pytest --junitxml=results/out.xml || echo "Doesn't finished succefully"
+      - store_test_results:
+          path: results
+    path:
 workflows:
   main:
     jobs:
-      - build-and-test
+      - build-and-run
