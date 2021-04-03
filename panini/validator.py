@@ -117,7 +117,7 @@ class Field:
             error = f'Your default type is {type(kwargs["default"])} but expected {kwargs["type"]}'
             _logger.error(error)
             raise ValidationError(error)
-        if not kwargs["type"] in [str, int, float, list, dict]:
+        if not kwargs["type"] in [str, int, float, list, dict, bool]:
             all_classes = inspect.getmro(kwargs["type"])
             if len(all_classes) > 1:
                 validator_name = all_classes[0].__name__
