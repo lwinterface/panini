@@ -5,7 +5,7 @@ import time
 import pytest
 from aiohttp import web
 from panini import app as ant_app
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 from examples.simple_examples._wss_manager import WSSManager
 
 
@@ -18,7 +18,6 @@ def run_panini():
         web_server=True,
         web_port=1111,
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     manager = WSSManager(app)

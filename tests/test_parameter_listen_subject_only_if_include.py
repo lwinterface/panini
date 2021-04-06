@@ -1,6 +1,6 @@
 import pytest
 
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 from panini import app as panini_app
 
 
@@ -12,7 +12,6 @@ def run_panini():
         listen_subject_only_if_include=["foo", "bar"],
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_parameter_listen_subject_only_if_include.start")

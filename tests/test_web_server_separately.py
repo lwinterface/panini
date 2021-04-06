@@ -4,7 +4,7 @@ import json
 import pytest
 from aiohttp import web
 from panini import app as panini_app
-from panini.test_client import HTTPSessionTestClient, get_logger_files_path
+from panini.test_client import HTTPSessionTestClient
 from panini.utils.helper import start_process
 
 
@@ -18,7 +18,6 @@ def run_panini():
         web_server=True,
         web_port=8083,
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     @app.http.get("/test_web_server_separately/get")

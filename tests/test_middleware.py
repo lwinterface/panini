@@ -1,7 +1,7 @@
 import pytest
 
 from panini.middleware import Middleware
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 from panini import app as panini_app
 from .helper import Global
 
@@ -32,7 +32,6 @@ def run_panini():
         host="127.0.0.1",
         port=4222,
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_middleware.publish")
