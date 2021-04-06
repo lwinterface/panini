@@ -19,7 +19,6 @@ def run_panini():
         port=4222,
         app_strategy="asyncio",
         logger_required=True,
-        logger_files_path=testing_logs_directory_path,
         logger_in_separate_process=True,
     )
 
@@ -45,7 +44,7 @@ def run_panini():
 
 @pytest.fixture(scope="module")
 def client():
-    client = TestClient(run_panini)
+    client = TestClient(run_panini, logger_files_path=testing_logs_directory_path)
     client.start(is_daemon=False)
     yield client
     client.stop()
@@ -74,7 +73,7 @@ def test_listen_composite_subject_with_response(client):
     assert response["success"] is True
 
     # wait for log being written
-    time.sleep(0.1)
+    time.sleep(1)
     with open(os.path.join(testing_logs_directory_path, "errors.log"), "r") as f:
         for last_line in f:
             pass
