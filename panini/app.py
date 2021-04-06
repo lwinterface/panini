@@ -120,8 +120,22 @@ class App(
 
             self.logger_required = logger_required
             self.logger_in_separate_process = logger_in_separate_process
-            self.logger_files_path = logger_files_path if logger_files_path else "logs"
+
+            # check, if TestClient is running
+            if os.environ.get("PANINI_TEST_MODE"):
+                self.logger_files_path = os.environ.get("PANINI_TEST_LOGGER_FILES_PATH", "test_logs")
+            else:
+                self.logger_files_path = logger_files_path if logger_files_path else "logs"
             self.logger = logger.Logger(None)
+
+            if self.logger_required:
+                self.set_logger(
+                    self.service_name,
+                    self.app_root_path,
+                    self.logger_files_path,
+                    False,
+                    self.client_id,
+                )
             self.logger_process = None
             self.log_stop_event = None
             self.log_listener_queue = None
@@ -182,12 +196,12 @@ class App(
         self.logger.logger = logging.getLogger(service_name)
 
     def start(self):
-        if self.logger_required:
+        if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,
                 self.app_root_path,
                 self.logger_files_path,
-                self.logger_in_separate_process,
+                True,
                 self.client_id,
             )
 

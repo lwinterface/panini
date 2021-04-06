@@ -4,6 +4,7 @@ import logging.handlers
 import logging.config
 import os
 import datetime
+from importlib import reload
 from multiprocessing import Process, Queue, Event
 
 
@@ -298,6 +299,8 @@ def _set_log_recorder_process(config: dict) -> (Queue, Event, Process, Queue):
 
 
 def _set_main_logging_config(log_listener_queue: Queue):
+    logging.shutdown()
+    reload(logging)
     config = {
         "version": 1,
         "disable_existing_loggers": False,
