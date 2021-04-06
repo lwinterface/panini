@@ -1,7 +1,7 @@
 import pytest
 
 from panini.exceptions import ValidationError
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 from panini import app as panini_app
 from panini.validator import Validator, Field
 from .helper import Global
@@ -14,7 +14,6 @@ def run_panini():
         port=4222,
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     class DataValidator(Validator):
