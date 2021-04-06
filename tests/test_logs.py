@@ -18,7 +18,6 @@ def run_panini():
         port=4222,
         app_strategy="asyncio",
         logger_required=True,
-        logger_files_path=testing_logs_directory_path,
         logger_in_separate_process=False,
     )
 
@@ -39,7 +38,7 @@ def run_panini():
 
 @pytest.fixture(scope="module")
 def client():
-    client = TestClient(run_panini)
+    client = TestClient(run_panini, logger_files_path=testing_logs_directory_path)
     client.start()
     yield client
     client.stop()

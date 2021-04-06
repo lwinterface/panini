@@ -77,6 +77,16 @@ class HTTPSessionTestClient(requests.Session):
         )
 
 
+def get_logger_files_path(folder: str = "test_logs", remove_if_exist: bool = False):
+    testing_directory_path = os.getcwd()
+    testing_logs_directory_path = os.path.join(testing_directory_path, folder)
+    if remove_if_exist:
+        if os.path.exists(testing_logs_directory_path):
+            shutil.rmtree(testing_logs_directory_path)
+
+    return testing_logs_directory_path
+
+
 class TestClient:
     __test__ = False
 
@@ -87,6 +97,7 @@ class TestClient:
         run_panini_kwargs: dict = None,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
+        logger_files_path: str = "test_logs",
         use_web_server: bool = False,
         use_web_socket: bool = False,
         base_web_server_url: str = "http://127.0.0.1:8080",
@@ -105,6 +116,7 @@ class TestClient:
         self.run_panini_kwargs = run_panini_kwargs or {}
         self.panini_service_name = panini_service_name
         self.panini_client_id = panini_client_id
+        self.logger_files_path = logger_files_path
         self.base_web_server_url = base_web_server_url
         self.use_web_server = use_web_server
         self.use_web_socket = use_web_socket
@@ -132,10 +144,17 @@ class TestClient:
         return json.loads(payload)
 
     @staticmethod
-    def wrap_run_panini(run_panini, run_panini_args: list, run_panini_kwargs: dict):
+    def wrap_run_panini(run_panini, run_panini_args: list, run_panini_kwargs: dict, logger_files_path: str):
         from .utils.logger import get_logger
 
         test_logger = get_logger("panini")
+        # set the panini testing data in os.environ
+        os.environ["PANINI_TEST_MODE"] = "true"
+        testing_logger_files_path = (get_logger_files_path(logger_files_path)
+                                     if not os.path.isabs(logger_files_path)
+                                     else logger_files_path)
+
+        os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
         try:
             run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
@@ -152,7 +171,8 @@ class TestClient:
             pass
 
         self.panini_process = start_process(
-            self.wrap_run_panini, args=(self.run_panini, self.run_panini_args, self.run_panini_kwargs), daemon=is_daemon
+            self.wrap_run_panini, args=(self.run_panini, self.run_panini_args,
+                                        self.run_panini_kwargs, self.logger_files_path), daemon=is_daemon
         )
 
         if is_sync:
@@ -239,13 +259,3 @@ class TestClient:
             return wrapper
 
         return decorator
-
-
-def get_logger_files_path(folder: str = "test_logs", remove_if_exist: bool = False):
-    testing_directory_path = os.getcwd()
-    testing_logs_directory_path = os.path.join(testing_directory_path, folder)
-    if remove_if_exist:
-        if os.path.exists(testing_logs_directory_path):
-            shutil.rmtree(testing_logs_directory_path)
-
-    return testing_logs_directory_path
