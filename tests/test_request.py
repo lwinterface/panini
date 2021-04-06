@@ -1,6 +1,6 @@
 import pytest
 
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 from panini import app as panini_app
 
 
@@ -11,7 +11,6 @@ def run_panini():
         port=4222,
         app_strategy="asyncio",
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_request.start")

@@ -3,7 +3,7 @@ import json
 import pytest
 from aiohttp import web
 from panini import app as panini_app
-from panini.test_client import TestClient, get_logger_files_path
+from panini.test_client import TestClient
 
 
 def run_panini():
@@ -16,7 +16,6 @@ def run_panini():
         web_server=True,
         web_port=8084,
         logger_in_separate_process=False,
-        logger_files_path=get_logger_files_path(),
     )
 
     @app.listen("test_web_server.foo")
