@@ -103,6 +103,7 @@ class TestClient:
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
         socket_timeout: int = 5,
+        auto_reconnect: bool = True,
         name: str = "__".join(
             [
                 "test_client",
@@ -120,11 +121,11 @@ class TestClient:
         self.base_web_server_url = base_web_server_url
         self.use_web_server = use_web_server
         self.use_web_socket = use_web_socket
-        self.nats_client = NATSClient(
-            url=base_nats_url,
-            name=name,
-            socket_timeout=socket_timeout,
-        )
+        self.name = name
+        self.base_nats_url = base_nats_url
+        self.socket_timeout = socket_timeout
+        self.auto_reconnect = auto_reconnect
+        self.nats_client = self.create_nats_client()
         self.nats_client.connect()
 
         if use_web_server:
@@ -134,6 +135,13 @@ class TestClient:
             self.websocket_session = websocket.WebSocket()
 
         self.panini_process = None
+
+    def create_nats_client(self) -> NATSClient:
+        return NATSClient(
+            url=self.base_nats_url,
+            name=self.name,
+            socket_timeout=self.socket_timeout,
+        )
 
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
@@ -206,6 +214,12 @@ class TestClient:
         )
 
     def request(self, subject: str, message: dict) -> dict:
+        if self.auto_reconnect:
+            try:
+                self.nats_client.ping()
+            except Exception:
+                self.nats_client.reconnect()
+
         return self._bytes_to_dict(
             self.nats_client.request(
                 subject=subject, payload=self._dict_to_bytes(message)
