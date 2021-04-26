@@ -51,7 +51,6 @@ setup(
         "aiohttp-cors>=0.7.0",
         "async-timeout>=3.0.1",
         "asyncio-nats-client>=0.11.2",
-        "redis>=3.5.3",
         "websocket-client>=0.58.0",
         "requests>=2.24.0",
         "six>=1.15.0",
