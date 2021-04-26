@@ -27,14 +27,6 @@ services:
         reservations:
           memory: 200M
     restart: always
-  redis:
-    image: sameersbn/redis:4.0.9-3
-    ports:
-      - 6379:6379
-    command: "redis-server --appendonly yes --protected-mode no"
-    networks:
-      - internet
-    restart: always
   microservice1:
     volumes:
       - ./microservice1:/app/microservice1
@@ -43,7 +35,6 @@ services:
       - internet
     depends_on:
       - nats-server
-      - redis
   microservice2:
     volumes:
       - ./microservice2:/app/microservice2
@@ -52,4 +43,3 @@ services:
       - internet
     depends_on:
       - nats-server
-      - redis
