@@ -132,7 +132,7 @@ class App(
                 )
 
             if app_strategy != "asyncio":
-                self.log.warning(
+                self.logger.warning(
                     "Only 'asyncio' strategy is now supported. The app will run in asyncio mode!"
                 )
             self.logger_process = None
