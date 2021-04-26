@@ -4,7 +4,6 @@ app = panini_app.App(
     service_name="async_publish",
     host="127.0.0.1",
     port=4222,
-    app_strategy="asyncio",
 )
 
 # that is equal to get_logger('async_publish')

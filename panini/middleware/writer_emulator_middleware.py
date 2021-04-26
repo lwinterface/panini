@@ -11,7 +11,6 @@ from panini.app import get_app
 
 
 class _Writer(threading.Thread):
-
     def __init__(self, filename: str):
         threading.Thread.__init__(self)
 
@@ -27,12 +26,12 @@ class _Writer(threading.Thread):
     def run(self):
 
         """
-            This is a main method of _Writer.
-            It checks the array in order to write it to the file with events
+        This is a main method of _Writer.
+        It checks the array in order to write it to the file with events
 
-            It keeps the file opened if there are any messages, to do not spend time for reopen every time
+        It keeps the file opened if there are any messages, to do not spend time for reopen every time
 
-            Also, it has gradually increasing sleep timer
+        Also, it has gradually increasing sleep timer
 
         """
 
@@ -53,7 +52,7 @@ class _Writer(threading.Thread):
                     sleep_time = min(max_sleep_time, sleep_time * 2)
                 else:
                     if not file:
-                        file = open(self._filename, 'a')
+                        file = open(self._filename, "a")
 
                     line = self._array.popleft()
                     file.write(json.dumps(line) + os.linesep)
@@ -63,12 +62,11 @@ class _Writer(threading.Thread):
 
 
 class WriterEmulatorMiddleware(middleware.Middleware):
-
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
 
         app = get_app()
-        print('Emulator is experimental feature!')
+        print("Emulator is experimental feature!")
         folder = kwargs.get("folder")
         if not os.path.isdir(folder):
             os.makedirs(folder)
@@ -80,37 +78,43 @@ class WriterEmulatorMiddleware(middleware.Middleware):
 
     async def send_publish(self, subject: str, message: Any, publish_func, **kwargs):
 
-        self._writer.add({
-            "event_type": "send_publish",
-            "subject": subject,
-            "message": message,
-            "timestamp": time.time()
-        })
+        self._writer.add(
+            {
+                "event_type": "send_publish",
+                "subject": subject,
+                "message": message,
+                "timestamp": time.time(),
+            }
+        )
 
         await publish_func(subject, message, **kwargs)
 
     async def send_request(self, subject: str, message: Any, request_func, **kwargs):
         response = await request_func(subject, message, **kwargs)
 
-        self._writer.add({
-            "event_type": "send_request",
-            "subject": subject,
-            "message": message,
-            "response": response,
-            "timestamp": time.time()
-        })
+        self._writer.add(
+            {
+                "event_type": "send_request",
+                "subject": subject,
+                "message": message,
+                "response": response,
+                "timestamp": time.time(),
+            }
+        )
 
         return response
 
     async def listen_publish(self, msg, callback):
 
-        self._writer.add({
-            "event_type": "listen_publish",
-            "subject": msg.subject,
-            "message": msg.data,
-            "context": msg.context,
-            "timestamp": time.time()
-        })
+        self._writer.add(
+            {
+                "event_type": "listen_publish",
+                "subject": msg.subject,
+                "message": msg.data,
+                "context": msg.context,
+                "timestamp": time.time(),
+            }
+        )
 
         await callback(msg)
 
@@ -118,13 +122,15 @@ class WriterEmulatorMiddleware(middleware.Middleware):
 
         response = await callback(msg)
 
-        self._writer.add({
-            "event_type": "listen_request",
-            "subject": msg.subject,
-            "message": msg.data,
-            "context": msg.context,
-            "response": response,
-            "timestamp": time.time()
-        })
+        self._writer.add(
+            {
+                "event_type": "listen_request",
+                "subject": msg.subject,
+                "message": msg.data,
+                "context": msg.context,
+                "response": response,
+                "timestamp": time.time(),
+            }
+        )
 
         return response

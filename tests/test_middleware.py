@@ -88,7 +88,7 @@ global_object = Global()
 
 @pytest.fixture(scope="module")
 def client():
-    client = TestClient(run_panini)
+    client = TestClient(run_panini, socket_timeout=200)
 
     @client.listen("test_middleware.publish.response")
     def publish_listener(msg):

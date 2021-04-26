@@ -9,7 +9,6 @@ def run_panini():
         service_name="test_timeout",
         host="127.0.0.1",
         port=4222,
-        app_strategy="asyncio",
         logger_in_separate_process=False,
     )
 

@@ -17,7 +17,6 @@ def run_panini():
         service_name="test_logs_in_separate_process",
         host="127.0.0.1",
         port=4222,
-        app_strategy="asyncio",
         logger_required=True,
         logger_in_separate_process=True,
     )

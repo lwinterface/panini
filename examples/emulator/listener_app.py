@@ -1,20 +1,17 @@
 from panini.app import App
-# from panini.emulator import WriterEmulatorMiddleware, ReaderEmulatorMiddleware
-from panini.emulator import WriterEmulatorMiddleware, ReaderEmulatorMiddleware
-from panini.nats_client.nats_client_interface import Msg
 
-app = App(
-    service_name="listener",
-    host="127.0.0.1",
-    port=4222
-)
+from panini.middleware.reader_emulator_middleware import ReaderEmulatorMiddleware
+from panini.middleware.writer_emulator_middleware import WriterEmulatorMiddleware
+from panini.nats_client import Msg
+
+app = App(service_name="listener", host="127.0.0.1", port=4222)
 
 
 @app.listen("listener.store.listen")
 async def listen(message: Msg):
     try:
         print(message.subject, message.data)
-    except Exception as ex:
+    except Exception:
         app.logger.exception(message.subject)
 
 
@@ -23,7 +20,7 @@ async def response(message: Msg):
     try:
         print(message.subject, message.data)
         return {"data": "request"}
-    except Exception as ex:
+    except Exception:
         app.logger.exception(message.subject)
 
 

@@ -1,20 +1,16 @@
 import asyncio
 
 from panini.app import App
-from panini.emulator import WriterEmulatorMiddleware
+from panini.middleware.writer_emulator_middleware import WriterEmulatorMiddleware
 
-app = App(
-    service_name="listener_publisher",
-    host="127.0.0.1",
-    port=4222
-)
+app = App(service_name="listener_publisher", host="127.0.0.1", port=4222)
 
 
 @app.listen("store.listen")
 async def listen(message):
     try:
         print(message.subject, message.data)
-    except Exception as ex:
+    except Exception:
         app.logger.exception(message.subject)
 
 
@@ -23,7 +19,7 @@ async def response(message):
     try:
         print(message.subject, message.data)
         return {"data": "request"}
-    except Exception as ex:
+    except Exception:
         app.logger.exception(message.subject)
 
 
@@ -32,7 +28,7 @@ async def request_task():
     for i in range(10):
         try:
             response = await app.request("store.request", {"data": f"request.data.{i}"})
-            print('response', response)
+            print("response", response)
             await asyncio.sleep(1.5)
         except Exception as ex:
             app.logger.exception(ex)

@@ -241,7 +241,7 @@ def test_wrap_function_by_middleware_inc_sync(app):
 
     app.add_middleware(IncSyncMiddleware)
     for send in ("publish", "request"):
-        wrapped_function = app._wrap_function_by_middleware(foo, send)
+        wrapped_function = app._wrap_function_by_middleware(send)(foo)
         temp_message = {"data": 1}
         wrapped_function("", temp_message)
         assert temp_message["data"] == 7
@@ -257,7 +257,7 @@ def test_wrap_function_by_middleware_dec_sync(app):
         msg.data -= 2
 
     app.add_middleware(DecSyncMiddleware)
-    wrapped_function = app._wrap_function_by_middleware(bar, "listen")
+    wrapped_function = app._wrap_function_by_middleware("listen")(bar)
     temp_message = Bar()
     wrapped_function(temp_message)
     assert temp_message.data == -1
@@ -272,7 +272,7 @@ def test_wrap_function_by_middleware_inc(app):
     loop = asyncio.get_event_loop()
 
     for send in ("publish", "request"):
-        wrapped_function = app._wrap_function_by_middleware(foo, send)
+        wrapped_function = app._wrap_function_by_middleware(send)(foo)
         temp_message = {"data": 1}
         loop.run_until_complete(wrapped_function("", temp_message))
         assert temp_message["data"] == 7
@@ -290,7 +290,7 @@ def test_wrap_function_by_middleware_dec(app):
     loop = asyncio.get_event_loop()
 
     app.add_middleware(DecMiddleware)
-    wrapped_function = app._wrap_function_by_middleware(bar, "listen")
+    wrapped_function = app._wrap_function_by_middleware("listen")(bar)
     temp_message = Bar()
     loop.run_until_complete(wrapped_function(temp_message))
     assert temp_message.data == -1
@@ -315,12 +315,12 @@ def test_wrap_function_by_middleware_inc_dec_sync(app):
     app.add_middleware(DecSyncMiddleware)
 
     for send in ("publish", "request"):
-        wrapped_function = app._wrap_function_by_middleware(foo, send)
+        wrapped_function = app._wrap_function_by_middleware(send)(foo)
         temp_message = {"data": 1}
         wrapped_function("", temp_message)
         assert temp_message["data"] == 11
 
-    wrapped_function = app._wrap_function_by_middleware(bar, "listen")
+    wrapped_function = app._wrap_function_by_middleware("listen")(bar)
     temp_message = Bar()
     wrapped_function(temp_message)
     assert temp_message.data == -5
@@ -347,12 +347,12 @@ def test_wrap_function_by_middleware_inc_dec(app):
     loop = asyncio.get_event_loop()
 
     for send in ("publish", "request"):
-        wrapped_function = app._wrap_function_by_middleware(foo, send)
+        wrapped_function = app._wrap_function_by_middleware(send)(foo)
         temp_message = {"data": 1}
         loop.run_until_complete(wrapped_function("", temp_message))
         assert temp_message["data"] == 11
 
-    wrapped_function = app._wrap_function_by_middleware(bar, "listen")
+    wrapped_function = app._wrap_function_by_middleware("listen")(bar)
     temp_message = Bar()
     loop.run_until_complete(wrapped_function(temp_message))
     assert temp_message.data == -5

@@ -23,7 +23,7 @@ class _EventManager:
         subject: list or str,
         validator: type = None,
         dynamic_subscription=False,
-        data_type='json.loads',
+        data_type="json.loads",
     ):
         def wrapper(function):
             function = _EventManager.wrap_function_by_validator(function, validator)
@@ -221,9 +221,7 @@ class _MiddlewareManager:
                 )
 
     @staticmethod
-    def _wrap_function_by_middleware(
-        function: Callable, function_type: str
-    ) -> Callable:
+    def _wrap_function_by_middleware(function_type: str) -> Callable:
         """
         function: Callable - function to wrap
         function_type: str - one of the ["listen", "publish", "request"]
@@ -234,82 +232,92 @@ class _MiddlewareManager:
             "request",
         ), "function type must be in (`listen`, `publish`, `request`)"
 
-        def wrap_function_by_send_middleware(
-            func: Callable, single_middleware
-        ) -> Callable:
-            def next_wrapper(subject: str, message, *args, **kwargs):
-                return single_middleware(subject, message, func, *args, **kwargs)
+        def decorator(function: Callable):
+            def wrap_function_by_send_middleware(
+                func: Callable, single_middleware
+            ) -> Callable:
+                def next_wrapper(subject: str, message, *args, **kwargs):
+                    return single_middleware(subject, message, func, *args, **kwargs)
 
-            async def aio_next_wrapper(subject: str, message, *args, **kwargs):
-                return await single_middleware(subject, message, func, *args, **kwargs)
+                async def aio_next_wrapper(subject: str, message, *args, **kwargs):
+                    return await single_middleware(
+                        subject, message, func, *args, **kwargs
+                    )
 
-            if asyncio.iscoroutinefunction(single_middleware):
-                return aio_next_wrapper
-            else:
-                return next_wrapper
-
-        def wrap_function_by_listen_middleware(
-            func: Callable, single_middleware
-        ) -> Callable:
-            def next_wrapper(msg):
-                return single_middleware(msg, func)
-
-            async def aio_next_wrapper(msg):
-                return await single_middleware(msg, func)
-
-            if asyncio.iscoroutinefunction(single_middleware):
-                return aio_next_wrapper
-            else:
-                return next_wrapper
-
-        def build_middleware_wrapper(
-            func: Callable, middleware_key: str, wrapper: Callable
-        ) -> Callable:
-            for middleware in _MiddlewareManager.MIDDLEWARE[middleware_key]:
-                func = wrapper(func, middleware)
-            return func
-
-        if function_type == "publish":
-            return build_middleware_wrapper(
-                function, "send_publish_middleware", wrap_function_by_send_middleware
-            )
-
-        elif function_type == "request":
-            return build_middleware_wrapper(
-                function, "send_request_middleware", wrap_function_by_send_middleware
-            )
-
-        else:
-            if (
-                len(_MiddlewareManager.MIDDLEWARE["listen_publish_middleware"]) == 0
-                and len(_MiddlewareManager.MIDDLEWARE["listen_request_middleware"]) == 0
-            ):
-                return function
-
-            function_listen_publish = build_middleware_wrapper(
-                function,
-                "listen_publish_middleware",
-                wrap_function_by_listen_middleware,
-            )
-            function_listen_request = build_middleware_wrapper(
-                function,
-                "listen_request_middleware",
-                wrap_function_by_listen_middleware,
-            )
-
-            def listen_wrapper(msg) -> Callable:
-                if msg.reply == "":
-                    return function_listen_publish(msg)
+                if asyncio.iscoroutinefunction(single_middleware):
+                    return aio_next_wrapper
                 else:
-                    return function_listen_request(msg)
+                    return next_wrapper
 
-            async def aio_listen_wrapper(msg) -> Callable:
-                if msg.reply == "":
-                    return await function_listen_publish(msg)
+            def wrap_function_by_listen_middleware(
+                func: Callable, single_middleware
+            ) -> Callable:
+                def next_wrapper(msg):
+                    return single_middleware(msg, func)
+
+                async def aio_next_wrapper(msg):
+                    return await single_middleware(msg, func)
+
+                if asyncio.iscoroutinefunction(single_middleware):
+                    return aio_next_wrapper
                 else:
-                    return await function_listen_request(msg)
+                    return next_wrapper
 
-            if asyncio.iscoroutinefunction(function):
-                return aio_listen_wrapper
+            def build_middleware_wrapper(
+                func: Callable, middleware_key: str, wrapper: Callable
+            ) -> Callable:
+                for middleware in _MiddlewareManager.MIDDLEWARE[middleware_key]:
+                    func = wrapper(func, middleware)
+                return func
+
+            if function_type == "publish":
+                return build_middleware_wrapper(
+                    function,
+                    "send_publish_middleware",
+                    wrap_function_by_send_middleware,
+                )
+
+            elif function_type == "request":
+                return build_middleware_wrapper(
+                    function,
+                    "send_request_middleware",
+                    wrap_function_by_send_middleware,
+                )
+
             else:
-                return listen_wrapper
+                if (
+                    len(_MiddlewareManager.MIDDLEWARE["listen_publish_middleware"]) == 0
+                    and len(_MiddlewareManager.MIDDLEWARE["listen_request_middleware"])
+                    == 0
+                ):
+                    return function
+
+                function_listen_publish = build_middleware_wrapper(
+                    function,
+                    "listen_publish_middleware",
+                    wrap_function_by_listen_middleware,
+                )
+                function_listen_request = build_middleware_wrapper(
+                    function,
+                    "listen_request_middleware",
+                    wrap_function_by_listen_middleware,
+                )
+
+                def listen_wrapper(msg) -> Callable:
+                    if msg.reply == "":
+                        return function_listen_publish(msg)
+                    else:
+                        return function_listen_request(msg)
+
+                async def aio_listen_wrapper(msg) -> Callable:
+                    if msg.reply == "":
+                        return await function_listen_publish(msg)
+                    else:
+                        return await function_listen_request(msg)
+
+                if asyncio.iscoroutinefunction(function):
+                    return aio_listen_wrapper
+                else:
+                    return listen_wrapper
+
+        return decorator

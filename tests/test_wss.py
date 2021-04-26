@@ -14,7 +14,6 @@ def run_panini():
         service_name="test_wss",
         host="127.0.0.1",
         port=4222,
-        app_strategy="asyncio",
         web_server=True,
         web_port=1111,
         logger_in_separate_process=False,

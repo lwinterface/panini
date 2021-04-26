@@ -5,7 +5,6 @@ app = panini_app.App(
     service_name="ms_template_sync_by_lib",
     host="127.0.0.1",
     port=4222,
-    app_strategy="asyncio",
 )
 
 log = app.logger

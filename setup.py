@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 long_description = """
-Panini is a modern framework for quick development of streaming microservices. 
+Panini is a modern framework for quick development of streaming microservices.
 Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
 The framework allows you to work with NATS features and some additional logic using a simple interface:
 
@@ -40,7 +40,12 @@ setup(
         "Topic :: System :: Networking",
         "Topic :: System :: Distributed Computing",
     ],
-    packages=["panini", "panini.utils", "panini.http_server", "panini.nats_client", "panini.middleware"],
+    packages=[
+        "panini",
+        "panini.utils",
+        "panini.http_server",
+        "panini.middleware",
+    ],
     install_requires=[
         "aiohttp>=3.7.4",
         "aiohttp-cors>=0.7.0",

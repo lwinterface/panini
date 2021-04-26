@@ -1,25 +1,42 @@
 import ujson
 import asyncio
-import uuid
 import threading
 import nest_asyncio
 from types import CoroutineType
 from nats.aio.client import Client as NATS
-from ..exceptions import DataTypeError
-from ..utils.logger import get_logger
-from .nats_client_interface import NATSClientInterface, Msg
+from panini.exceptions import DataTypeError
+from panini.utils.logger import get_logger
+from panini.managers import _MiddlewareManager
 
 nest_asyncio.apply()
 
-log = get_logger("panini")
-isr_log = get_logger("inter_services_request")
 
-
-class _AsyncioNATSClient(NATSClientInterface):
+class Msg:
     """
-    Sub interface for NATSClient, create asyncio NATS connection for sending and listening
+    Alternative implementation of the class with "context" field
     """
 
+    __slots__ = ("subject", "reply", "data", "sid", "context")
+
+    def __init__(self, subject="", reply="", data=b"", sid=0, context=None):
+        if context is None:
+            context = {}
+        self.subject = subject
+        self.reply = reply
+        self.data = data
+        self.sid = sid
+        self.context = context
+
+    def __repr__(self):
+        return "<{}: subject='{}' reply='{}' context='{}...'>".format(
+            self.__class__.__name__,
+            self.subject,
+            self.reply,
+            self.context,
+        )
+
+
+class NATSClient:
     def __init__(
         self,
         client_id: str,
@@ -29,33 +46,43 @@ class _AsyncioNATSClient(NATSClientInterface):
         allow_reconnect: bool or None,
         max_reconnect_attempts: int = 60,
         reconnecting_time_wait: int = 2,
-        publish_subjects=[],
-        auth: dict = {},
+        auth: dict = None,
         queue="",
-        client_strategy="asyncio",  # in_current_process' or in_separate_processes'
-        redis_host="127.0.0.1",
-        redis_port="6379",
         pending_bytes_limit=65536 * 1024 * 10,
-        num_of_queues=1,
     ):
-        super().__init__(
-            client_id,
-            host,
-            port,
-            listen_subjects_callbacks,
-            allow_reconnect,
-            max_reconnect_attempts,
-            reconnecting_time_wait,
-            publish_subjects,
-            auth,
-            queue,
-            client_strategy,
-            redis_host,
-            redis_port,
-            pending_bytes_limit,
-            num_of_queues,
-        )
+        """
+        :param client_id: instance identifier for NATS, str
+        :param port: default '4222'
+        :param allow_reconnect: False if you want to stop instance when connection lost
+        :param max_reconnect_attempts:
+        :param reconnecting_time_wait:
+        """
+        if auth is None:
+            auth = {}
+        self.log = get_logger("panini")
+        self.connected = False
+        self.client_id = client_id
+        self.host = host
+        self.port = port
+        self.queue = queue
+        self.auth = auth
+        self.listen_subjects_callbacks = listen_subjects_callbacks
+        self.allow_reconnect = allow_reconnect
+        self.max_reconnect_attempts = max_reconnect_attempts
+        self.reconnecting_time_wait = reconnecting_time_wait
+        self.pending_bytes_limit = pending_bytes_limit
         self.ssid_map = {}
+        # publish function without middlewares
+        self.raw_publish = self.publish
+
+        # inject send_middlewares
+        self.publish = _MiddlewareManager._wrap_function_by_middleware("publish")(
+            self.publish
+        )
+        self.request = _MiddlewareManager._wrap_function_by_middleware("request")(
+            self.request
+        )
+
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
 
@@ -87,7 +114,8 @@ class _AsyncioNATSClient(NATSClientInterface):
     async def aio_subscribe_new_subject(
         self, subject: str, callback: CoroutineType, init_subscription=False
     ):
-        wrapped_callback = _ReceivedMessageHandler(self.publish, callback)
+        callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
+        wrapped_callback = _ReceivedMessageHandler(self.raw_publish, callback)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
@@ -114,6 +142,9 @@ class _AsyncioNATSClient(NATSClientInterface):
         del self.ssid_map[subject]
         del self.listen_subjects_callbacks[subject]
 
+    def unsubscribe_ssid(self, ssid: int, subject: str = None):
+        self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid, subject))
+
     async def aio_unsubscribe_ssid(self, ssid: int, subject: str = None):
         if subject and subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
@@ -137,27 +168,8 @@ class _AsyncioNATSClient(NATSClientInterface):
         force: bool = False,
         data_type: type or str = "json.dumps",
     ):
-        if reply_to is not None:
-            return self._publish_request_with_reply_to_another_subject(
-                subject, message, reply_to, force, data_type
-            )
-
         asyncio.ensure_future(
             self.publish(subject, message, reply_to, force, data_type)
-        )
-
-    def _publish_request_with_reply_to_another_subject(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
-    ):
-        asyncio.ensure_future(
-            self._aio_publish_request_with_reply_to_another_subject(
-                subject, message, reply_to, force, data_type
-            )
         )
 
     def publish_from_another_thread(self, subject: str, message):
@@ -208,19 +220,8 @@ class _AsyncioNATSClient(NATSClientInterface):
         await asyncio.get_event_loop().run_in_executor(None, finished.wait)
         return fut.result()
 
-    async def publish(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
-    ):
-        if reply_to is not None:
-            return await self._aio_publish_request_with_reply_to_another_subject(
-                subject, message, reply_to, force, data_type
-            )
-
+    @staticmethod
+    def format_message_data_type(message, data_type):
         if type(message) is dict and data_type == "json.dumps":
             message = ujson.dumps(message)
             message = message.encode()
@@ -232,7 +233,23 @@ class _AsyncioNATSClient(NATSClientInterface):
             raise DataTypeError(
                 f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
             )
-        await self.client.publish(subject, message)
+
+        return message
+
+    async def publish(
+        self,
+        subject: str,
+        message,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
+        message = self.format_message_data_type(message, data_type)
+
+        if reply_to is not None:
+            await self.client.publish_request(subject, reply_to, message)
+        else:
+            await self.client.publish(subject, message)
         if force:
             await self.client.flush()
 
@@ -243,17 +260,7 @@ class _AsyncioNATSClient(NATSClientInterface):
         timeout: int = 10,
         data_type: type or str = "json.dumps",
     ):
-        if type(message) is dict and data_type == "json.dumps":
-            message = ujson.dumps(message)
-            message = message.encode()
-        elif type(message) is str and data_type is str:
-            message = message.encode()
-        elif type(message) is bytes and data_type is bytes:
-            pass
-        else:
-            raise DataTypeError(
-                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
-            )
+        message = self.format_message_data_type(message, data_type)
         response = await self.client.request(subject, message, timeout=timeout)
         response = response.data
         if data_type == "json.dumps":
@@ -262,42 +269,18 @@ class _AsyncioNATSClient(NATSClientInterface):
             response = response.decode()
         return response
 
-    async def _aio_publish_request_with_reply_to_another_subject(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
-    ):
-        if type(message) is dict and data_type == "json.dumps":
-            message = ujson.dumps(message)
-            message = message.encode()
-        elif type(message) is str and data_type is str:
-            message = message.encode()
-        elif type(message) is bytes and data_type is bytes:
-            pass
-        else:
-            raise DataTypeError(
-                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
-            )
-        await self.client.publish_request(subject, reply_to, message)
-        if force:
-            await self.client.flush()
-
     def disconnect(self):
         self.loop.run_until_complete(self.aio_disconnect())
-        log.warning("Disconnected")
 
     async def aio_disconnect(self):
         await self.client.drain()
-        log.warning("Disconnected")
+        self.log.warning("Disconnected")
 
     def check_connection(self):
         if self.client._status is NATS.CONNECTED:
-            log.info("NATS Client status: CONNECTED")
+            self.log.info("NATS Client status: CONNECTED")
             return True
-        log.warning("NATS Client status: DISCONNECTED")
+        self.log.warning("NATS Client status: DISCONNECTED")
 
 
 class _ReceivedMessageHandler:

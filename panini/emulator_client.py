@@ -6,9 +6,8 @@ import time
 from nats.aio.client import Client as NATS
 
 
-
 def _dict_to_bytes(message: dict) -> bytes:
-    return json.dumps(message).encode('utf-8')
+    return json.dumps(message).encode("utf-8")
 
 
 def _bytes_to_dict(payload: bytes) -> dict:
@@ -16,15 +15,14 @@ def _bytes_to_dict(payload: bytes) -> dict:
 
 
 class EmulatorClient(threading.Thread):
-
     def __init__(
-            self,
-            filepath: str,
-            prefix: str,
-            app_name: str,
-            emulate_timeout: bool = True,
-            compare_output: bool = False,
-            max_timeout_after_start: float = 20.0,
+        self,
+        filepath: str,
+        prefix: str,
+        app_name: str,
+        emulate_timeout: bool = True,
+        compare_output: bool = False,
+        max_timeout_after_start: float = 20.0,
     ):
         threading.Thread.__init__(self)
 
@@ -84,8 +82,10 @@ class EmulatorClient(threading.Thread):
             assert isinstance(subject, str)
 
             def wrapper(incoming_response):
-                wrapper_response = func(topic=incoming_response.subject,
-                                        message=_bytes_to_dict(incoming_response.data))
+                wrapper_response = func(
+                    topic=incoming_response.subject,
+                    message=_bytes_to_dict(incoming_response.data),
+                )
                 if wrapper_response is not None and incoming_response.reply != "":
                     self._client.publish(incoming_response.reply, wrapper_response)
 
@@ -138,8 +138,10 @@ class EmulatorClient(threading.Thread):
                 response = await self._client.request(subject, message, timeout=5)
 
                 if self._reply_to_suffix:
-                    await self._client.publish(f"{subject}.{self._reply_to_suffix}",
-                                               _dict_to_bytes(event["response"]))
+                    await self._client.publish(
+                        f"{subject}.{self._reply_to_suffix}",
+                        _dict_to_bytes(event["response"]),
+                    )
 
                 if self._compare_output:
                     assert json.loads(response.data) == event["response"]
@@ -165,7 +167,10 @@ class EmulatorClient(threading.Thread):
             if sum(len(queue) for queue in self._listen_queues.values()) == 0:
                 break
 
-            if self._max_timeout_after_start and time.time() - start > self._max_timeout_after_start:
+            if (
+                self._max_timeout_after_start
+                and time.time() - start > self._max_timeout_after_start
+            ):
                 break
 
             await asyncio.sleep(0.1)
