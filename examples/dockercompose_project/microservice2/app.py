@@ -5,7 +5,6 @@ app = panini_app.App(
     service_name="microservice2",
     host="nats-server" if "HOSTNAME" in os.environ else "127.0.0.1",
     port=4222,
-    app_strategy="asyncio",
 )
 
 log = app.logger

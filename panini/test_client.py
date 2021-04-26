@@ -12,7 +12,7 @@ from pynats import NATSClient, NATSMessage
 
 from .exceptions import TestClientError
 from .utils.helper import start_process
-from .nats_client.nats_client_interface import Msg
+from panini.nats_client import Msg
 
 
 # Annotations for `Session.request()`
@@ -152,15 +152,22 @@ class TestClient:
         return json.loads(payload)
 
     @staticmethod
-    def wrap_run_panini(run_panini, run_panini_args: list, run_panini_kwargs: dict, logger_files_path: str):
+    def wrap_run_panini(
+        run_panini,
+        run_panini_args: list,
+        run_panini_kwargs: dict,
+        logger_files_path: str,
+    ):
         from .utils.logger import get_logger
 
         test_logger = get_logger("panini")
         # set the panini testing data in os.environ
         os.environ["PANINI_TEST_MODE"] = "true"
-        testing_logger_files_path = (get_logger_files_path(logger_files_path)
-                                     if not os.path.isabs(logger_files_path)
-                                     else logger_files_path)
+        testing_logger_files_path = (
+            get_logger_files_path(logger_files_path)
+            if not os.path.isabs(logger_files_path)
+            else logger_files_path
+        )
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
         try:
@@ -179,8 +186,14 @@ class TestClient:
             pass
 
         self.panini_process = start_process(
-            self.wrap_run_panini, args=(self.run_panini, self.run_panini_args,
-                                        self.run_panini_kwargs, self.logger_files_path), daemon=is_daemon
+            self.wrap_run_panini,
+            args=(
+                self.run_panini,
+                self.run_panini_args,
+                self.run_panini_kwargs,
+                self.logger_files_path,
+            ),
+            daemon=is_daemon,
         )
 
         if is_sync:

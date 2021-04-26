@@ -13,7 +13,7 @@ def run_panini():
         service_name="test_middleware",
         host="127.0.0.1",
         port=4222,
-        logger_in_separate_process=False
+        logger_in_separate_process=False,
     )
 
     @app.listen("test_middleware.publish")
@@ -77,7 +77,6 @@ def client():
     def publish_listener(msg):
         pass
 
-
     @client.listen("test_middleware.listen.publish.response")
     def listen_publish_listener(msg):
         pass
@@ -90,8 +89,9 @@ def test_send_publish_middleware(client):
     client.publish("test_middleware.publish", {"data": 1})
     client.wait(1)
 
+
 def test_send_request_middleware(client):
-    response = client.request("test_middleware.request", {"data": 2})
+    client.request("test_middleware.request", {"data": 2})
 
 
 def test_listen_publish_middleware(client):
@@ -100,7 +100,7 @@ def test_listen_publish_middleware(client):
 
 
 def test_listen_request_middleware(client):
-    response = client.request("test_middleware.listen.request", {"data": 4})
+    client.request("test_middleware.listen.request", {"data": 4})
 
 
 def test_sleep(client):

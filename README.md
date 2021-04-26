@@ -128,7 +128,6 @@ app = panini_app.App(
         host='127.0.0.1',
         allocation_queue_group='group24', 
         port=4222,
-        app_strategy='asyncio',
 )
 
 # incoming traffic will be distributed among 
@@ -195,7 +194,6 @@ app = panini_app.App(
         service_name='async_publish',
         host='127.0.0.1',
         port=4222,
-        app_strategy='asyncio',
 )
 
 log = app.logger
@@ -244,7 +242,6 @@ app = panini_app.App(
     service_name='async_request',
     host='127.0.0.1',
     port=4222,
-    app_strategy='asyncio',
 )
 
 log = app.logger
@@ -280,7 +277,6 @@ app = panini_app.App(
     service_name='async_reply_to',
     host='127.0.0.1',
     port=4222,
-    app_strategy='asyncio',
 )
 
 log = app.logger
@@ -324,7 +320,6 @@ app = panini_app.App(
     service_name='validators',
     host='127.0.0.1',
     port=4222,
-    app_strategy='asyncio',
 )
 
 log = app.logger
@@ -386,7 +381,6 @@ app = panini_app.App(
     service_name='async_web_server',
     host='127.0.0.1',
     port=4222,
-    app_strategy='asyncio',
     web_server=True,
     web_host='127.0.0.1',
     web_port=8999,
@@ -421,48 +415,6 @@ if __name__ == "__main__":
 
 ```
 
-### Sync example
-
-Not familiar with asyncio? Try a synchronous implementation
-
-
-```python
-
-from panini import app as panini_app
-
-app = panini_app.App(
-    service_name='ms_template_sync_by_lib',
-    host='127.0.0.1',
-    port=4222,
-    app_strategy='sync',
-)
-log = app.logger
-
-msg = {'key1':'value1', 'key2':2, 'key3':3.0, 'key4':[1,2,3,4], 'key5':{'1':1, '2':2, '3':3, '4':4, '5':5}, 'key6':{'subkey1':'1', 'subkey2':2, '3':3, '4':4, '5':5}, 'key7':None}
-
-@app.task()
-def publish():
-    for _ in range(10):
-        app.publish_sync(subject='some.publish.subject', message=msg)
-        log.info(f'send message {msg}')
-
-
-@app.timer_task(interval=2)
-def publish_periodically():
-    for _ in range(10):
-        app.publish_sync(subject='some.publish.subject', message=msg)
-        log.info(f'send message from periodic task {msg}')
-
-
-@app.listen('some.publish.subject')
-def subject_for_requests_listener(msg):
-    log.info(f'got message {msg.data}')
-
-if __name__ == "__main__":
-    app.start()
-```
-Remember, a synchronous app_strategy many times slower than an asynchronous one. It is designed for users who have no experience with asyncio. Sync implementation only useful for very lazy microservices
-
 ## Logging
 
 Panini creates a logfile folder in the project directory and stores all logs there. There are several ways to store your own logs there.
@@ -477,7 +429,6 @@ app = panini_app.App(  # create app
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
-    app_strategy='sync',
 )
 
 log = app.logger  # create log handler
@@ -501,7 +452,7 @@ log.warning("some log")  # write log
 
 ```
 
-Panini uses logging in separate process by default to speed-up app, but you can change it on the app creation:
+Panini uses logging in main process by default, but you can change it to speed-up application on the app creation:
 
 ```python
 from panini import app as panini_app
@@ -510,8 +461,7 @@ app = panini_app.App(
     service_name='ms_template_sync_by_lib',
     host='127.0.0.1',
     port=4222,
-    app_strategy='sync',
-    logger_in_separate_process=False,  # specify this option for logging in main process
+    logger_in_separate_process=True,  # specify this option for logging in separate process
 )
 
 ```
@@ -526,8 +476,7 @@ We use [pytest](https://docs.pytest.org/en/stable/) for testing
 
 To run tests (notice, that nats-server must be running on port 4222 for tests): 
 ```shell
-cd tests/
-./run_test.sh
+pytest
 ```
  
 ## Contributing
