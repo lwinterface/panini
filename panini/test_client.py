@@ -12,7 +12,7 @@ from pynats import NATSClient, NATSMessage
 
 from .exceptions import TestClientError
 from .utils.helper import start_process
-from .nats_client.nats_client_interface import Msg
+from panini.nats_client import Msg
 
 
 # Annotations for `Session.request()`
@@ -103,6 +103,7 @@ class TestClient:
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
         socket_timeout: int = 5,
+        auto_reconnect: bool = True,
         name: str = "__".join(
             [
                 "test_client",
@@ -120,11 +121,11 @@ class TestClient:
         self.base_web_server_url = base_web_server_url
         self.use_web_server = use_web_server
         self.use_web_socket = use_web_socket
-        self.nats_client = NATSClient(
-            url=base_nats_url,
-            name=name,
-            socket_timeout=socket_timeout,
-        )
+        self.name = name
+        self.base_nats_url = base_nats_url
+        self.socket_timeout = socket_timeout
+        self.auto_reconnect = auto_reconnect
+        self.nats_client = self.create_nats_client()
         self.nats_client.connect()
 
         if use_web_server:
@@ -135,6 +136,13 @@ class TestClient:
 
         self.panini_process = None
 
+    def create_nats_client(self) -> NATSClient:
+        return NATSClient(
+            url=self.base_nats_url,
+            name=self.name,
+            socket_timeout=self.socket_timeout,
+        )
+
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
         return json.dumps(message).encode("utf-8")
@@ -144,15 +152,22 @@ class TestClient:
         return json.loads(payload)
 
     @staticmethod
-    def wrap_run_panini(run_panini, run_panini_args: list, run_panini_kwargs: dict, logger_files_path: str):
+    def wrap_run_panini(
+        run_panini,
+        run_panini_args: list,
+        run_panini_kwargs: dict,
+        logger_files_path: str,
+    ):
         from .utils.logger import get_logger
 
         test_logger = get_logger("panini")
         # set the panini testing data in os.environ
         os.environ["PANINI_TEST_MODE"] = "true"
-        testing_logger_files_path = (get_logger_files_path(logger_files_path)
-                                     if not os.path.isabs(logger_files_path)
-                                     else logger_files_path)
+        testing_logger_files_path = (
+            get_logger_files_path(logger_files_path)
+            if not os.path.isabs(logger_files_path)
+            else logger_files_path
+        )
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
         try:
@@ -171,8 +186,14 @@ class TestClient:
             pass
 
         self.panini_process = start_process(
-            self.wrap_run_panini, args=(self.run_panini, self.run_panini_args,
-                                        self.run_panini_kwargs, self.logger_files_path), daemon=is_daemon
+            self.wrap_run_panini,
+            args=(
+                self.run_panini,
+                self.run_panini_args,
+                self.run_panini_kwargs,
+                self.logger_files_path,
+            ),
+            daemon=is_daemon,
         )
 
         if is_sync:
@@ -206,6 +227,12 @@ class TestClient:
         )
 
     def request(self, subject: str, message: dict) -> dict:
+        if self.auto_reconnect:
+            try:
+                self.nats_client.ping()
+            except Exception:
+                self.nats_client.reconnect()
+
         return self._bytes_to_dict(
             self.nats_client.request(
                 subject=subject, payload=self._dict_to_bytes(message)

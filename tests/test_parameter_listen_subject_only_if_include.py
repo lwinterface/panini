@@ -10,7 +10,6 @@ def run_panini():
         host="127.0.0.1",
         port=4222,
         listen_subject_only_if_include=["foo", "bar"],
-        app_strategy="asyncio",
         logger_in_separate_process=False,
     )
 

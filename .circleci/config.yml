@@ -13,9 +13,8 @@ jobs:
             pip3 install pytest
             pip3 install -r requirements/defaults.txt
       - run:
-          name: Start containers nats and redis
+          name: Start containers nats
           command: |
-            docker run -p 6379:6379 -d redis
             docker run -d -p 4222:4222 -p 6222:6222 -p 8222:8222 nats
       - run:
           name: Run Tests

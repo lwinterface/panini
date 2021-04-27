@@ -6,7 +6,7 @@ import logging
 
 from aiohttp import web
 
-from .nats_client.nats_client import NATSClient
+from panini.nats_client import NATSClient
 from .managers import (
     _EventManager,
     _TaskManager,
@@ -43,9 +43,7 @@ class App(
         max_reconnect_attempts: int = 60,
         reconnecting_time_sleep: int = 2,
         app_strategy: str = "asyncio",
-        num_of_queues: int = 1,  # only for sync strategy
         subscribe_subjects_and_callbacks: dict = None,
-        publish_subjects: list = None,
         allocation_queue_group: str = "",
         listen_subject_only_if_include: list = None,
         web_server: bool = False,
@@ -65,12 +63,10 @@ class App(
         :param reconnect: allows reconnect if connection to NATS has been lost
         :param max_reconnect_attempts: number of reconnect attempts
         :param reconnecting_time_sleep: pause between reconnection
-        :param app_strategy: 'async' or 'sync'. We strongly recommend using 'async'.
-        'sync' app_strategy works in many times slower and created only for lazy microservices.
+        :param app_strategy:  'asyncio' only - but we let it with warning for backward parameter support
         :param subscribe_subjects_and_callbacks: if you need to subscribe additional
                                         subjects(except subjects from event.py).
                                         This way doesn't support validators
-        :param publish_subjects: REQUIRED ONLY FOR 'sync' app strategy. Skip it for 'asyncio' app strategy
         :param allocation_queue_group: name of NATS queue for distributing incoming messages among many NATS clients
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
         :param listen_subject_only_if_include:   if not None, client will subscribe
@@ -83,8 +79,6 @@ class App(
         :param logger_files_path: main path for logs
         :param logger_in_separate_process: use log in the same or in different process
         """
-        if publish_subjects is None:
-            publish_subjects = []
         if subscribe_subjects_and_callbacks is None:
             subscribe_subjects_and_callbacks = {}
         if tasks is None:
@@ -97,22 +91,18 @@ class App(
             os.environ["CLIENT_ID"] = client_id
             self.client_id = client_id
             self.service_name = service_name
+            self.app_strategy = app_strategy
             self.nats_config = {
                 "host": host,
                 "port": port,
                 "client_id": client_id,
                 "listen_subjects_callbacks": None,
-                "publish_subjects": publish_subjects,
                 "allow_reconnect": reconnect,
                 "queue": allocation_queue_group,
                 "max_reconnect_attempts": max_reconnect_attempts,
                 "reconnecting_time_wait": reconnecting_time_sleep,
-                "client_strategy": app_strategy,
             }
-            if app_strategy == "sync":
-                self.nats_config["num_of_queues"] = num_of_queues
             self.tasks = tasks
-            self.app_strategy = app_strategy
             self.listen_subject_only_if_include = listen_subject_only_if_include
             self.subscribe_subjects_and_callbacks = subscribe_subjects_and_callbacks
 
@@ -123,9 +113,13 @@ class App(
 
             # check, if TestClient is running
             if os.environ.get("PANINI_TEST_MODE"):
-                self.logger_files_path = os.environ.get("PANINI_TEST_LOGGER_FILES_PATH", "test_logs")
+                self.logger_files_path = os.environ.get(
+                    "PANINI_TEST_LOGGER_FILES_PATH", "test_logs"
+                )
             else:
-                self.logger_files_path = logger_files_path if logger_files_path else "logs"
+                self.logger_files_path = (
+                    logger_files_path if logger_files_path else "logs"
+                )
             self.logger = logger.Logger(None)
 
             if self.logger_required:
@@ -135,6 +129,11 @@ class App(
                     self.logger_files_path,
                     False,
                     self.client_id,
+                )
+
+            if app_strategy != "asyncio":
+                self.logger.warning(
+                    "Only 'asyncio' strategy is now supported. The app will run in asyncio mode!"
                 )
             self.logger_process = None
             self.log_stop_event = None
@@ -223,13 +222,12 @@ class App(
 
         self.nats_config["listen_subjects_callbacks"] = subjects_and_callbacks
         NATSClient.__init__(self, **self.nats_config)
-        if self.app_strategy == "asyncio":
-            asyncio.ensure_future(
-                self.connector.client.publish(
-                    f"panini_events.{self.service_name}.{self.client_id}.started",
-                    b"{}",
-                )
+        asyncio.ensure_future(
+            self.client.publish(
+                f"panini_events.{self.service_name}.{self.client_id}.started",
+                b"{}",
             )
+        )
 
         self.tasks = self.tasks + self.TASKS
         self.interval_tasks = self.INTERVAL_TASKS
@@ -237,42 +235,24 @@ class App(
         self._start_tasks()
 
     def _start_tasks(self):
-        if self.app_strategy == "asyncio":
-            loop = asyncio.get_event_loop()
-            tasks = asyncio.all_tasks(loop)
-            for coro in self.tasks:
+        loop = asyncio.get_event_loop()
+        tasks = asyncio.all_tasks(loop)
+        for coro in self.tasks:
+            if not asyncio.iscoroutinefunction(coro):
+                raise InitializingTaskError(
+                    "For asyncio app_strategy only coroutine tasks allowed"
+                )
+            loop.create_task(coro())
+        for interval in self.interval_tasks:
+            for coro in self.interval_tasks[interval]:
                 if not asyncio.iscoroutinefunction(coro):
-                    raise InitializingTaskError(
-                        "For asyncio app_strategy only coroutine tasks allowed"
+                    raise InitializingIntervalTaskError(
+                        "For asyncio app_strategy only coroutine interval tasks allowed"
                     )
                 loop.create_task(coro())
-            for interval in self.interval_tasks:
-                for coro in self.interval_tasks[interval]:
-                    if not asyncio.iscoroutinefunction(coro):
-                        raise InitializingIntervalTaskError(
-                            "For asyncio app_strategy only coroutine interval tasks allowed"
-                        )
-                    loop.create_task(coro())
-            if self.http_server:
-                self.http_server.start_server()
-            loop.run_until_complete(asyncio.gather(*tasks))
-        elif self.app_strategy == "sync":
-            time.sleep(1)
-            for task in self.tasks:
-                if asyncio.iscoroutinefunction(task):
-                    raise InitializingIntervalTaskError(
-                        "For sync app_strategy coroutine task doesn't allowed"
-                    )
-                start_thread(task)
-            for interval in self.interval_tasks:
-                for task in self.interval_tasks[interval]:
-                    if asyncio.iscoroutinefunction(task):
-                        raise InitializingIntervalTaskError(
-                            "For sync app_strategy coroutine interval_task doesn't allowed"
-                        )
-                    start_thread(task)
-            if self.http_server:
-                self.http_server.start_server()
+        if self.http_server:
+            self.http_server.start_server()
+        loop.run_until_complete(asyncio.gather(*tasks))
 
 
 def get_app() -> App:

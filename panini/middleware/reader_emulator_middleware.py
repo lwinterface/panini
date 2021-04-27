@@ -5,12 +5,11 @@ import copy
 
 from panini.emulator_client import EmulatorClient
 from panini.middleware import Middleware
-from panini.nats_client.nats_client_interface import Msg
+from panini.nats_client import Msg
 from panini.utils.helper import start_thread
 
 
 class ReaderEmulatorMiddleware(Middleware):
-
     def __init__(self, *args, **kwargs):
         super().__init__(args, kwargs)
 
@@ -18,7 +17,7 @@ class ReaderEmulatorMiddleware(Middleware):
 
         app = get_app()
         assert app is not None
-        print('Emulator is experimental feature!')
+        print("Emulator is experimental feature!")
         subjects = copy.copy(list(app.SUBSCRIPTIONS.keys()))
         for subject in subjects:
             subject_with_prefix = self._prefix + "." + subject
@@ -32,13 +31,13 @@ class ReaderEmulatorMiddleware(Middleware):
                 filepath=kwargs.get("filename"),
                 emulate_timeout=kwargs.get("emulate_timeout", True),
                 compare_output=kwargs.get("compare_output", False),
-                app_name=app.service_name
+                app_name=app.service_name,
             )
             start_thread(emulator.start)
             emulator.wait_for_readiness()
 
     async def listen_any(self, message: Msg, callback):
-        message.subject = message.subject[len(self._prefix) + 1:]
+        message.subject = message.subject[len(self._prefix) + 1 :]
         response = await callback(message)
         return response
 

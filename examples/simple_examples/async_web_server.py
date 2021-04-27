@@ -5,7 +5,6 @@ app = panini_app.App(
     service_name="async_web_server",
     host="127.0.0.1",
     port=4222,
-    app_strategy="asyncio",
     web_server=True,
 )
 

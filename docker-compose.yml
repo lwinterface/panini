@@ -36,18 +36,4 @@ services:
         reservations:
           memory: 200M
     restart: always
-  redis:
-    image: sameersbn/redis:4.0.9-3
-    ports:
-      - 6379:6379
-    command: "redis-server --appendonly yes --protected-mode no"
-#    command: "--logfile /var/log/redis/redis-server.log"
-#    volumes:
-#      - ./redis-data:/data/db
-#      - ./config/redis.conf:/redis.conf
-#      - /srv/docker/redis:/var/lib/redis
-    networks:
-      - no-internet
-      - internet
-    restart: always
 

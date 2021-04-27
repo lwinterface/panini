@@ -1,15 +1,11 @@
 import asyncio
 
 from panini.app import App
-from panini.emulator import WriterEmulatorMiddleware
-from panini.emulator import ReaderEmulatorMiddleware
+from panini.middleware.reader_emulator_middleware import ReaderEmulatorMiddleware
+from panini.middleware.writer_emulator_middleware import WriterEmulatorMiddleware
 from panini.middleware.nats_timeout import NATSTimeoutMiddleware
 
-app = App(
-    service_name="publisher",
-    host="127.0.0.1",
-    port=4222
-)
+app = App(service_name="publisher", host="127.0.0.1", port=4222)
 
 
 @app.task()
@@ -18,8 +14,10 @@ async def request_task():
         try:
             print("request listener.store.request")
 
-            response = await app.request("listener.store.request", {"data": f"request.data.{i}"})
-            print('response', response)
+            response = await app.request(
+                "listener.store.request", {"data": f"request.data.{i}"}
+            )
+            print("response", response)
             await asyncio.sleep(1.5)
         except Exception as ex:
             app.logger.exception(ex)

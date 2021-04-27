@@ -11,7 +11,6 @@ app = panini_app.App(
     # host='nats-server' if 'HOSTNAME' in os.environ else '127.0.0.1',
     host="54.36.108.188",
     port=4222,
-    app_strategy="asyncio",
     web_server=True,
     web_port=1111,
 )
