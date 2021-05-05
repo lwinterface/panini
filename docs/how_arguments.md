@@ -1,0 +1,18 @@
+- *host*: NATS hostname
+- *port*: NATS port
+- *service_name*: name of microservice, will be the part of NATS client_id if you didn't set custom client_id
+- *client_id*: custom NATS client_id
+- *tasks*: list of asyncio tasks that you want to run along with NATS client, each task equal to decorator `@app.task()`
+- *reconnect*: if lost connection to NATS broker
+- *max_reconnect_attempts*: pause between reconnection
+- *reconnecting_time_sleep*: pause between reconnection
+- *subscribe_subjects_and_callbacks*: asyncio callbacks with subjects to subscribe, each callbacks equal to decorator `@app.listen("some.subject")`
+- *allocation_queue_group*: the name of queue_group, incoming traffic allocates between allocation_queue_group's members, more detailed here
+- *listen_subject_only_if_include*: list of strings. If argument included, panini subscribes to NATS subjects only if it's matches at least one of them
+- *web_server*: boolean flag, True means to run aiohttp along with NATS client
+- *web_app*: custom aiohttp app
+- *web_host*: host of aiohttp server
+- *web_port*: port of aiohttp server
+- *logger_required*: Is logger required for the project, if not - EmptyLogger will be provided
+- *logger_files_path*: main path for logs
+- *logger_in_separate_process*: use log in the same or in different process
