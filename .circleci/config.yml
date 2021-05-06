@@ -38,6 +38,7 @@ jobs:
   test:
     parameters:
       version:
+        description: "python version tag"
         default: "3.8"
         type: string
     executor:
@@ -57,4 +58,4 @@ workflows:
               version:
                 - "3.8"
                 - "3.9"
-                - "3.10"
+                - "3.10.0b1"
