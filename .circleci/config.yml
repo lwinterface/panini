@@ -11,7 +11,7 @@ executors:
         type: string
         default: "3.8"
     docker:
-      - image: python:<< parameters.version >>-slim
+      - image: python:<< parameters.version >>-slim-buster
       - image: nats
 
 commands:
