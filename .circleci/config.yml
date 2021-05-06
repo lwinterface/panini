@@ -50,7 +50,10 @@ jobs:
           condition: 
             matches: { pattern: "3.10.*", value: <<parameters.version>> }
           steps:
-            - run: apt update && apt install -y libc6-dev
+            - run: 
+                command: |
+                  apt update && apt install -y libc6-dev gcc build-essential
+                  sed -i 's/1.6.1/1.6.3/' requirements/defaults.txt
       - install-requirements
       - run-tests
       - store-results
