@@ -46,6 +46,11 @@ jobs:
       version: <<parameters.version>>
     steps:
       - checkout
+      - when:
+          condition: 
+            matches: { pattern: "3.10.*", value: <<parameters.version>> }
+          steps:
+            - run: sudo apt install -y python2-dev gpgme-dev libc-dev
       - install-requirements
       - run-tests
       - store-results
