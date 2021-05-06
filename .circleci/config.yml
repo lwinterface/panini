@@ -50,7 +50,7 @@ jobs:
           condition: 
             matches: { pattern: "3.10.*", value: <<parameters.version>> }
           steps:
-            - run: apt update && apt install -y python2-dev gpgme-dev libc-dev
+            - run: apt update && apt install -y python2-dev libc6-dev
       - install-requirements
       - run-tests
       - store-results
