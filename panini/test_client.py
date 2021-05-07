@@ -1,5 +1,6 @@
 import os
 import shutil
+import threading
 import time
 import json
 import random
@@ -12,7 +13,7 @@ from pynats import NATSClient, NATSMessage
 from pynats.exceptions import NATSReadSocketError
 
 from .exceptions import TestClientError
-from .utils.helper import start_process
+from .utils.helper import start_process, start_thread
 from panini.nats_client import Msg
 
 
@@ -104,6 +105,7 @@ class TestClient:
         base_web_server_url: str = "http://127.0.0.1:8080",
         base_nats_url: str = "nats://127.0.0.1:4222",
         socket_timeout: int = 5,
+        listener_socket_timeout: int = 1,
         auto_reconnect: bool = True,
         name: str = "__".join(
             [
@@ -126,13 +128,15 @@ class TestClient:
         self.use_web_socket = use_web_socket
         self.name = name
         self.base_nats_url = base_nats_url
-        self.socket_timeout = socket_timeout
         self.auto_reconnect = auto_reconnect
-        self.nats_client_sender = self.create_nats_client("sender")
-        self.nats_client_listener = self.create_nats_client("listener")
+        self.nats_client_sender = self.create_nats_client("sender", socket_timeout)
+        self.nats_client_listener = self.create_nats_client(
+            "listener", listener_socket_timeout
+        )
         self.nats_client_sender.connect()
         self.nats_client_listener.connect()
-        self.nats_client_listener_process = None
+        self.nats_client_listener_thread = None
+        self.nats_client_listener_thread_stop_event = threading.Event()
 
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
@@ -142,11 +146,11 @@ class TestClient:
 
         self.panini_process = None
 
-    def create_nats_client(self, suffix: str) -> NATSClient:
+    def create_nats_client(self, suffix: str, nats_timeout) -> NATSClient:
         return NATSClient(
             url=self.base_nats_url,
             name=self.name + suffix,
-            socket_timeout=self.socket_timeout,
+            socket_timeout=nats_timeout,
         )
 
     @staticmethod
@@ -184,16 +188,18 @@ class TestClient:
     def start(self, is_daemon: bool = True, do_always_listen: bool = True):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
-            def nats_listener_worker():
-                while True:
-                    try:
-                        self.nats_client_listener.wait(count=1)
-                    except Exception:
-                        pass
+            def nats_listener_worker(stop_event):
+                try:
+                    while not stop_event.wait(1):
+                        self.nats_client_listener.wait()
+                except Exception:
+                    pass
 
             # Run nats-listener process
-            self.nats_client_listener_process = start_process(
-                nats_listener_worker, daemon=True
+            self.nats_client_listener_thread = start_thread(
+                nats_listener_worker,
+                args=[self.nats_client_listener_thread_stop_event],
+                daemon=True,
             )
 
         if self.run_panini is not None:
@@ -232,9 +238,7 @@ class TestClient:
     def stop(self):
         self.nats_client_listener.close()
         self.nats_client_sender.close()
-
-        if self.nats_client_listener_process:
-            self.nats_client_listener_process.kill()
+        self.nats_client_listener_thread_stop_event.set()
 
         if self.panini_process:
             self.panini_process.kill()
@@ -284,6 +288,12 @@ class TestClient:
         )
 
     def wait(self, count: int) -> None:
+        if self.nats_client_listener_thread is not None:
+            raise TestClientError(
+                "You can't use client.wait, "
+                "if you don't have any @client.listen functions "
+                "or you don't use do_always_listen=False!"
+            )
         self.nats_client_listener.wait(count=count)
 
     def listen(self, subject: str):
