@@ -81,7 +81,7 @@ def client():
     def listen_publish_listener(msg):
         pass
 
-    client.start()
+    client.start(do_always_listen=False)
     return client
 
 

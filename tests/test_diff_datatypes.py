@@ -106,7 +106,7 @@ def client():
     def dict_listener(msg):
         global_object.public_variable = msg.data["type"]
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 

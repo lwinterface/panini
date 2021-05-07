@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 import requests
 import websocket
 from pynats import NATSClient, NATSMessage
+from pynats.exceptions import NATSReadSocketError
 
 from .exceptions import TestClientError
 from .utils.helper import start_process
@@ -92,7 +93,7 @@ class TestClient:
 
     def __init__(
         self,
-        run_panini: typing.Callable = lambda *args, **kwargs: None,
+        run_panini: typing.Callable = None,
         run_panini_args: list = None,
         run_panini_kwargs: dict = None,
         panini_service_name: str = "*",
@@ -111,10 +112,12 @@ class TestClient:
                 str(random.randint(1, 10000000)),
             ]
         ),
+        _subscribed_subjects: [str] = None,
     ):
         self.run_panini = run_panini
         self.run_panini_args = run_panini_args or []
         self.run_panini_kwargs = run_panini_kwargs or {}
+        self._subscribed_subjects = _subscribed_subjects or []
         self.panini_service_name = panini_service_name
         self.panini_client_id = panini_client_id
         self.logger_files_path = logger_files_path
@@ -125,8 +128,11 @@ class TestClient:
         self.base_nats_url = base_nats_url
         self.socket_timeout = socket_timeout
         self.auto_reconnect = auto_reconnect
-        self.nats_client = self.create_nats_client()
-        self.nats_client.connect()
+        self.nats_client_sender = self.create_nats_client("sender")
+        self.nats_client_listener = self.create_nats_client("listener")
+        self.nats_client_sender.connect()
+        self.nats_client_listener.connect()
+        self.nats_client_listener_process = None
 
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
@@ -136,10 +142,10 @@ class TestClient:
 
         self.panini_process = None
 
-    def create_nats_client(self) -> NATSClient:
+    def create_nats_client(self, suffix: str) -> NATSClient:
         return NATSClient(
             url=self.base_nats_url,
-            name=self.name,
+            name=self.name + suffix,
             socket_timeout=self.socket_timeout,
         )
 
@@ -175,46 +181,64 @@ class TestClient:
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, is_sync: bool = False, is_daemon: bool = None):
-        if is_daemon is None:
-            is_daemon = False if is_sync else True
+    def start(self, is_daemon: bool = True, do_always_listen: bool = True):
+        if do_always_listen and len(self._subscribed_subjects) > 0:
 
-        @self.listen(
-            f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started"
-        )
-        def panini_started(msg):
-            pass
+            def nats_listener_worker():
+                while True:
+                    try:
+                        self.nats_client_listener.wait(count=1)
+                    except Exception:
+                        pass
 
-        self.panini_process = start_process(
-            self.wrap_run_panini,
-            args=(
-                self.run_panini,
-                self.run_panini_args,
-                self.run_panini_kwargs,
-                self.logger_files_path,
-            ),
-            daemon=is_daemon,
-        )
+            # Run nats-listener process
+            self.nats_client_listener_process = start_process(
+                nats_listener_worker, daemon=True
+            )
 
-        if is_sync:
-            time.sleep(5)
-        else:
+        if self.run_panini is not None:
+
+            def panini_started(msg):
+                pass
+
+            self.nats_client_sender.subscribe(
+                f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started",
+                callback=panini_started,
+            )
+
+            self.panini_process = start_process(
+                self.wrap_run_panini,
+                args=(
+                    self.run_panini,
+                    self.run_panini_args,
+                    self.run_panini_kwargs,
+                    self.logger_files_path,
+                ),
+                daemon=is_daemon,
+            )
+
             try:
-                self.wait(1)  # wait for panini to start
+                self.nats_client_sender.wait(count=1)  # wait for panini to start
             except OSError:
                 raise TestClientError(
                     "TestClient was waiting panini to start, but panini does not started"
                 )
 
-        if self.use_web_server:
-            pass  # TODO: understand, why don't we need to wait for web_server
+            if self.use_web_server:
+                pass  # TODO: understand, why don't we need to wait for web_server
 
         return self
 
     def stop(self):
-        self.nats_client.close()
+        self.nats_client_listener.close()
+        self.nats_client_sender.close()
+
+        if self.nats_client_listener_process:
+            self.nats_client_listener_process.kill()
+
         if self.panini_process:
             self.panini_process.kill()
+
         if hasattr(self, "http_session"):
             self.http_session.close()
 
@@ -222,19 +246,24 @@ class TestClient:
             self.websocket_session.close()
 
     def publish(self, subject: str, message: dict, reply: str = "") -> None:
-        self.nats_client.publish(
+        self.nats_client_sender.publish(
             subject=subject, payload=self._dict_to_bytes(message), reply=reply
         )
 
-    def request(self, subject: str, message: dict) -> dict:
-        if self.auto_reconnect:
+    def reconnect(self):
+        if (
+            self.auto_reconnect
+        ):  # reconnects nats_client for next call, if it was disconnected earlier
             try:
-                self.nats_client.ping()
+                self.nats_client_sender.ping()
             except Exception:
-                self.nats_client.reconnect()
+                self.nats_client_sender.reconnect()
+
+    def request(self, subject: str, message: dict) -> dict:
+        self.reconnect()
 
         return self._bytes_to_dict(
-            self.nats_client.request(
+            self.nats_client_sender.request(
                 subject=subject, payload=self._dict_to_bytes(message)
             ).payload
         )
@@ -246,7 +275,8 @@ class TestClient:
         queue: str = "",
         max_messages: typing.Optional[int] = None,
     ):
-        return self.nats_client.subscribe(
+        self._subscribed_subjects.append(subject)
+        return self.nats_client_listener.subscribe(
             subject=subject,
             callback=callback,
             queue=queue,
@@ -254,32 +284,28 @@ class TestClient:
         )
 
     def wait(self, count: int) -> None:
-        self.nats_client.wait(count=count)
+        self.nats_client_listener.wait(count=count)
 
     def listen(self, subject: str):
         def decorator(func):
-            assert isinstance(subject, str)
+            assert isinstance(subject, str), "Subject must be only in str format"
 
-            def wrapper(incoming_response):
-                assert isinstance(incoming_response, NATSMessage)
+            def wrapper(incoming_message):
+                assert isinstance(incoming_message, NATSMessage)
+                incoming_message_data = self._bytes_to_dict(incoming_message.payload)
+
                 msg = Msg(
-                    subject=incoming_response.subject,
-                    data=self._bytes_to_dict(incoming_response.payload),
-                    reply=incoming_response.reply,
-                    sid=incoming_response.sid,
+                    subject=incoming_message.subject,
+                    data=incoming_message_data,
+                    reply=incoming_message.reply,
+                    sid=incoming_message.sid,
                 )
                 wrapper_response = func(msg)
-                if wrapper_response is not None and incoming_response.reply != "":
-                    self.publish(
-                        subject=incoming_response.reply, message=wrapper_response
+                if wrapper_response is not None and incoming_message.reply != "":
+                    self.nats_client_listener.publish(
+                        subject=incoming_message.reply,
+                        payload=self._dict_to_bytes(wrapper_response),
                     )
-                    try:
-                        self.wait(count=1)
-                    except OSError:
-                        raise TestClientError(
-                            f"TestClient listen subject: {incoming_response.subject},"
-                            f"Response was sent, but it was not correctly handled"
-                        )
 
             self.subscribe(subject, wrapper)
 
