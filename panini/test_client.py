@@ -1,7 +1,6 @@
 import os
 import shutil
 import threading
-import time
 import json
 import random
 import typing
@@ -10,7 +9,6 @@ from urllib.parse import urljoin
 import requests
 import websocket
 from pynats import NATSClient, NATSMessage
-from pynats.exceptions import NATSReadSocketError
 
 from .exceptions import TestClientError
 from .utils.helper import start_process, start_thread
