@@ -20,7 +20,7 @@ def run_panini():
 
     @app.listen("test_validator.foo", validator=DataValidator)
     async def publish(msg):
-        await app.publish(subject="test_validator.bar", message={"data": 1})
+        return {"success": True}
 
     @app.listen("test_validator.check")
     async def check(msg):
@@ -39,13 +39,7 @@ global_object = Global()
 
 @pytest.fixture(scope="module")
 def client():
-    client = TestClient(run_panini)
-
-    @client.listen("test_validator.bar")
-    def bar_listener1(msg):
-        global_object.public_variable = msg.data["data"]
-
-    client.start()
+    client = TestClient(run_panini).start()
     yield client
     client.stop()
 
@@ -62,15 +56,13 @@ def test_correct_message(client):
     assert client.request("test_validator.check", {"data": 1})["success"]
 
 
-def test_publish_correct_message(client):
-    assert global_object.public_variable == 0
-    client.publish("test_validator.foo", {"data": "string"})
-    client.wait(1)
-    assert global_object.public_variable == 1
+def test_request_with_correct_message(client):
+    response = client.request("test_validator.foo", {"data": "string"})
+    assert response["success"] is True
 
 
-def test_publish_incorrect_message(client):
-    assert global_object.public_variable == 1
-    client.publish("test_validator.foo", {"data": 1})
-    client.wait(1)
-    assert global_object.public_variable == 1
+def test_request_with_incorrect_message(client):
+    response = client.request("test_validator.foo", {"data": 1})
+    assert (
+        response["success"] is True
+    )  # both should be success = True, validator do not stop the request
