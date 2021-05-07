@@ -34,7 +34,7 @@ def client():
     def foo_listener(msg):
         global_object.another_variable += 2
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 

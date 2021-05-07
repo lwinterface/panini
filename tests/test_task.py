@@ -32,7 +32,7 @@ def client():
     def foo_listener(msg):
         global_object.public_variable = msg.data["data"] + 1
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 
