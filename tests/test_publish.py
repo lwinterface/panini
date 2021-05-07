@@ -35,7 +35,7 @@ def client():
     def bar_listener2(msg):
         global_object.another_variable = msg.data["data"] + 1
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 
