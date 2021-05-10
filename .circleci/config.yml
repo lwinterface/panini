@@ -1,31 +1,69 @@
 version: 2.1
-jobs:
-  test:
-    machine:
-      image: ubuntu-2004:202010-01
-      docker_layer_caching: true
-    working_directory: ~/panini/
+parameters:
+  repo:
+    type: string
+    default: "panini"
+
+executors:
+  executor-for-panini:
+    parameters:
+      version:
+        type: string
+        default: "3.8"
+    docker:
+      - image: python:<< parameters.version >>-slim-buster
+      - image: nats
+
+commands:
+  install-requirements:
     steps:
-      - checkout
       - run:
-          name: Installing libraries
-          command: |
-            pip3 install pytest
-            pip3 install -r requirements/defaults.txt
+          name: Install requirements
+          command: pip3 install pytest && pip3 install -r requirements/defaults.txt
+  run-tests:
+    steps:
       - run:
-          name: Start containers nats
+          name: Run tests
           command: |
-            docker run -d -p 4222:4222 -p 6222:6222 -p 8222:8222 nats
-      - run:
-          name: Run Tests
-          command: |
-            cd ~/panini
             mkdir results
             timeout 300 python3 -m pytest --junitxml=results/out.xml || (echo "Doesn't finished succefully" && exit 1)
+  store-results:
+    steps:
       - store_test_results:
           path: results
-    path:
+
+working_directory: ~/<< pipeline.parameters.repo >>
+
+jobs:
+  test:
+    parameters:
+      version:
+        description: "python version tag"
+        default: "3.8"
+        type: string
+    executor:
+      name: executor-for-panini
+      version: <<parameters.version>>
+    steps:
+      - checkout
+      - when:
+          condition: 
+            matches: { pattern: "3.10.*", value: <<parameters.version>> }
+          steps:
+            - run: 
+                command: |
+                  apt update && apt install -y libc6-dev gcc build-essential
+                  sed -i 's/1.6.1/1.6.3/' requirements/defaults.txt
+      - install-requirements
+      - run-tests
+      - store-results
 workflows:
   main:
     jobs:
-      - test
+      - test:
+          matrix:
+            parameters:
+              version:
+                - "3.8"
+                - "3.9"
+#                - "3.10.0b1"
