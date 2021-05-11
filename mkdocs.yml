@@ -2,28 +2,28 @@ site_name: Panini
 repo_url: https://github.com/lwinterface/panini
 repo_name: lwinterface/panini
 nav:
-    - install: install.md
+    - Install: Install.md
     - Quickstart: Quickstart.md
-    - What is NATS?: What is NATS.md
+    - What is NATS?: What_is_NATS.md
     - How Panini works?: 
-        - First Step: how_first_step.md
-        - Arguments panini app takes: how_arguments.md
-        - Main functions of panini app : how_main_func.md
-        - Incoming message strucutre: how_incoming_msg.md
+        - First Step: How_first_step.md
+        - Arguments panini app takes: How_arguments.md
+        - Main functions of panini app : How_main_func.md
+        - Incoming message strucutre: How_incoming_msg.md
     - Datatypes: Datatypes.md
-    - Validation for incoming data: Validation for incoming data.md
+    - Validation for incoming data: Validation_for_incoming_data.md
     - Middlewares: Middlewares.md
-    - HTTP server: HTTP server.md
-    - WebSocket server: WebSocket server.md
+    - HTTP server: HTTP_server.md
+    - WebSocket server: WebSocket_server.md
     - Balancer: Balancer.md
     - Middlewares: Middlewares.md
-    - Monitoring application: Monitoring application.md
-    - Emulator - "time machine" debug: emulator.md
-    - Distributed tracing: Distributed tracing.md
+    - Monitoring application: Monitoring_application.md
+    - Emulator - "time machine" debug: Emulator.md
+    - Distributed tracing: Distributed_tracing.md
     - Deployment: Deployment.md
-    - Changelog: changelog.md
+    - Changelog: Changelog.md
     - License: License.md
-    - How to contribute: how_to_contribute.md
+    - How to contribute: How_to_contribute.md
     - Testing: Testing.md
     - Logger: Logger.md
     - Examples: Examples.md
