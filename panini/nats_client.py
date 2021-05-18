@@ -104,14 +104,14 @@ class NATSClient:
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_subject(
+                    await self.subscribe_new_subject(
                         subject, callback, init_subscription=True
                     )
 
-    def subscribe_new_subject(self, subject: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
+    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType):
+        self.loop.run_until_complete(self.subscribe_new_subject(subject, callback))
 
-    async def aio_subscribe_new_subject(
+    async def subscribe_new_subject(
         self, subject: str, callback: CoroutineType, init_subscription=False
     ):
         callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
@@ -131,10 +131,10 @@ class NATSClient:
             self.listen_subjects_callbacks[subject].append(callback)
         return ssid
 
-    def unsubscribe_subject(self, subject: str):
-        self.loop.run_until_complete(self.aio_unsubscribe_subject(subject))
+    def unsubscribe_subject_sync(self, subject: str):
+        self.loop.run_until_complete(self.unsubscribe_subject(subject))
 
-    async def aio_unsubscribe_subject(self, subject: str):
+    async def unsubscribe_subject(self, subject: str):
         if subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
         for ssid in self.ssid_map[subject]:
@@ -142,10 +142,10 @@ class NATSClient:
         del self.ssid_map[subject]
         del self.listen_subjects_callbacks[subject]
 
-    def unsubscribe_ssid(self, ssid: int, subject: str = None):
-        self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid, subject))
+    def unsubscribe_ssid_sync(self, ssid: int, subject: str = None):
+        self.loop.run_until_complete(self.unsubscribe_ssid(ssid, subject))
 
-    async def aio_unsubscribe_ssid(self, ssid: int, subject: str = None):
+    async def unsubscribe_ssid(self, ssid: int, subject: str = None):
         if subject and subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
         await self.client.unsubscribe(ssid)
@@ -269,10 +269,10 @@ class NATSClient:
             response = response.decode()
         return response
 
-    def disconnect(self):
-        self.loop.run_until_complete(self.aio_disconnect())
+    def disconnect_sync(self):
+        self.loop.run_until_complete(self.disconnect())
 
-    async def aio_disconnect(self):
+    async def disconnect(self):
         await self.client.drain()
         self.log.warning("Disconnected")
 
