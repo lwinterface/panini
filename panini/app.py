@@ -42,7 +42,6 @@ class App(
         reconnect: bool = False,
         max_reconnect_attempts: int = 60,
         reconnecting_time_sleep: int = 2,
-        app_strategy: str = "asyncio",
         subscribe_subjects_and_callbacks: dict = None,
         allocation_queue_group: str = "",
         listen_subject_only_if_include: list = None,
@@ -63,7 +62,6 @@ class App(
         :param reconnect: allows reconnect if connection to NATS has been lost
         :param max_reconnect_attempts: number of reconnect attempts
         :param reconnecting_time_sleep: pause between reconnection
-        :param app_strategy:  'asyncio' only - but we let it with warning for backward parameter support
         :param subscribe_subjects_and_callbacks: if you need to subscribe additional
                                         subjects(except subjects from event.py).
                                         This way doesn't support validators
@@ -91,7 +89,6 @@ class App(
             os.environ["CLIENT_ID"] = client_id
             self.client_id = client_id
             self.service_name = service_name
-            self.app_strategy = app_strategy
             self.nats_config = {
                 "host": host,
                 "port": port,
@@ -131,10 +128,6 @@ class App(
                     self.client_id,
                 )
 
-            if app_strategy != "asyncio":
-                self.logger.warning(
-                    "Only 'asyncio' strategy is now supported. The app will run in asyncio mode!"
-                )
             self.logger_process = None
             self.log_stop_event = None
             self.log_listener_queue = None
@@ -239,15 +232,13 @@ class App(
         tasks = asyncio.all_tasks(loop)
         for coro in self.tasks:
             if not asyncio.iscoroutinefunction(coro):
-                raise InitializingTaskError(
-                    "For asyncio app_strategy only coroutine tasks allowed"
-                )
+                raise InitializingTaskError("Only coroutine tasks allowed")
             loop.create_task(coro())
         for interval in self.interval_tasks:
             for coro in self.interval_tasks[interval]:
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingIntervalTaskError(
-                        "For asyncio app_strategy only coroutine interval tasks allowed"
+                        "Only coroutine interval tasks allowed"
                     )
                 loop.create_task(coro())
         if self.http_server:
