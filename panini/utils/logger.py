@@ -12,7 +12,7 @@ from ..utils import helper
 
 
 # Decorator for check, if logger exist
-def check_logger(func):
+def check_logger_connected(func):
     def wrapper(self, msg, **extra):
         if self.logger is None:
             raise Exception("Logger hasn't been connected")
@@ -30,23 +30,23 @@ class Logger:
     def __init__(self, logger: logging.Logger):
         self.logger = logger
 
-    @check_logger
+    @check_logger_connected
     def debug(self, msg, **extra):
         self.logger.debug(msg, extra={"extra": extra})
 
-    @check_logger
+    @check_logger_connected
     def info(self, msg, **extra):
         self.logger.info(msg, extra={"extra": extra})
 
-    @check_logger
+    @check_logger_connected
     def warning(self, msg, **extra):
         self.logger.warning(msg, extra={"extra": extra})
 
-    @check_logger
+    @check_logger_connected
     def error(self, msg, **extra):
         self.logger.error(msg, extra={"extra": extra})
 
-    @check_logger
+    @check_logger_connected
     def exception(self, msg, **extra):
         self.logger.exception(msg, extra={"extra": extra})
 
