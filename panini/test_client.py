@@ -205,10 +205,12 @@ class TestClient:
             def panini_started(msg):
                 pass
 
-            self.nats_client_sender.subscribe(
+            sub = self.nats_client_sender.subscribe(
                 f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started",
                 callback=panini_started,
+                max_messages=1,
             )
+            self.nats_client_sender.auto_unsubscribe(sub)
 
             self.panini_process = start_process(
                 self.wrap_run_panini,
