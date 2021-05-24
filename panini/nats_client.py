@@ -72,16 +72,14 @@ class NATSClient:
         self.reconnecting_time_wait = reconnecting_time_wait
         self.pending_bytes_limit = pending_bytes_limit
         self.ssid_map = {}
-        # publish function without middlewares
-        self.raw_publish = self.publish
 
         # inject send_middlewares
-        self.publish = _MiddlewareManager._wrap_function_by_middleware("publish")(
-            self.publish
-        )
-        self.request = _MiddlewareManager._wrap_function_by_middleware("request")(
-            self.request
-        )
+        self._publish_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+            "publish"
+        )(self._publish)
+        self._request_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+            "request"
+        )(self._request)
 
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
@@ -115,7 +113,7 @@ class NATSClient:
         self, subject: str, callback: CoroutineType, init_subscription=False
     ):
         callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
-        wrapped_callback = _ReceivedMessageHandler(self.raw_publish, callback)
+        wrapped_callback = _ReceivedMessageHandler(self._publish, callback)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
@@ -236,7 +234,7 @@ class NATSClient:
 
         return message
 
-    async def publish(
+    async def _publish(
         self,
         subject: str,
         message,
@@ -253,7 +251,23 @@ class NATSClient:
         if force:
             await self.client.flush()
 
-    async def request(
+    async def publish(
+        self,
+        subject: str,
+        message,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
+        return await self._publish_wrapped(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type,
+        )
+
+    async def _request(
         self,
         subject: str,
         message,
@@ -268,6 +282,17 @@ class NATSClient:
         elif data_type is str:
             response = response.decode()
         return response
+
+    async def request(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
+    ):
+        return await self._request_wrapped(
+            subject=subject, message=message, timeout=timeout, data_type=data_type
+        )
 
     def disconnect_sync(self):
         self.loop.run_until_complete(self.disconnect())
