@@ -1,3 +1,4 @@
+import typing
 import ujson
 import asyncio
 import threading
@@ -179,10 +180,11 @@ class NATSClient:
         message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
     ):
         # asyncio.ensure_future(self.request(subject, message, timeout, data_type))
         return self.loop.run_until_complete(
-            self.request(subject, message, timeout, data_type)
+            self.request(subject, message, timeout, data_type, callback)
         )
 
     def request_from_another_thread_sync(
@@ -273,8 +275,11 @@ class NATSClient:
         message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
     ):
         message = self.format_message_data_type(message, data_type)
+        if callback is not None:
+            return await self.client.request(subject, message, cb=callback)
         response = await self.client.request(subject, message, timeout=timeout)
         response = response.data
         if data_type == "json.dumps":
@@ -289,9 +294,14 @@ class NATSClient:
         message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
     ):
         return await self._request_wrapped(
-            subject=subject, message=message, timeout=timeout, data_type=data_type
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+            callback=callback,
         )
 
     def disconnect_sync(self):
