@@ -4,6 +4,34 @@ parameters:
     type: string
     default: "panini"
 
+working_directory: ~/<< pipeline.parameters.repo >>
+
+workflows:
+  main:
+    jobs:
+      - test:
+          matrix:
+            parameters:
+              version:
+                - "3.8"
+                - "3.9"
+
+jobs:
+  test:
+    parameters:
+      version:
+        description: "python version tag"
+        default: "3.8"
+        type: string
+    executor:
+      name: executor-for-panini
+      version: <<parameters.version>>
+    steps:
+      - checkout
+      - install-requirements
+      - run-tests
+      - store-results
+
 executors:
   executor-for-panini:
     parameters:
@@ -31,39 +59,3 @@ commands:
     steps:
       - store_test_results:
           path: results
-
-working_directory: ~/<< pipeline.parameters.repo >>
-
-jobs:
-  test:
-    parameters:
-      version:
-        description: "python version tag"
-        default: "3.8"
-        type: string
-    executor:
-      name: executor-for-panini
-      version: <<parameters.version>>
-    steps:
-      - checkout
-      - when:
-          condition: 
-            matches: { pattern: "3.10.*", value: <<parameters.version>> }
-          steps:
-            - run: 
-                command: |
-                  apt update && apt install -y libc6-dev gcc build-essential
-                  sed -i 's/1.6.1/1.6.3/' requirements/defaults.txt
-      - install-requirements
-      - run-tests
-      - store-results
-workflows:
-  main:
-    jobs:
-      - test:
-          matrix:
-            parameters:
-              version:
-                - "3.8"
-                - "3.9"
-#                - "3.10.0b1"
