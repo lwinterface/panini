@@ -1,7 +1,7 @@
 from panini import app as panini_app
 
 app = panini_app.App(
-    service_name="test_request",
+    service_name="separate_file",
     host="127.0.0.1",
     port=4222,
     logger_in_separate_process=False,
