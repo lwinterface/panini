@@ -5,7 +5,6 @@ import pytest
 from aiohttp import web
 from panini import app as panini_app
 from panini.test_client import TestClient
-from panini.utils.helper import start_process
 
 
 def run_panini():
