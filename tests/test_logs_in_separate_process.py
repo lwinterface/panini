@@ -44,7 +44,7 @@ def run_panini():
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini, logger_files_path=testing_logs_directory_path)
-    client.start(is_daemon=False)
+    client.start()
     yield client
     client.stop()
 
@@ -86,4 +86,3 @@ def test_listen_composite_subject_with_response(client):
 def test_kill_logs(client):
     response = client.request("test_logs_in_separate_process.kill.logs", {})
     assert response["success"] is True
-    client.panini_process.kill()

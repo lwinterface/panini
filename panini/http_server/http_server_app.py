@@ -1,3 +1,5 @@
+import os
+
 from aiohttp import web
 
 
@@ -23,4 +25,11 @@ class HTTPServer:
 
     def _start_server(self):
         self.web_app.add_routes(self.routes)
-        web.run_app(self.web_app, host=self.host, port=self.port)
+        if os.environ.get("PANINI_TEST_MODE"):
+            # do not handle signals while testing
+            web.run_app(
+                self.web_app, host=self.host, port=self.port, handle_signals=False
+            )
+
+        else:
+            web.run_app(self.web_app, host=self.host, port=self.port)

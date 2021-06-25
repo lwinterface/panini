@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 import threading
@@ -142,7 +143,7 @@ class TestClient:
         if use_web_socket:
             self.websocket_session = websocket.WebSocket()
 
-        self.panini_process = None
+        self.panini_thread = None
 
     def create_nats_client(self, suffix: str, nats_timeout) -> NATSClient:
         return NATSClient(
@@ -178,12 +179,15 @@ class TestClient:
         )
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, is_daemon: bool = True, do_always_listen: bool = True):
+    def start(self, do_always_listen: bool = True):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
             def nats_listener_worker(stop_event):
@@ -212,7 +216,7 @@ class TestClient:
             )
             self.nats_client_sender.auto_unsubscribe(sub)
 
-            self.panini_process = start_process(
+            self.panini_thread = start_thread(
                 self.wrap_run_panini,
                 args=(
                     self.run_panini,
@@ -220,7 +224,7 @@ class TestClient:
                     self.run_panini_kwargs,
                     self.logger_files_path,
                 ),
-                daemon=is_daemon,
+                daemon=True,
             )
 
             try:
@@ -239,9 +243,6 @@ class TestClient:
         self.nats_client_listener.close()
         self.nats_client_sender.close()
         self.nats_client_listener_thread_stop_event.set()
-
-        if self.panini_process:
-            self.panini_process.kill()
 
         if hasattr(self, "http_session"):
             self.http_session.close()

@@ -4,7 +4,7 @@ import json
 import pytest
 from aiohttp import web
 from panini import app as panini_app
-from panini.test_client import HTTPSessionTestClient
+from panini.test_client import TestClient
 from panini.utils.helper import start_process
 
 
@@ -43,13 +43,13 @@ def run_panini():
 # if we use raw HTTPSessionTestClient - we need to run panini manually and wait for setup
 @pytest.fixture(scope="module")
 def client():
-    client = HTTPSessionTestClient(
-        base_url="http://127.0.0.1:8083"
-    )  # handles only http requests
-    start_process(run_panini)
-    time.sleep(2)
+    client = TestClient(
+        run_panini, use_web_server=True, base_web_server_url="http://127.0.0.1:8083"
+    )
+    client.start()
+    time.sleep(1)
     yield client
-    client.close()
+    client.stop()
 
 
 @pytest.mark.parametrize(
@@ -57,13 +57,13 @@ def client():
     ["test_web_server_separately/get", "test_web_server_separately/rest/endpoint"],
 )
 def test_get(url, client):
-    response = client.get(url)
+    response = client.http_session.get(url)
     assert response.status_code == 200
     assert response.text == "get response"
 
 
 def test_get_invalid(client):
-    response = client.get("test_web_server_separately/get/invalid")
+    response = client.http_session.get("test_web_server_separately/get/invalid")
     assert response.status_code == 404, response.text
 
 
@@ -72,13 +72,13 @@ def test_get_invalid(client):
     ["test_web_server_separately/post", "test_web_server_separately/rest/endpoint"],
 )
 def test_post(url, client):
-    response = client.post(url, data=json.dumps({"data": 1}))
+    response = client.http_session.post(url, data=json.dumps({"data": 1}))
     assert response.status_code == 200
     assert response.json()["data"] == 2
 
 
 def test_post_invalid(client):
-    response = client.post(
+    response = client.http_session.post(
         "test_web_server_separately/post", data=json.dumps({"data": None})
     )
     assert response.status_code == 500, response.text
