@@ -96,6 +96,7 @@ class AsyncTestClient:
         run_panini: typing.Callable = None,
         run_panini_args: list = None,
         run_panini_kwargs: dict = None,
+        run_panini_timeout: int = 5,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
         logger_files_path: str = "test_logs",
@@ -116,6 +117,7 @@ class AsyncTestClient:
         self.run_panini = run_panini
         self.run_panini_args = run_panini_args or []
         self.run_panini_kwargs = run_panini_kwargs or {}
+        self.run_panini_timeout = run_panini_timeout
         self.listen_subjects_callbacks = listen_subjects_callbacks or {}
         self.panini_service_name = panini_service_name
         self.panini_client_id = panini_client_id
@@ -204,7 +206,7 @@ class AsyncTestClient:
             )
 
             try:
-                await asyncio.wait_for(panini_started_future, 1)
+                await asyncio.wait_for(panini_started_future, self.run_panini_timeout)
             except Exception:
                 raise TestClientError(
                     "TestClient was waiting panini to start, but panini does not started"

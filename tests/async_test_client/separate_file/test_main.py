@@ -13,7 +13,7 @@ def run_panini():
 async def client():
     client = await AsyncTestClient(run_panini).start()
     yield client
-    client.stop()
+    await client.stop()
 
 
 @pytest.mark.asyncio
