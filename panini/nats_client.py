@@ -111,7 +111,11 @@ class NATSClient:
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback))
 
     async def subscribe_new_subject(
-        self, subject: str, callback: CoroutineType, init_subscription=False
+        self,
+        subject: str,
+        callback: CoroutineType,
+        init_subscription=False,
+        is_async=False,
     ):
         callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback)
@@ -120,6 +124,7 @@ class NATSClient:
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
+            is_async=is_async,
         )
         if subject not in self.ssid_map:
             self.ssid_map[subject] = []
