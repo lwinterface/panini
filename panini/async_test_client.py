@@ -4,7 +4,9 @@ import shutil
 import threading
 import json
 import random
+import time
 import typing
+from copy import deepcopy
 from urllib.parse import urljoin
 
 import requests
@@ -96,7 +98,7 @@ class AsyncTestClient:
         run_panini: typing.Callable = None,
         run_panini_args: list = None,
         run_panini_kwargs: dict = None,
-        run_panini_timeout: int = 5,
+        run_panini_timeout: float = 5,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
         logger_files_path: str = "test_logs",
@@ -130,6 +132,7 @@ class AsyncTestClient:
         self.nats_client.msg_class = Msg
         self.nats_host = nats_host
         self.nats_port = nats_port
+        self._listen_subjects_count_calls = {}
 
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
@@ -254,15 +257,62 @@ class AsyncTestClient:
             max_msgs=max_messages,
         )
 
-    # TODO: implement wait function
-    # def wait(self, count: int) -> None:
-    #     if self.nats_client_listener_thread is not None:
-    #         raise TestClientError(
-    #             "You can't use client.wait, "
-    #             "if you don't have any @client.listen functions "
-    #             "or you don't use do_always_listen=False!"
-    #         )
-    #     self.nats_client_listener.wait(count=count)
+    def total_count_subject_calls(self, count_calls: dict = None):
+        if count_calls is None:
+            count_calls = self._listen_subjects_count_calls
+        return sum(count_calls.values())
+
+    def count_subject_calls(self, subject: str, count_calls: dict = None):
+        if count_calls is None:
+            count_calls = self._listen_subjects_count_calls
+        return count_calls.get(subject, 0)
+
+    async def wait(
+        self,
+        count: int = 0,
+        timeout: float = 1,
+        subject: str = None,
+        subjects: dict = None,
+    ) -> None:
+        """
+        Waits for test client subjects to be triggered & handled.
+        count: how much calls wait
+        timeout: maximum seconds to wait
+        subject: which subject to wait
+        subjects: dict of subjects, with subject as key and count_to_wait as value
+        """
+        start_time = time.time()
+        initial_subject_calls = deepcopy(self._listen_subjects_count_calls)
+
+        while time.time() - start_time < timeout:
+            if subject is not None:
+                if (
+                    self.count_subject_calls(subject)
+                    - self.count_subject_calls(subject, initial_subject_calls)
+                    >= count
+                ):
+                    return
+            elif subjects is not None:
+                if all(
+                    [
+                        self.count_subject_calls(subj)
+                        - self.count_subject_calls(subj, initial_subject_calls)
+                        >= count_call
+                        for subj, count_call in subjects.items()
+                    ]
+                ):
+                    return
+            elif (
+                self.total_count_subject_calls()
+                - self.total_count_subject_calls(initial_subject_calls)
+                >= count
+            ):
+                return
+            await asyncio.sleep(0)
+
+        raise asyncio.TimeoutError(
+            f"Timeout while waiting for listen_subjects to be called! Params - count: {count}, timeout: {timeout}, subject: {subject}, subjects: {subjects}"
+        )
 
     def listen(self, subject: str):
         def decorator(func):
@@ -286,6 +336,10 @@ class AsyncTestClient:
                         subject=incoming_message.reply,
                         payload=self._dict_to_bytes(wrapper_response),
                     )
+
+                self._listen_subjects_count_calls[msg.subject] = (
+                    self._listen_subjects_count_calls.get(msg.subject, 0) + 1
+                )
 
             self.listen_subjects_callbacks[subject] = wrapper
 
