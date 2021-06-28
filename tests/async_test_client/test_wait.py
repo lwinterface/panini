@@ -64,3 +64,5 @@ async def test_request(client: AsyncTestClient):
     )  # for more than 1 subject
     assert counter == count_calls
     assert second_counter == count_calls
+    assert client.count_subject_calls(subject) == count_calls
+    assert client.count_subject_calls(subject_second) == count_calls
