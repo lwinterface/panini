@@ -33,7 +33,7 @@ async def test_listen(client, future):
 
 
 @pytest.mark.asyncio
-async def test_listen(client, future):
+async def test_another_listen(client, future):
     subject = "async_test_client.test_another_listen"
     await client.publish(subject, {})
     msg = await asyncio.wait_for(future, 1)

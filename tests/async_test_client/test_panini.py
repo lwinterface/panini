@@ -22,7 +22,7 @@ def run_panini():
     app.start()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 async def client():
     client = AsyncTestClient(run_panini=run_panini)
 
@@ -37,6 +37,14 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_listen(client):
+    subject = "async_test_client.test_panini"
+    response = await client.request(subject, {})
+    assert response["success"] is True
+    assert response["subject"] == subject
+
+
+@pytest.mark.asyncio
+async def test_second(client):
     subject = "async_test_client.test_panini"
     response = await client.request(subject, {})
     assert response["success"] is True
