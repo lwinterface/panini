@@ -227,7 +227,7 @@ class NATSClient:
 
     @staticmethod
     def format_message_data_type(message, data_type):
-        if type(message) is dict and data_type == "json.dumps":
+        if type(message) in [dict, list] and data_type == "json.dumps":
             message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
