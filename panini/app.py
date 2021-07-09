@@ -52,6 +52,7 @@ class App(
         logger_required: bool = True,
         logger_files_path: str = None,
         logger_in_separate_process: bool = False,
+        pending_bytes_limit=65536 * 1024 * 10,
     ):
         """
         :param host: NATS broker host
@@ -98,6 +99,7 @@ class App(
                 "queue": allocation_queue_group,
                 "max_reconnect_attempts": max_reconnect_attempts,
                 "reconnecting_time_wait": reconnecting_time_sleep,
+                "pending_bytes_limit": pending_bytes_limit,
             }
             self.tasks = tasks
             self.listen_subject_only_if_include = listen_subject_only_if_include

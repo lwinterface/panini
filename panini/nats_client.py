@@ -104,22 +104,30 @@ class NATSClient:
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
                     await self.subscribe_new_subject(
-                        subject, callback, init_subscription=True
-                    )
+                            subject, callback, init_subscription=True
+                        )
 
-    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.subscribe_new_subject(subject, callback))
+    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
+        self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
 
     async def subscribe_new_subject(
-        self, subject: str, callback: CoroutineType, init_subscription=False
+        self,
+        subject: str,
+        callback: CoroutineType,
+        init_subscription=False,
+        is_async=False,
+        data_type=None
     ):
+        if data_type == None:
+            data_type = getattr(callback, 'data_type', 'json.loads')
         callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
-        wrapped_callback = _ReceivedMessageHandler(self._publish, callback)
+        wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
+            is_async=is_async,
         )
         if subject not in self.ssid_map:
             self.ssid_map[subject] = []
@@ -222,7 +230,7 @@ class NATSClient:
 
     @staticmethod
     def format_message_data_type(message, data_type):
-        if type(message) is dict and data_type == "json.dumps":
+        if type(message) in [dict, list] and data_type == "json.dumps":
             message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
@@ -319,10 +327,10 @@ class NATSClient:
 
 
 class _ReceivedMessageHandler:
-    def __init__(self, publish_func, cb):
+    def __init__(self, publish_func, cb, data_type):
         self.publish_func = publish_func
         self.cb = cb
-        self.data_type = getattr(cb, "data_type", "json.loads")
+        self.data_type = data_type
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
     def __call__(self, msg):
