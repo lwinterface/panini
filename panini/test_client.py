@@ -1,4 +1,3 @@
-import asyncio
 import os
 import shutil
 import threading
@@ -180,14 +179,12 @@ class TestClient:
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
             run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, do_always_listen: bool = True, is_daemon=True):
+    def start(self, is_daemon=True, do_always_listen: bool = True):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
             def nats_listener_worker(stop_event):
@@ -244,7 +241,7 @@ class TestClient:
         self.nats_client_sender.close()
         self.nats_client_listener_thread_stop_event.set()
 
-        if self.panini_process is not None:
+        if self.panini_process:
             self.panini_process.kill()
 
         if hasattr(self, "http_session"):
