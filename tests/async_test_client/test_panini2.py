@@ -1,4 +1,3 @@
-import threading
 import pytest
 
 from panini.async_test_client import AsyncTestClient
