@@ -178,13 +178,12 @@ class TestClient:
         )
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
-
         try:
             run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, is_daemon=True, do_always_listen: bool = True):
+    def start(self, is_daemon: bool = True, do_always_listen: bool = True):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
             def nats_listener_worker(stop_event):
