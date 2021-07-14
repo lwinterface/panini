@@ -14,7 +14,7 @@ import websocket
 from nats.aio.client import Client as NATS
 
 from .exceptions import TestClientError
-from .utils.helper import start_thread
+from .utils.helper import start_process
 from panini.nats_client import Msg
 
 
@@ -140,7 +140,7 @@ class AsyncTestClient:
         if use_web_socket:
             self.websocket_session = websocket.WebSocket()
 
-        self.panini_thread = None
+        self.panini_process = None
 
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
@@ -197,7 +197,7 @@ class AsyncTestClient:
             )
             await self.nats_client.auto_unsubscribe(sid, 1)
 
-            self.panini_thread = start_thread(
+            self.panini_process = start_process(
                 self.wrap_run_panini,
                 args=(
                     self.run_panini,
@@ -223,6 +223,9 @@ class AsyncTestClient:
     async def stop(self):
         await self.nats_client.drain()
         await self.nats_client.close()
+
+        if self.panini_process is not None:
+            self.panini_process.kill()
 
         if hasattr(self, "http_session"):
             self.http_session.close()
@@ -282,31 +285,20 @@ class AsyncTestClient:
         subjects: dict of subjects, with subject as key and count_to_wait as value
         """
         start_time = time.time()
-        initial_subject_calls = deepcopy(self._listen_subjects_count_calls)
 
         while time.time() - start_time < timeout:
             if subject is not None:
-                if (
-                    self.count_subject_calls(subject)
-                    - self.count_subject_calls(subject, initial_subject_calls)
-                    >= count
-                ):
+                if self.count_subject_calls(subject) >= count:
                     return
             elif subjects is not None:
                 if all(
                     [
-                        self.count_subject_calls(subj)
-                        - self.count_subject_calls(subj, initial_subject_calls)
-                        >= count_call
+                        self.count_subject_calls(subj) >= count_call
                         for subj, count_call in subjects.items()
                     ]
                 ):
                     return
-            elif (
-                self.total_count_subject_calls()
-                - self.total_count_subject_calls(initial_subject_calls)
-                >= count
-            ):
+            elif self.total_count_subject_calls() >= count:
                 return
             await asyncio.sleep(0)
 

@@ -44,7 +44,7 @@ def run_panini():
 @pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini, logger_files_path=testing_logs_directory_path)
-    client.start()
+    client.start(is_daemon=False)
     yield client
     client.stop()
 

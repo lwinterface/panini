@@ -143,7 +143,7 @@ class TestClient:
         if use_web_socket:
             self.websocket_session = websocket.WebSocket()
 
-        self.panini_thread = None
+        self.panini_process = None
 
     def create_nats_client(self, suffix: str, nats_timeout) -> NATSClient:
         return NATSClient(
@@ -187,7 +187,7 @@ class TestClient:
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, do_always_listen: bool = True):
+    def start(self, do_always_listen: bool = True, is_daemon=True):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
             def nats_listener_worker(stop_event):
@@ -216,7 +216,7 @@ class TestClient:
             )
             self.nats_client_sender.auto_unsubscribe(sub)
 
-            self.panini_thread = start_thread(
+            self.panini_process = start_process(
                 self.wrap_run_panini,
                 args=(
                     self.run_panini,
@@ -224,7 +224,7 @@ class TestClient:
                     self.run_panini_kwargs,
                     self.logger_files_path,
                 ),
-                daemon=True,
+                daemon=is_daemon,
             )
 
             try:
@@ -243,6 +243,9 @@ class TestClient:
         self.nats_client_listener.close()
         self.nats_client_sender.close()
         self.nats_client_listener_thread_stop_event.set()
+
+        if self.panini_process is not None:
+            self.panini_process.kill()
 
         if hasattr(self, "http_session"):
             self.http_session.close()
