@@ -165,12 +165,16 @@ class TestClient:
         run_panini_args: list,
         run_panini_kwargs: dict,
         logger_files_path: str,
+        use_error_middleware: bool,
     ):
         from .utils.logger import get_logger
 
         test_logger = get_logger("panini")
         # set the panini testing data in os.environ
         os.environ["PANINI_TEST_MODE"] = "true"
+        os.environ["PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE"] = (
+            "true" if use_error_middleware else "false"
+        )
         testing_logger_files_path = (
             get_logger_files_path(logger_files_path)
             if not os.path.isabs(logger_files_path)
@@ -183,7 +187,12 @@ class TestClient:
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(self, is_daemon: bool = True, do_always_listen: bool = True):
+    def start(
+        self,
+        is_daemon: bool = True,
+        do_always_listen: bool = True,
+        use_error_middleware=True,
+    ):
         if do_always_listen and len(self._subscribed_subjects) > 0:
 
             def nats_listener_worker(stop_event):
@@ -219,6 +228,7 @@ class TestClient:
                     self.run_panini_args,
                     self.run_panini_kwargs,
                     self.logger_files_path,
+                    use_error_middleware,
                 ),
                 daemon=is_daemon,
             )

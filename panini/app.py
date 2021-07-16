@@ -19,6 +19,7 @@ from .exceptions import (
     InitializingTaskError,
     InitializingIntervalTaskError,
 )
+from .middleware.error import ErrorMiddleware
 from .utils.helper import (
     start_thread,
     get_app_root_path,
@@ -188,6 +189,19 @@ class App(
         self.logger.logger = logging.getLogger(service_name)
 
     def start(self):
+        if (
+            os.environ.get("PANINI_TEST_MODE")
+            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+            == "true"
+        ):
+
+            def exception_handler(e, **kwargs):
+                self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
+                raise
+
+            self.add_middleware(
+                ErrorMiddleware, error=Exception, callback=exception_handler
+            )
         if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,

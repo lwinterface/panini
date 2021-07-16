@@ -4,7 +4,7 @@ from panini.async_test_client import AsyncTestClient
 
 
 def run_panini():
-    from tests.separate_file.main import app
+    from tests.async_test_client.separate_file.main import app
 
     app.start()
 
@@ -17,8 +17,8 @@ async def client():
 
 
 @pytest.mark.asyncio
-async def test_request(client):
-    subject = "separate_file.listen_request"
+async def test_request(client: AsyncTestClient):
+    subject = "separate_file.async_test_client.listen_request"
     response = await client.request(subject, {})
     assert response["success"] is True
     assert response["message"] == subject

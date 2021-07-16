@@ -8,9 +8,12 @@ app = panini_app.App(
 )
 
 
-@app.listen("separate_file.listen_request")
+@app.listen("separate_file.async_test_client.listen_request")
 async def listen_request(msg):
-    return {"success": True, "message": "separate_file.listen_request"}
+    return {
+        "success": True,
+        "message": "separate_file.async_test_client.listen_request",
+    }
 
 
 if __name__ == "__main__":
