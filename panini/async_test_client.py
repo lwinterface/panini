@@ -1,12 +1,10 @@
 import asyncio
 import os
 import shutil
-import threading
 import json
 import random
 import time
 import typing
-from copy import deepcopy
 from urllib.parse import urljoin
 
 import requests
@@ -88,6 +86,32 @@ def get_logger_files_path(folder: str = "test_logs", remove_if_exist: bool = Fal
             shutil.rmtree(testing_logs_directory_path)
 
     return testing_logs_directory_path
+
+
+def is_subject_matches_pattern(subject: str, pattern: str) -> bool:
+    subject_parts = subject.split(".")
+    pattern_parts = pattern.split(".")
+    if ">" in pattern:
+        assert pattern[-1] == ">", "> must can be only the last element of subject!"
+        gt_position = pattern_parts.index(">")
+        return is_subject_matches_pattern(
+            ".".join(subject_parts[:gt_position]),
+            ".".join(pattern_parts[:gt_position]),
+        )
+
+    if ">" in subject_parts:
+        return False
+
+    if len(subject_parts) != len(pattern_parts):
+        return False
+
+    for index, part in enumerate(pattern_parts):
+        if part == "*":
+            pass
+        elif part != subject_parts[index]:
+            return False
+
+    return True
 
 
 class AsyncTestClient:
@@ -271,9 +295,19 @@ class AsyncTestClient:
         return sum(count_calls.values())
 
     def count_subject_calls(self, subject: str, count_calls: dict = None):
+        """Count calls for specific subject (this subject is used as pattern for subject - supports * and >)"""
         if count_calls is None:
             count_calls = self._listen_subjects_count_calls
-        return count_calls.get(subject, 0)
+        res_count = 0
+        for listen_subject, count in count_calls.items():
+            if is_subject_matches_pattern(listen_subject, subject):
+                res_count += count
+
+        return res_count
+
+    def clear_listen_subjects_count_calls(self):
+        """Clean up all counts for subject called in AsyncTestClient"""
+        self._listen_subjects_count_calls = {}
 
     async def wait(
         self,
@@ -307,8 +341,16 @@ class AsyncTestClient:
                 return
             await asyncio.sleep(0)
 
+        # wait was not successful
+        if subject is not None:
+            report_msg = f"subject: {subject} was called {self.count_subject_calls(subject)} times"
+        elif subjects is not None:
+            subjects_calls = {subj: self.count_subject_calls(subj) for subj in subjects}
+            report_msg = f"subjects were called {subjects_calls} times"
+        else:
+            report_msg = f"total_count_subject_calls={self.total_count_subject_calls()}"
         raise asyncio.TimeoutError(
-            f"Timeout while waiting for listen_subjects to be called! Params - count: {count}, timeout: {timeout}, subject: {subject}, subjects: {subjects}"
+            f"Timeout while waiting for listen_subjects to be called! Params - count: {count}, timeout: {timeout}, subject: {subject}, subjects: {subjects}. Actual state: {report_msg}"
         )
 
     def listen(self, subject: str):
@@ -327,7 +369,10 @@ class AsyncTestClient:
                     reply=incoming_message.reply,
                     sid=incoming_message.sid,
                 )
-                wrapper_response = await func(msg)
+                if asyncio.iscoroutinefunction(func):
+                    wrapper_response = await func(msg)
+                else:
+                    wrapper_response = func(msg)
                 if wrapper_response is not None and incoming_message.reply != "":
                     await self.nats_client.publish(
                         subject=incoming_message.reply,
