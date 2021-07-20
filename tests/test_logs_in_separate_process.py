@@ -86,4 +86,3 @@ def test_listen_composite_subject_with_response(client):
 def test_kill_logs(client):
     response = client.request("test_logs_in_separate_process.kill.logs", {})
     assert response["success"] is True
-    client.panini_process.kill()

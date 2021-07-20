@@ -1,17 +1,18 @@
+import asyncio
 import os
 import shutil
-import threading
 import json
 import random
+import time
 import typing
 from urllib.parse import urljoin
 
 import requests
 import websocket
-from pynats import NATSClient, NATSMessage
+from nats.aio.client import Client as NATS
 
 from .exceptions import TestClientError
-from .utils.helper import start_process, start_thread
+from .utils.helper import start_process
 from panini.nats_client import Msg
 
 
@@ -87,7 +88,33 @@ def get_logger_files_path(folder: str = "test_logs", remove_if_exist: bool = Fal
     return testing_logs_directory_path
 
 
-class TestClient:
+def is_subject_matches_pattern(subject: str, pattern: str) -> bool:
+    subject_parts = subject.split(".")
+    pattern_parts = pattern.split(".")
+    if ">" in pattern:
+        assert pattern[-1] == ">", "> must can be only the last element of subject!"
+        gt_position = pattern_parts.index(">")
+        return is_subject_matches_pattern(
+            ".".join(subject_parts[:gt_position]),
+            ".".join(pattern_parts[:gt_position]),
+        )
+
+    if ">" in subject_parts:
+        return False
+
+    if len(subject_parts) != len(pattern_parts):
+        return False
+
+    for index, part in enumerate(pattern_parts):
+        if part == "*":
+            pass
+        elif part != subject_parts[index]:
+            return False
+
+    return True
+
+
+class AsyncTestClient:
     __test__ = False
 
     def __init__(
@@ -95,16 +122,15 @@ class TestClient:
         run_panini: typing.Callable = None,
         run_panini_args: list = None,
         run_panini_kwargs: dict = None,
+        run_panini_timeout: float = 5,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
         logger_files_path: str = "test_logs",
         use_web_server: bool = False,
         use_web_socket: bool = False,
         base_web_server_url: str = "http://127.0.0.1:8080",
-        base_nats_url: str = "nats://127.0.0.1:4222",
-        socket_timeout: int = 5,
-        listener_socket_timeout: int = 1,
-        auto_reconnect: bool = True,
+        nats_host: str = "127.0.0.1",
+        nats_port: int = 4222,
         name: str = "__".join(
             [
                 "test_client",
@@ -112,12 +138,13 @@ class TestClient:
                 str(random.randint(1, 10000000)),
             ]
         ),
-        _subscribed_subjects: [str] = None,
+        listen_subjects_callbacks: dict = None,
     ):
         self.run_panini = run_panini
         self.run_panini_args = run_panini_args or []
         self.run_panini_kwargs = run_panini_kwargs or {}
-        self._subscribed_subjects = _subscribed_subjects or []
+        self.run_panini_timeout = run_panini_timeout
+        self.listen_subjects_callbacks = listen_subjects_callbacks or {}
         self.panini_service_name = panini_service_name
         self.panini_client_id = panini_client_id
         self.logger_files_path = logger_files_path
@@ -125,16 +152,11 @@ class TestClient:
         self.use_web_server = use_web_server
         self.use_web_socket = use_web_socket
         self.name = name
-        self.base_nats_url = base_nats_url
-        self.auto_reconnect = auto_reconnect
-        self.nats_client_sender = self.create_nats_client("sender", socket_timeout)
-        self.nats_client_listener = self.create_nats_client(
-            "listener", listener_socket_timeout
-        )
-        self.nats_client_sender.connect()
-        self.nats_client_listener.connect()
-        self.nats_client_listener_thread = None
-        self.nats_client_listener_thread_stop_event = threading.Event()
+        self.nats_client = NATS()
+        self.nats_client.msg_class = Msg
+        self.nats_host = nats_host
+        self.nats_port = nats_port
+        self._listen_subjects_count_calls = {}
 
         if use_web_server:
             self.http_session = HTTPSessionTestClient(base_url=base_web_server_url)
@@ -143,13 +165,6 @@ class TestClient:
             self.websocket_session = websocket.WebSocket()
 
         self.panini_process = None
-
-    def create_nats_client(self, suffix: str, nats_timeout) -> NATSClient:
-        return NATSClient(
-            url=self.base_nats_url,
-            name=self.name + suffix,
-            socket_timeout=nats_timeout,
-        )
 
     @staticmethod
     def _dict_to_bytes(message: dict) -> bytes:
@@ -182,44 +197,33 @@ class TestClient:
         )
 
         os.environ["PANINI_TEST_LOGGER_FILES_PATH"] = testing_logger_files_path
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             run_panini(*run_panini_args, **run_panini_kwargs)
         except Exception as e:
             test_logger.exception(f"Run panini error: {e}")
 
-    def start(
-        self,
-        is_daemon: bool = True,
-        do_always_listen: bool = True,
-        use_error_middleware=True,
-    ):
-        if do_always_listen and len(self._subscribed_subjects) > 0:
-
-            def nats_listener_worker(stop_event):
-                try:
-                    while not stop_event.wait(1):
-                        self.nats_client_listener.wait()
-                except Exception:
-                    pass
-
-            # Run nats-listener process
-            self.nats_client_listener_thread = start_thread(
-                nats_listener_worker,
-                args=[self.nats_client_listener_thread_stop_event],
-                daemon=True,
-            )
+    async def start(self, is_daemon: bool = True, use_error_middleware=True):
+        await self.nats_client.connect(
+            f"{self.nats_host}:{self.nats_port}", name=self.name
+        )
+        for subject, callback in self.listen_subjects_callbacks.items():
+            await self.nats_client.subscribe(subject, cb=callback)
 
         if self.run_panini is not None:
 
-            def panini_started(msg):
-                pass
+            panini_started_future = asyncio.Future()
 
-            sub = self.nats_client_sender.subscribe(
+            def panini_started(msg):
+                panini_started_future.set_result(msg)
+
+            sid = await self.nats_client.subscribe(
                 f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started",
-                callback=panini_started,
-                max_messages=1,
+                cb=panini_started,
             )
-            self.nats_client_sender.auto_unsubscribe(sub)
+            await self.nats_client.auto_unsubscribe(sid, 1)
 
             self.panini_process = start_process(
                 self.wrap_run_panini,
@@ -234,8 +238,8 @@ class TestClient:
             )
 
             try:
-                self.nats_client_sender.wait(count=1)  # wait for panini to start
-            except OSError:
+                await asyncio.wait_for(panini_started_future, self.run_panini_timeout)
+            except Exception:
                 raise TestClientError(
                     "TestClient was waiting panini to start, but panini does not started"
                 )
@@ -245,12 +249,11 @@ class TestClient:
 
         return self
 
-    def stop(self):
-        self.nats_client_listener.close()
-        self.nats_client_sender.close()
-        self.nats_client_listener_thread_stop_event.set()
+    async def stop(self):
+        await self.nats_client.drain()
+        await self.nats_client.close()
 
-        if self.panini_process:
+        if self.panini_process is not None:
             self.panini_process.kill()
 
         if hasattr(self, "http_session"):
@@ -259,60 +262,106 @@ class TestClient:
         if hasattr(self, "websocket_session"):
             self.websocket_session.close()
 
-    def publish(self, subject: str, message: dict, reply: str = "") -> None:
-        self.nats_client_sender.publish(
-            subject=subject, payload=self._dict_to_bytes(message), reply=reply
+    async def publish(self, subject: str, message: dict, reply_to: str = "") -> None:
+        message = self._dict_to_bytes(message)
+        if reply_to is not None:
+            await self.nats_client.publish_request(subject, reply_to, message)
+        else:
+            await self.nats_client.publish(subject, message)
+
+    async def request(self, subject: str, message: dict, timeout: int = 1) -> dict:
+        response = await self.nats_client.request(
+            subject=subject, payload=self._dict_to_bytes(message), timeout=timeout
         )
+        return self._bytes_to_dict(response.data)
 
-    def reconnect(self):
-        if (
-            self.auto_reconnect
-        ):  # reconnects nats_client for next call, if it was disconnected earlier
-            try:
-                self.nats_client_sender.ping()
-            except Exception:
-                self.nats_client_sender.reconnect()
-
-    def request(self, subject: str, message: dict) -> dict:
-        self.reconnect()
-
-        return self._bytes_to_dict(
-            self.nats_client_sender.request(
-                subject=subject, payload=self._dict_to_bytes(message)
-            ).payload
-        )
-
-    def subscribe(
+    async def subscribe(
         self,
         subject: str,
         callback: typing.Callable,
         queue: str = "",
-        max_messages: typing.Optional[int] = None,
+        max_messages: typing.Optional[int] = 0,
     ):
-        self._subscribed_subjects.append(subject)
-        return self.nats_client_listener.subscribe(
+        return await self.nats_client.subscribe(
             subject=subject,
-            callback=callback,
+            cb=callback,
             queue=queue,
-            max_messages=max_messages,
+            max_msgs=max_messages,
         )
 
-    def wait(self, count: int) -> None:
-        if self.nats_client_listener_thread is not None:
-            raise TestClientError(
-                "You can't use client.wait, "
-                "if you don't have any @client.listen functions "
-                "or you don't use do_always_listen=False!"
-            )
-        self.nats_client_listener.wait(count=count)
+    def total_count_subject_calls(self, count_calls: dict = None):
+        if count_calls is None:
+            count_calls = self._listen_subjects_count_calls
+        return sum(count_calls.values())
+
+    def count_subject_calls(self, subject: str, count_calls: dict = None):
+        """Count calls for specific subject (this subject is used as pattern for subject - supports * and >)"""
+        if count_calls is None:
+            count_calls = self._listen_subjects_count_calls
+        res_count = 0
+        for listen_subject, count in count_calls.items():
+            if is_subject_matches_pattern(listen_subject, subject):
+                res_count += count
+
+        return res_count
+
+    def clear_listen_subjects_count_calls(self):
+        """Clean up all counts for subject called in AsyncTestClient"""
+        self._listen_subjects_count_calls = {}
+
+    async def wait(
+        self,
+        count: int = 0,
+        timeout: float = 1,
+        subject: str = None,
+        subjects: dict = None,
+    ) -> None:
+        """
+        Waits for test client subjects to be triggered & handled.
+        count: how much calls wait
+        timeout: maximum seconds to wait
+        subject: which subject to wait
+        subjects: dict of subjects, with subject as key and count_to_wait as value
+        """
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            if subject is not None:
+                if self.count_subject_calls(subject) >= count:
+                    return
+            elif subjects is not None:
+                if all(
+                    [
+                        self.count_subject_calls(subj) >= count_call
+                        for subj, count_call in subjects.items()
+                    ]
+                ):
+                    return
+            elif self.total_count_subject_calls() >= count:
+                return
+            await asyncio.sleep(0)
+
+        # wait was not successful
+        if subject is not None:
+            report_msg = f"subject: {subject} was called {self.count_subject_calls(subject)} times"
+        elif subjects is not None:
+            subjects_calls = {subj: self.count_subject_calls(subj) for subj in subjects}
+            report_msg = f"subjects were called {subjects_calls} times"
+        else:
+            report_msg = f"total_count_subject_calls={self.total_count_subject_calls()}"
+        raise asyncio.TimeoutError(
+            f"Timeout while waiting for listen_subjects to be called! Params - count: {count}, timeout: {timeout}, subject: {subject}, subjects: {subjects}. Actual state: {report_msg}"
+        )
 
     def listen(self, subject: str):
         def decorator(func):
             assert isinstance(subject, str), "Subject must be only in str format"
 
-            def wrapper(incoming_message):
-                assert isinstance(incoming_message, NATSMessage)
-                incoming_message_data = self._bytes_to_dict(incoming_message.payload)
+            async def wrapper(incoming_message):
+                assert isinstance(
+                    incoming_message, Msg
+                ), "Incoming message must be instance of Msg!"
+                incoming_message_data = self._bytes_to_dict(incoming_message.data)
 
                 msg = Msg(
                     subject=incoming_message.subject,
@@ -320,14 +369,21 @@ class TestClient:
                     reply=incoming_message.reply,
                     sid=incoming_message.sid,
                 )
-                wrapper_response = func(msg)
+                if asyncio.iscoroutinefunction(func):
+                    wrapper_response = await func(msg)
+                else:
+                    wrapper_response = func(msg)
                 if wrapper_response is not None and incoming_message.reply != "":
-                    self.nats_client_listener.publish(
+                    await self.nats_client.publish(
                         subject=incoming_message.reply,
                         payload=self._dict_to_bytes(wrapper_response),
                     )
 
-            self.subscribe(subject, wrapper)
+                self._listen_subjects_count_calls[msg.subject] = (
+                    self._listen_subjects_count_calls.get(msg.subject, 0) + 1
+                )
+
+            self.listen_subjects_callbacks[subject] = wrapper
 
             return wrapper
 
