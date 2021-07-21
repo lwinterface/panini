@@ -19,6 +19,7 @@ from .exceptions import (
     InitializingTaskError,
     InitializingIntervalTaskError,
 )
+from .middleware.error import ErrorMiddleware
 from .utils.helper import (
     start_thread,
     get_app_root_path,
@@ -45,6 +46,7 @@ class App(
         subscribe_subjects_and_callbacks: dict = None,
         allocation_queue_group: str = "",
         listen_subject_only_if_include: list = None,
+        listen_subject_only_if_exclude: list = None,
         web_server: bool = False,
         web_app: web.Application = None,
         web_host: str = None,
@@ -70,6 +72,8 @@ class App(
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
         :param listen_subject_only_if_include:   if not None, client will subscribe
                                                 only to subjects that include these key words
+        :param listen_subject_only_if_exclude:   if not None, client will not subscribe
+                                                 to subjects that include these key words
         :param web_app: web.Application:       custom aiohttp app that you can create separately from panini.
                             if you set this argument client will only run this aiohttp app without handling
         :param web_host: Web application host
@@ -103,6 +107,11 @@ class App(
             }
             self.tasks = tasks
             self.listen_subject_only_if_include = listen_subject_only_if_include
+            self.listen_subject_only_if_exclude = listen_subject_only_if_exclude
+            assert (
+                self.listen_subject_only_if_include is None
+                or self.listen_subject_only_if_exclude is None
+            ), "You can use only 1 of listen_subject_only_if_include/exclude at the same moment!"
             self.subscribe_subjects_and_callbacks = subscribe_subjects_and_callbacks
 
             self.app_root_path = get_app_root_path()
@@ -190,6 +199,19 @@ class App(
         self.logger.logger = logging.getLogger(service_name)
 
     def start(self):
+        if (
+            os.environ.get("PANINI_TEST_MODE")
+            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+            == "true"
+        ):
+
+            def exception_handler(e, **kwargs):
+                self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
+                raise
+
+            self.add_middleware(
+                ErrorMiddleware, error=Exception, callback=exception_handler
+            )
         if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,
@@ -208,6 +230,15 @@ class App(
                     for subject_include in self.listen_subject_only_if_include:
                         if subject_include in subject:
                             success = True
+                            break
+                    if success is False:
+                        del subjects_and_callbacks[subject]
+            if self.listen_subject_only_if_exclude is not None:
+                for subject in subjects_and_callbacks.copy():
+                    success = True
+                    for subject_exclude in self.listen_subject_only_if_exclude:
+                        if subject_exclude in subject:
+                            success = False
                             break
                     if success is False:
                         del subjects_and_callbacks[subject]
