@@ -1,60 +1,42 @@
-import os
-import time
 import asyncio
-import uuid
 import logging
+import os
+import uuid
 
 from aiohttp import web
 
-from panini.nats_client import NATSClient
-from .managers import (
-    _EventManager,
-    _TaskManager,
-    _IntervalTaskManager,
-    _MiddlewareManager,
-)
+from panini.managers.nats_client import NATSClient
+from .exceptions import InitializingEventManagerError
+
 from .http_server.http_server_app import HTTPServer
-from .exceptions import (
-    InitializingEventManagerError,
-    InitializingTaskError,
-    InitializingIntervalTaskError,
-)
+from .managers.event_manager import EventManager
+from .managers.task_manager import TaskManager
 from .middleware.error import ErrorMiddleware
+from .utils import logger
 from .utils.helper import (
-    start_thread,
     get_app_root_path,
     create_client_code_by_hostname,
 )
-from .utils import logger
 
 _app = None
 
 
-class App(
-    _EventManager, _TaskManager, _IntervalTaskManager, _MiddlewareManager, NATSClient
-):
+class App:
     def __init__(
-        self,
-        host: str,
-        port: int,
-        service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
-        client_id: str = None,
-        tasks: list = None,
-        reconnect: bool = False,
-        max_reconnect_attempts: int = 60,
-        reconnecting_time_sleep: int = 2,
-        subscribe_subjects_and_callbacks: dict = None,
-        allocation_queue_group: str = "",
-        listen_subject_only_if_include: list = None,
-        listen_subject_only_if_exclude: list = None,
-        web_server: bool = False,
-        web_app: web.Application = None,
-        web_host: str = None,
-        web_port: int = None,
-        logger_required: bool = True,
-        logger_files_path: str = None,
-        logger_in_separate_process: bool = False,
-        pending_bytes_limit=65536 * 1024 * 10,
+            self,
+            host: str,
+            port: int,
+            service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
+            client_id: str = None,
+            reconnect: bool = False,
+            max_reconnect_attempts: int = 60,
+            reconnecting_time_sleep: int = 2,
+            allocation_queue_group: str = "",
+
+            logger_required: bool = True,
+            logger_files_path: str = None,
+            logger_in_separate_process: bool = False,
+            pending_bytes_limit=65536 * 1024 * 10,
     ):
         """
         :param host: NATS broker host
@@ -82,40 +64,33 @@ class App(
         :param logger_files_path: main path for logs
         :param logger_in_separate_process: use log in the same or in different process
         """
-        if subscribe_subjects_and_callbacks is None:
-            subscribe_subjects_and_callbacks = {}
-        if tasks is None:
-            tasks = []
+
+
+
         try:
+            # client_id initialization
             if client_id is None:
-                client_id = create_client_code_by_hostname(service_name)
+                self.client_id = create_client_code_by_hostname(service_name)
             else:
-                client_id = client_id
-            os.environ["CLIENT_ID"] = client_id
-            self.client_id = client_id
+                self.client_id = client_id
+            os.environ["CLIENT_ID"] = self.client_id
+
             self.service_name = service_name
-            self.nats_config = {
-                "host": host,
-                "port": port,
-                "client_id": client_id,
-                "listen_subjects_callbacks": None,
-                "allow_reconnect": reconnect,
-                "queue": allocation_queue_group,
-                "max_reconnect_attempts": max_reconnect_attempts,
-                "reconnecting_time_wait": reconnecting_time_sleep,
-                "pending_bytes_limit": pending_bytes_limit,
-            }
-            self.tasks = tasks
-            self.listen_subject_only_if_include = listen_subject_only_if_include
-            self.listen_subject_only_if_exclude = listen_subject_only_if_exclude
-            assert (
-                self.listen_subject_only_if_include is None
-                or self.listen_subject_only_if_exclude is None
-            ), "You can use only 1 of listen_subject_only_if_include/exclude at the same moment!"
-            self.subscribe_subjects_and_callbacks = subscribe_subjects_and_callbacks
+
+            self._event_manager = EventManager()
+            self._task_manager = TaskManager()
+            self._nats_client = NATSClient(
+                host=host,
+                port=port,
+                client_id=self.client_id,
+                allow_reconnect=reconnect,
+                queue=allocation_queue_group,
+                max_reconnect_attempts=max_reconnect_attempts,
+                reconnecting_time_wait=reconnecting_time_sleep,
+                pending_bytes_limit=pending_bytes_limit
+            )
 
             self.app_root_path = get_app_root_path()
-
             self.logger_required = logger_required
             self.logger_in_separate_process = logger_in_separate_process
 
@@ -144,18 +119,49 @@ class App(
             self.log_listener_queue = None
             self.change_logger_config_listener_queue = None
 
-            if web_server:
-                self.http = web.RouteTableDef()  # for http decorator
-                if web_app:
-                    self.http_server = HTTPServer(base_app=self, web_app=web_app)
-                else:
-                    self.http_server = HTTPServer(
-                        base_app=self, host=web_host, port=web_port
-                    )
-            else:
-                self.http_server = None
+            self.http_server = None
+            self.http = None
+
             global _app
             _app = self
+
+        except InitializingEventManagerError as e:
+            error = f"App.event_registrar critical error: {str(e)}"
+            raise InitializingEventManagerError(error)
+
+    def setup_web_server(self, host=None, port=None, web_app=None):
+        self.http = web.RouteTableDef()  # for http decorator
+        if web_app:
+            self.http_server = HTTPServer(base_app=self, web_app=web_app)
+        else:
+            self.http_server = HTTPServer(
+                base_app=self, host=host, port=port
+            )
+
+    def filter_subjects(self, include: list = None, exclude: list = None):
+        assert include and exclude, "You can use either include or exclude. Not both!"
+
+        try:
+            subscriptions = self._event_manager.subscriptions
+
+            if include:
+                for subject in subscriptions.copy():
+                    success = False
+                    for subject_include in include:
+                        if subject_include in subject:
+                            success = True
+                            break
+                    if not success:
+                        del self._event_manager.subscriptions[subject]
+
+            if exclude:
+                for subject in subscriptions.copy():
+                    for subject_exclude in exclude:
+                        if subject_exclude in subject:
+                            del self._event_manager.subscriptions[subject]
+                            break
+
+
         except InitializingEventManagerError as e:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
@@ -168,12 +174,12 @@ class App(
         raise NotImplementedError
 
     def set_logger(
-        self,
-        service_name,
-        app_root_path,
-        logger_files_path,
-        in_separate_process,
-        client_id,
+            self,
+            service_name,
+            app_root_path,
+            logger_files_path,
+            in_separate_process,
+            client_id,
     ):
         if in_separate_process:
             (
@@ -198,13 +204,51 @@ class App(
             )
         self.logger.logger = logging.getLogger(service_name)
 
+    def listen(
+            self,
+            subject: list or str,
+            validator: type = None,
+            dynamic_subscription=False,
+            data_type="json.loads"
+    ):
+        return self._event_manager.listen(subject, validator, dynamic_subscription, data_type)
+
+    def register_listener(self):
+        pass
+
+    async def publish(self, subject: str, message: dict):
+        self._nats_client.client.publish(subject, message)
+
+    async def request(self, subject, payload, timeout=0.5, expected=1, cb=None):
+        return await self._nats_client.client.request(subject, payload, timeout, expected, cb)
+
+    @property
+    def task(self):
+        return self._task_manager
+
+    def register_single_task(self, task):
+        self._task_manager.register_single_task(task=task)
+
+    def register_interval_task(self, task, interval):
+        self._task_manager.register_interval_task(task=task, interval=interval)
+
+    def add_middleware(self, cls, *args, **kwargs):
+        return self._nats_client.middleware_manager.add_middleware(cls, *args, **kwargs)
+
+    def _start_event(self):
+        asyncio.ensure_future(
+            self._nats_client.client.publish(
+                f"panini_events.{self.service_name}.{self.client_id}.started",
+                b"{}",
+            )
+        )
+
     def start(self):
         if (
-            os.environ.get("PANINI_TEST_MODE")
-            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
-            == "true"
+                os.environ.get("PANINI_TEST_MODE")
+                and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+                == "true"
         ):
-
             def exception_handler(e, **kwargs):
                 self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
                 raise
@@ -221,62 +265,15 @@ class App(
                 self.client_id,
             )
 
-        try:
-            subjects_and_callbacks = self.SUBSCRIPTIONS
-            subjects_and_callbacks.update(self.subscribe_subjects_and_callbacks)
-            if self.listen_subject_only_if_include is not None:
-                for subject in subjects_and_callbacks.copy():
-                    success = False
-                    for subject_include in self.listen_subject_only_if_include:
-                        if subject_include in subject:
-                            success = True
-                            break
-                    if success is False:
-                        del subjects_and_callbacks[subject]
-            if self.listen_subject_only_if_exclude is not None:
-                for subject in subjects_and_callbacks.copy():
-                    success = True
-                    for subject_exclude in self.listen_subject_only_if_exclude:
-                        if subject_exclude in subject:
-                            success = False
-                            break
-                    if success is False:
-                        del subjects_and_callbacks[subject]
-        except InitializingEventManagerError as e:
-            error = f"App.event_registrar critical error: {str(e)}"
-            raise InitializingEventManagerError(error)
+        self._nats_client.set_listen_subjects_callbacks(self._event_manager.subscriptions)
+        self._nats_client.start()
 
-        self.nats_config["listen_subjects_callbacks"] = subjects_and_callbacks
-        NATSClient.__init__(self, **self.nats_config)
-        asyncio.ensure_future(
-            self.client.publish(
-                f"panini_events.{self.service_name}.{self.client_id}.started",
-                b"{}",
-            )
-        )
-
-        self.tasks = self.tasks + self.TASKS
-        self.interval_tasks = self.INTERVAL_TASKS
-
-        self._start_tasks()
-
-    def _start_tasks(self):
-        loop = asyncio.get_event_loop()
-        tasks = asyncio.all_tasks(loop)
-        for coro in self.tasks:
-            if not asyncio.iscoroutinefunction(coro):
-                raise InitializingTaskError("Only coroutine tasks allowed")
-            loop.create_task(coro())
-        for interval in self.interval_tasks:
-            for coro in self.interval_tasks[interval]:
-                if not asyncio.iscoroutinefunction(coro):
-                    raise InitializingIntervalTaskError(
-                        "Only coroutine interval tasks allowed"
-                    )
-                loop.create_task(coro())
         if self.http_server:
             self.http_server.start_server()
-        loop.run_until_complete(asyncio.gather(*tasks))
+
+        self._start_event()
+        asyncio.get_event_loop().run_forever()
+
 
 
 def get_app() -> App:

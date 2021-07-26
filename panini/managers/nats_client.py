@@ -6,8 +6,8 @@ import nest_asyncio
 from types import CoroutineType
 from nats.aio.client import Client as NATS
 from panini.exceptions import DataTypeError
+from panini.middleware.manager.middleware_manager import MiddlewareManager
 from panini.utils.logger import get_logger
-from panini.managers import _MiddlewareManager
 
 nest_asyncio.apply()
 
@@ -43,7 +43,6 @@ class NATSClient:
         client_id: str,
         host: str,
         port: int or str,
-        listen_subjects_callbacks: dict,
         allow_reconnect: bool or None,
         max_reconnect_attempts: int = 60,
         reconnecting_time_wait: int = 2,
@@ -67,23 +66,34 @@ class NATSClient:
         self.port = port
         self.queue = queue
         self.auth = auth
-        self.listen_subjects_callbacks = listen_subjects_callbacks
+        self.listen_subjects_callbacks = None
         self.allow_reconnect = allow_reconnect
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnecting_time_wait = reconnecting_time_wait
         self.pending_bytes_limit = pending_bytes_limit
         self.ssid_map = {}
 
+        self._middleware_manager = MiddlewareManager()
+
         # inject send_middlewares
-        self._publish_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+        self._publish_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "publish"
         )(self._publish)
-        self._request_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+        self._request_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "request"
         )(self._request)
 
         self.loop = asyncio.get_event_loop()
+
+    def set_listen_subjects_callbacks(self, value):
+        self.listen_subjects_callbacks = value
+
+    def start(self):
         self.loop.run_until_complete(self._establish_connection())
+
+    @property
+    def middleware_manager(self):
+        return self._middleware_manager
 
     async def _establish_connection(self):
         # TODO: authorization
@@ -120,7 +130,8 @@ class NATSClient:
     ):
         if data_type == None:
             data_type = getattr(callback, 'data_type', 'json.loads')
-        callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
+
+        callback = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type)
         ssid = await self.client.subscribe(
             subject,
