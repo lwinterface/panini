@@ -19,6 +19,7 @@ from .exceptions import (
     InitializingTaskError,
     InitializingIntervalTaskError,
 )
+from .middleware.error import ErrorMiddleware
 from .utils.helper import (
     start_thread,
     get_app_root_path,
@@ -42,10 +43,10 @@ class App(
         reconnect: bool = False,
         max_reconnect_attempts: int = 60,
         reconnecting_time_sleep: int = 2,
-        app_strategy: str = "asyncio",
         subscribe_subjects_and_callbacks: dict = None,
         allocation_queue_group: str = "",
         listen_subject_only_if_include: list = None,
+        listen_subject_only_if_exclude: list = None,
         web_server: bool = False,
         web_app: web.Application = None,
         web_host: str = None,
@@ -53,6 +54,7 @@ class App(
         logger_required: bool = True,
         logger_files_path: str = None,
         logger_in_separate_process: bool = False,
+        pending_bytes_limit=65536 * 1024 * 10,
     ):
         """
         :param host: NATS broker host
@@ -63,7 +65,6 @@ class App(
         :param reconnect: allows reconnect if connection to NATS has been lost
         :param max_reconnect_attempts: number of reconnect attempts
         :param reconnecting_time_sleep: pause between reconnection
-        :param app_strategy:  'asyncio' only - but we let it with warning for backward parameter support
         :param subscribe_subjects_and_callbacks: if you need to subscribe additional
                                         subjects(except subjects from event.py).
                                         This way doesn't support validators
@@ -71,6 +72,8 @@ class App(
                                     more detailed here: https://docs.nats.io/nats-concepts/queue
         :param listen_subject_only_if_include:   if not None, client will subscribe
                                                 only to subjects that include these key words
+        :param listen_subject_only_if_exclude:   if not None, client will not subscribe
+                                                 to subjects that include these key words
         :param web_app: web.Application:       custom aiohttp app that you can create separately from panini.
                             if you set this argument client will only run this aiohttp app without handling
         :param web_host: Web application host
@@ -91,7 +94,6 @@ class App(
             os.environ["CLIENT_ID"] = client_id
             self.client_id = client_id
             self.service_name = service_name
-            self.app_strategy = app_strategy
             self.nats_config = {
                 "host": host,
                 "port": port,
@@ -101,9 +103,15 @@ class App(
                 "queue": allocation_queue_group,
                 "max_reconnect_attempts": max_reconnect_attempts,
                 "reconnecting_time_wait": reconnecting_time_sleep,
+                "pending_bytes_limit": pending_bytes_limit,
             }
             self.tasks = tasks
             self.listen_subject_only_if_include = listen_subject_only_if_include
+            self.listen_subject_only_if_exclude = listen_subject_only_if_exclude
+            assert (
+                self.listen_subject_only_if_include is None
+                or self.listen_subject_only_if_exclude is None
+            ), "You can use only 1 of listen_subject_only_if_include/exclude at the same moment!"
             self.subscribe_subjects_and_callbacks = subscribe_subjects_and_callbacks
 
             self.app_root_path = get_app_root_path()
@@ -131,10 +139,6 @@ class App(
                     self.client_id,
                 )
 
-            if app_strategy != "asyncio":
-                self.logger.warning(
-                    "Only 'asyncio' strategy is now supported. The app will run in asyncio mode!"
-                )
             self.logger_process = None
             self.log_stop_event = None
             self.log_listener_queue = None
@@ -195,6 +199,19 @@ class App(
         self.logger.logger = logging.getLogger(service_name)
 
     def start(self):
+        if (
+            os.environ.get("PANINI_TEST_MODE")
+            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+            == "true"
+        ):
+
+            def exception_handler(e, **kwargs):
+                self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
+                raise
+
+            self.add_middleware(
+                ErrorMiddleware, error=Exception, callback=exception_handler
+            )
         if self.logger_required and self.logger_in_separate_process:
             self.set_logger(
                 self.service_name,
@@ -213,6 +230,15 @@ class App(
                     for subject_include in self.listen_subject_only_if_include:
                         if subject_include in subject:
                             success = True
+                            break
+                    if success is False:
+                        del subjects_and_callbacks[subject]
+            if self.listen_subject_only_if_exclude is not None:
+                for subject in subjects_and_callbacks.copy():
+                    success = True
+                    for subject_exclude in self.listen_subject_only_if_exclude:
+                        if subject_exclude in subject:
+                            success = False
                             break
                     if success is False:
                         del subjects_and_callbacks[subject]
@@ -239,15 +265,13 @@ class App(
         tasks = asyncio.all_tasks(loop)
         for coro in self.tasks:
             if not asyncio.iscoroutinefunction(coro):
-                raise InitializingTaskError(
-                    "For asyncio app_strategy only coroutine tasks allowed"
-                )
+                raise InitializingTaskError("Only coroutine tasks allowed")
             loop.create_task(coro())
         for interval in self.interval_tasks:
             for coro in self.interval_tasks[interval]:
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingIntervalTaskError(
-                        "For asyncio app_strategy only coroutine interval tasks allowed"
+                        "Only coroutine interval tasks allowed"
                     )
                 loop.create_task(coro())
         if self.http_server:

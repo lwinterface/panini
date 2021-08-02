@@ -69,7 +69,7 @@ def run_panini():
 global_object = Global()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client():
     client = TestClient(run_panini)
 
@@ -81,8 +81,9 @@ def client():
     def listen_publish_listener(msg):
         pass
 
-    client.start()
-    return client
+    client.start(do_always_listen=False)
+    yield client
+    client.stop()
 
 
 def test_send_publish_middleware(client):

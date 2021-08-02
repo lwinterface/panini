@@ -1,3 +1,4 @@
+import typing
 import ujson
 import asyncio
 import threading
@@ -72,16 +73,14 @@ class NATSClient:
         self.reconnecting_time_wait = reconnecting_time_wait
         self.pending_bytes_limit = pending_bytes_limit
         self.ssid_map = {}
-        # publish function without middlewares
-        self.raw_publish = self.publish
 
         # inject send_middlewares
-        self.publish = _MiddlewareManager._wrap_function_by_middleware("publish")(
-            self.publish
-        )
-        self.request = _MiddlewareManager._wrap_function_by_middleware("request")(
-            self.request
-        )
+        self._publish_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+            "publish"
+        )(self._publish)
+        self._request_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+            "request"
+        )(self._request)
 
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
@@ -104,23 +103,31 @@ class NATSClient:
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
-                    await self.aio_subscribe_new_subject(
-                        subject, callback, init_subscription=True
-                    )
+                    await self.subscribe_new_subject(
+                            subject, callback, init_subscription=True
+                        )
 
-    def subscribe_new_subject(self, subject: str, callback: CoroutineType):
-        self.loop.run_until_complete(self.aio_subscribe_new_subject(subject, callback))
+    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
+        self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
 
-    async def aio_subscribe_new_subject(
-        self, subject: str, callback: CoroutineType, init_subscription=False
+    async def subscribe_new_subject(
+        self,
+        subject: str,
+        callback: CoroutineType,
+        init_subscription=False,
+        is_async=False,
+        data_type=None
     ):
+        if data_type == None:
+            data_type = getattr(callback, 'data_type', 'json.loads')
         callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
-        wrapped_callback = _ReceivedMessageHandler(self.raw_publish, callback)
+        wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type)
         ssid = await self.client.subscribe(
             subject,
             queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
+            is_async=is_async,
         )
         if subject not in self.ssid_map:
             self.ssid_map[subject] = []
@@ -131,10 +138,10 @@ class NATSClient:
             self.listen_subjects_callbacks[subject].append(callback)
         return ssid
 
-    def unsubscribe_subject(self, subject: str):
-        self.loop.run_until_complete(self.aio_unsubscribe_subject(subject))
+    def unsubscribe_subject_sync(self, subject: str):
+        self.loop.run_until_complete(self.unsubscribe_subject(subject))
 
-    async def aio_unsubscribe_subject(self, subject: str):
+    async def unsubscribe_subject(self, subject: str):
         if subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
         for ssid in self.ssid_map[subject]:
@@ -142,10 +149,10 @@ class NATSClient:
         del self.ssid_map[subject]
         del self.listen_subjects_callbacks[subject]
 
-    def unsubscribe_ssid(self, ssid: int, subject: str = None):
-        self.loop.run_until_complete(self.aio_unsubscribe_ssid(ssid, subject))
+    def unsubscribe_ssid_sync(self, ssid: int, subject: str = None):
+        self.loop.run_until_complete(self.unsubscribe_ssid(ssid, subject))
 
-    async def aio_unsubscribe_ssid(self, ssid: int, subject: str = None):
+    async def unsubscribe_ssid(self, ssid: int, subject: str = None):
         if subject and subject not in self.ssid_map:
             raise Exception(f"Subject {subject} hasn't been subscribed")
         await self.client.unsubscribe(ssid)
@@ -181,10 +188,11 @@ class NATSClient:
         message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
     ):
         # asyncio.ensure_future(self.request(subject, message, timeout, data_type))
         return self.loop.run_until_complete(
-            self.request(subject, message, timeout, data_type)
+            self.request(subject, message, timeout, data_type, callback)
         )
 
     def request_from_another_thread_sync(
@@ -222,7 +230,7 @@ class NATSClient:
 
     @staticmethod
     def format_message_data_type(message, data_type):
-        if type(message) is dict and data_type == "json.dumps":
+        if type(message) in [dict, list] and data_type == "json.dumps":
             message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
@@ -236,7 +244,7 @@ class NATSClient:
 
         return message
 
-    async def publish(
+    async def _publish(
         self,
         subject: str,
         message,
@@ -253,14 +261,33 @@ class NATSClient:
         if force:
             await self.client.flush()
 
-    async def request(
+    async def publish(
+        self,
+        subject: str,
+        message,
+        reply_to: str = None,
+        force: bool = False,
+        data_type: type or str = "json.dumps",
+    ):
+        return await self._publish_wrapped(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type,
+        )
+
+    async def _request(
         self,
         subject: str,
         message,
         timeout: int = 10,
         data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
     ):
         message = self.format_message_data_type(message, data_type)
+        if callback is not None:
+            return await self.client.request(subject, message, cb=callback)
         response = await self.client.request(subject, message, timeout=timeout)
         response = response.data
         if data_type == "json.dumps":
@@ -269,10 +296,26 @@ class NATSClient:
             response = response.decode()
         return response
 
-    def disconnect(self):
-        self.loop.run_until_complete(self.aio_disconnect())
+    async def request(
+        self,
+        subject: str,
+        message,
+        timeout: int = 10,
+        data_type: type or str = "json.dumps",
+        callback: typing.Callable = None,
+    ):
+        return await self._request_wrapped(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+            callback=callback,
+        )
 
-    async def aio_disconnect(self):
+    def disconnect_sync(self):
+        self.loop.run_until_complete(self.disconnect())
+
+    async def disconnect(self):
         await self.client.drain()
         self.log.warning("Disconnected")
 
@@ -284,10 +327,10 @@ class NATSClient:
 
 
 class _ReceivedMessageHandler:
-    def __init__(self, publish_func, cb):
+    def __init__(self, publish_func, cb, data_type):
         self.publish_func = publish_func
         self.cb = cb
-        self.data_type = getattr(cb, "data_type", "json.loads")
+        self.data_type = data_type
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
     def __call__(self, msg):

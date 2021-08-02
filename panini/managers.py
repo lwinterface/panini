@@ -50,7 +50,7 @@ class _EventManager:
             raise NotReadyError(
                 "Something wrong. NATS client should be connected first"
             )
-        self.subscribe_new_subject(subject, function)
+        self.subscribe_new_subject_sync(subject, function)
 
     @staticmethod
     def wrap_function_by_validator(function, validator):
@@ -239,13 +239,13 @@ class _MiddlewareManager:
                 def next_wrapper(subject: str, message, *args, **kwargs):
                     return single_middleware(subject, message, func, *args, **kwargs)
 
-                async def aio_next_wrapper(subject: str, message, *args, **kwargs):
+                async def async_next_wrapper(subject: str, message, *args, **kwargs):
                     return await single_middleware(
                         subject, message, func, *args, **kwargs
                     )
 
                 if asyncio.iscoroutinefunction(single_middleware):
-                    return aio_next_wrapper
+                    return async_next_wrapper
                 else:
                     return next_wrapper
 
@@ -255,11 +255,11 @@ class _MiddlewareManager:
                 def next_wrapper(msg):
                     return single_middleware(msg, func)
 
-                async def aio_next_wrapper(msg):
+                async def async_next_wrapper(msg):
                     return await single_middleware(msg, func)
 
                 if asyncio.iscoroutinefunction(single_middleware):
-                    return aio_next_wrapper
+                    return async_next_wrapper
                 else:
                     return next_wrapper
 
@@ -309,14 +309,14 @@ class _MiddlewareManager:
                     else:
                         return function_listen_request(msg)
 
-                async def aio_listen_wrapper(msg) -> Callable:
+                async def async_listen_wrapper(msg) -> Callable:
                     if msg.reply == "":
                         return await function_listen_publish(msg)
                     else:
                         return await function_listen_request(msg)
 
                 if asyncio.iscoroutinefunction(function):
-                    return aio_listen_wrapper
+                    return async_listen_wrapper
                 else:
                     return listen_wrapper
 

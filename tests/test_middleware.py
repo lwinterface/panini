@@ -98,7 +98,7 @@ def client():
     def listen_publish_listener(msg):
         global_object.another_variable = msg.data["data"] + 3
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 

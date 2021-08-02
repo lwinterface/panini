@@ -65,7 +65,7 @@ class WSSManager:
                 if action == "subscribe":
                     for subject in subjects:
                         cb = await self._get_callback(client_ws_connection)
-                        ssid = await self.app.aio_subscribe_new_subject(subject, cb)
+                        ssid = await self.app.subscribe_new_subject(subject, cb)
                         if subject not in self.ssid_map:
                             self.ssid_map[subject] = []
                         self.ssid_map[subject].append(ssid)
@@ -81,7 +81,7 @@ class WSSManager:
                     for subject in subjects:
                         if subject in self.ssid_map:
                             for ssid in self.ssid_map[subject]:
-                                await self.app.aio_unsubscribe_ssid(ssid)
+                                await self.app.unsubscribe_ssid(ssid)
                             await client_ws_connection.send_str(
                                 json.dumps(
                                     {
