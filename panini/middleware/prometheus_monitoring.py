@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from prometheus_client import CollectorRegistry, Histogram, Counter, push_to_gateway
@@ -104,7 +105,10 @@ class PrometheusMonitoringMiddleware(Middleware):
 
         if "status" in self.labels:
             try:
-                response = await callback(msg)
+                if asyncio.iscoroutinefunction(callback):
+                    response = await callback(msg)
+                else:
+                    response = callback(msg)
             except Exception:
                 labels["status"] = "failure"
                 self.monitor_listen(start_time, labels)
@@ -112,7 +116,10 @@ class PrometheusMonitoringMiddleware(Middleware):
             else:
                 labels["status"] = "success"
         else:
-            response = await callback(msg)
+            if asyncio.iscoroutinefunction(callback):
+                response = await callback(msg)
+            else:
+                response = callback(msg)
 
         self.monitor_listen(start_time, labels)
 

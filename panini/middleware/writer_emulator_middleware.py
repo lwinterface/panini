@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import threading
@@ -116,11 +117,17 @@ class WriterEmulatorMiddleware(middleware.Middleware):
             }
         )
 
-        await callback(msg)
+        if asyncio.iscoroutinefunction(callback):
+            await callback(msg)
+        else:
+            callback(msg)
 
     async def listen_request(self, msg, callback):
 
-        response = await callback(msg)
+        if asyncio.iscoroutinefunction(callback):
+            response = await callback(msg)
+        else:
+            response = callback(msg)
 
         self._writer.add(
             {
