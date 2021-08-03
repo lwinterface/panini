@@ -196,7 +196,7 @@ class FooMiddleware(Middleware):
 class BarMiddleware(FooMiddleware):
     async def send_request(self, subject: str, message, request_func, *args, **kwargs):
         print("In Bar Middleware: request")
-				return await request_func(subject, message, *args, **kwargs)
+        return await request_func(subject, message, *args, **kwargs)
 
     async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
         return await super(BarMiddleware, self).send_publish(subject, message, *args, **kwargs)

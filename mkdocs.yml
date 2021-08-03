@@ -25,6 +25,7 @@ nav:
     - License: License.md
     - How to contribute: How_to_contribute.md
     - Testing: Testing.md
+    - AsyncTesting: AsyncTesting.md
     - Logger: Logger.md
     - Examples: Examples.md
 plugins:

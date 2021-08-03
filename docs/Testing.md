@@ -32,7 +32,7 @@ def run_panini():
     )
 
     @app.listen("main.subject")
-    def main_subject(msg):
+    async def main_subject(msg):
         return {"message": "Hello World!"}
 
     app.start()
@@ -79,7 +79,7 @@ app = panini_app.App(
 )
 
 @app.listen("main.subject")
-def main_subject(msg):
+async def main_subject(msg):
     return {"message": "Hello World!"}
 
 if __name__ == '__main__':
@@ -127,7 +127,7 @@ app = panini_app.App(
 )
 
 @app.listen("subject.with.authorization")
-def get_secret(msg):
+async def get_secret(msg):
     if "authorization" not in msg.data:
         raise ValueError("You need to be authorized, to get the secret data!")
     return {"secret": "some meaningful data"}
@@ -169,7 +169,7 @@ But still, let's modify a bit our functions, to get the more obvious result:
 
 ```python
 @app.listen("subject.with.authorization")
-def get_secret(msg):
+async def get_secret(msg):
     if "authorization" not in msg.data:
         return {"success": False, "message": "You have to be authorized, to get the secret data!"}
     return {"success": True, "secret": "some meaningful data"}
