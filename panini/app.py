@@ -263,17 +263,28 @@ class App(
     def _start_tasks(self):
         loop = asyncio.get_event_loop()
         tasks = asyncio.all_tasks(loop)
+
+        def wrap_coro(coroutine):
+            async def inner(*args, **kwargs):
+                try:
+                    await coroutine(*args, **kwargs)
+                except Exception as e:
+                    self.logger.exception(f"Error in panini task: {e}")
+                    raise
+
+            return inner
+
         for coro in self.tasks:
             if not asyncio.iscoroutinefunction(coro):
                 raise InitializingTaskError("Only coroutine tasks allowed")
-            loop.create_task(coro())
+            loop.create_task(wrap_coro(coro)())
         for interval in self.interval_tasks:
             for coro in self.interval_tasks[interval]:
                 if not asyncio.iscoroutinefunction(coro):
                     raise InitializingIntervalTaskError(
                         "Only coroutine interval tasks allowed"
                     )
-                loop.create_task(coro())
+                loop.create_task(wrap_coro(coro)())
         if self.http_server:
             self.http_server.start_server()
         loop.run_until_complete(asyncio.gather(*tasks))
