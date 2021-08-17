@@ -51,6 +51,7 @@ class App(
         web_app: web.Application = None,
         web_host: str = None,
         web_port: int = None,
+        web_server_params: dict = {},
         logger_required: bool = True,
         logger_files_path: str = None,
         logger_in_separate_process: bool = False,
@@ -147,10 +148,10 @@ class App(
             if web_server:
                 self.http = web.RouteTableDef()  # for http decorator
                 if web_app:
-                    self.http_server = HTTPServer(base_app=self, web_app=web_app)
+                    self.http_server = HTTPServer(base_app=self, web_app=web_app, web_server_params=web_server_params)
                 else:
                     self.http_server = HTTPServer(
-                        base_app=self, host=web_host, port=web_port
+                        base_app=self, host=web_host, port=web_port, web_server_params=web_server_params,
                     )
             else:
                 self.http_server = None
