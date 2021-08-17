@@ -8,11 +8,13 @@ class HTTPServer:
         host: str = None,
         port: int = None,
         web_app: web.Application = None,
+        web_server_params: dict = {},
     ):
         self.app = base_app
         self.routes = base_app.http
         self.host = host
         self.port = port
+        self.web_server_params = web_server_params
         if web_app:
             self.web_app = web_app
         else:
@@ -23,4 +25,4 @@ class HTTPServer:
 
     def _start_server(self):
         self.web_app.add_routes(self.routes)
-        web.run_app(self.web_app, host=self.host, port=self.port)
+        web.run_app(self.web_app, host=self.host, port=self.port, **self.web_server_params)
