@@ -23,20 +23,20 @@ _app = None
 
 class App:
     def __init__(
-            self,
-            host: str,
-            port: int,
-            service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
-            client_id: str = None,
-            reconnect: bool = False,
-            max_reconnect_attempts: int = 60,
-            reconnecting_time_sleep: int = 2,
-            allocation_queue_group: str = "",
+        self,
+        host: str,
+        port: int,
+        service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
+        client_id: str = None,
+        reconnect: bool = False,
+        max_reconnect_attempts: int = 60,
+        reconnecting_time_sleep: int = 2,
+        allocation_queue_group: str = "",
 
-            logger_required: bool = True,
-            logger_files_path: str = None,
-            logger_in_separate_process: bool = False,
-            pending_bytes_limit=65536 * 1024 * 10,
+        logger_required: bool = True,
+        logger_files_path: str = None,
+        logger_in_separate_process: bool = False,
+        pending_bytes_limit=65536 * 1024 * 10,
     ):
         """
         :param host: NATS broker host
@@ -129,13 +129,15 @@ class App:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
 
-    def setup_web_server(self, host=None, port=None, web_app=None):
+    def setup_web_server(self, host=None, port=None, web_app=None, web_server_params: dict = None):
+        if web_server_params is None:
+            web_server_params = {}
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
-            self.http_server = HTTPServer(base_app=self, web_app=web_app)
+            self.http_server = HTTPServer(base_app=self, web_app=web_app, web_server_params=web_server_params)
         else:
             self.http_server = HTTPServer(
-                base_app=self, host=host, port=port
+                base_app=self, host=host, port=port, web_server_params=web_server_params
             )
 
     def filter_subjects(self, include: list = None, exclude: list = None):
@@ -161,7 +163,6 @@ class App:
                             del self._event_manager.subscriptions[subject]
                             break
 
-
         except InitializingEventManagerError as e:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
@@ -174,12 +175,12 @@ class App:
         raise NotImplementedError
 
     def set_logger(
-            self,
-            service_name,
-            app_root_path,
-            logger_files_path,
-            in_separate_process,
-            client_id,
+        self,
+        service_name,
+        app_root_path,
+        logger_files_path,
+        in_separate_process,
+        client_id,
     ):
         if in_separate_process:
             (
@@ -205,11 +206,11 @@ class App:
         self.logger.logger = logging.getLogger(service_name)
 
     def listen(
-            self,
-            subject: list or str,
-            validator: type = None,
-            dynamic_subscription=False,
-            data_type="json.loads"
+        self,
+        subject: list or str,
+        validator: type = None,
+        dynamic_subscription=False,
+        data_type="json.loads"
     ):
         return self._event_manager.listen(subject, validator, dynamic_subscription, data_type)
 
@@ -245,9 +246,9 @@ class App:
 
     def start(self):
         if (
-                os.environ.get("PANINI_TEST_MODE")
-                and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
-                == "true"
+            os.environ.get("PANINI_TEST_MODE")
+            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+            == "true"
         ):
             def exception_handler(e, **kwargs):
                 self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
@@ -273,7 +274,6 @@ class App:
 
         self._start_event()
         asyncio.get_event_loop().run_forever()
-
 
 
 def get_app() -> App:

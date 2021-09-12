@@ -19,7 +19,7 @@ The framework allows you to work with NATS features and some additional logic us
 
 setup(
     name="panini",
-    version="0.5.0",
+    version="0.5.2",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
