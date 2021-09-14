@@ -20,7 +20,6 @@ class EventManager:
         self,
         subject: list or str,
         validator: type = None,
-        dynamic_subscription=False,
         data_type="json.loads",
     ):
         def wrapper(function):
@@ -34,21 +33,7 @@ class EventManager:
                 self._subscriptions[subject].append(function)
             function.data_type = data_type
             return function
-
-        if dynamic_subscription:
-            if type(subject) is list:
-                for s in subject:
-                    self._subscribe(s, wrapper)
-            else:
-                self._subscribe(subject, wrapper)
         return wrapper
-
-    def _subscribe(self, subject, function):
-        if not hasattr(self, "connector") or self.connector.check_connection is False:
-            raise NotReadyError(
-                "Something wrong. NATS client should be connected first"
-            )
-        self.subscribe_new_subject_sync(subject, function)
 
     def wrap_function_by_validator(self, function, validator):
         def validate_message(msg):

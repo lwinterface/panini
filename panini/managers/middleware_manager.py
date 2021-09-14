@@ -7,7 +7,7 @@ from panini.middleware import Middleware
 class MiddlewareManager:
 
     def __init__(self):
-        self._middleware = {
+        self._middlewares = {
             "send_publish_middleware": [],
             "listen_publish_middleware": [],
             "send_request_middleware": [],
@@ -15,8 +15,12 @@ class MiddlewareManager:
         }
 
     @property
-    def middleware(self):
-        return self._middleware
+    def middlewares(self):
+        return self._middlewares
+
+    @middlewares.setter
+    def middlewares(self, value: dict):
+        self._middlewares = value
 
     def add_middleware(self, middleware_cls: Type[Middleware], *args, **kwargs):
         assert issubclass(middleware_cls, Middleware), \
@@ -43,29 +47,29 @@ class MiddlewareManager:
         middleware_obj = middleware_cls(*args, **kwargs)
         for function_name in high_priority_functions:
             if function_name in middleware_cls.__dict__:
-                self._middleware[f"{function_name}_middleware"].append(
+                self._middlewares[f"{function_name}_middleware"].append(
                     getattr(middleware_obj, function_name)
                 )
 
         if "send_any" in middleware_cls.__dict__:
             if "send_publish" not in middleware_cls.__dict__:
-                self._middleware["send_publish_middleware"].append(
+                self._middlewares["send_publish_middleware"].append(
                     middleware_obj.send_any
                 )
 
             if "send_request" not in middleware_cls.__dict__:
-                self._middleware["send_request_middleware"].append(
+                self._middlewares["send_request_middleware"].append(
                     middleware_obj.send_any
                 )
 
         if "listen_any" in middleware_cls.__dict__:
             if "listen_publish" not in middleware_cls.__dict__:
-                self._middleware["listen_publish_middleware"].append(
+                self._middlewares["listen_publish_middleware"].append(
                     middleware_obj.listen_any
                 )
 
             if "listen_request" not in middleware_cls.__dict__:
-                self._middleware["listen_request_middleware"].append(
+                self._middlewares["listen_request_middleware"].append(
                     middleware_obj.listen_any
                 )
 
@@ -114,7 +118,7 @@ class MiddlewareManager:
             def build_middleware_wrapper(
                 func: Callable, middleware_key: str, wrapper: Callable
             ) -> Callable:
-                for middleware in self._middleware[middleware_key]:
+                for middleware in self._middlewares[middleware_key]:
                     func = wrapper(func, middleware)
                 return func
 
@@ -134,8 +138,8 @@ class MiddlewareManager:
 
             else:
                 if (
-                    len(self._middleware["listen_publish_middleware"]) == 0
-                    and len(self._middleware["listen_request_middleware"])
+                    len(self._middlewares["listen_publish_middleware"]) == 0
+                    and len(self._middlewares["listen_request_middleware"])
                     == 0
                 ):
                     return function

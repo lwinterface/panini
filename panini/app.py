@@ -3,6 +3,7 @@ import logging
 import os
 import typing
 import uuid
+from types import CoroutineType
 
 from aiohttp import web
 
@@ -38,6 +39,7 @@ class App:
             logger_files_path: str = None,
             logger_in_separate_process: bool = False,
             pending_bytes_limit=65536 * 1024 * 10,
+            **kwargs
     ):
         """
         :param host: NATS broker host
@@ -86,7 +88,8 @@ class App:
                 queue=allocation_queue_group,
                 max_reconnect_attempts=max_reconnect_attempts,
                 reconnecting_time_wait=reconnecting_time_sleep,
-                pending_bytes_limit=pending_bytes_limit
+                pending_bytes_limit=pending_bytes_limit,
+                **kwargs
             )
 
             self.app_root_path = get_app_root_path()
@@ -124,9 +127,6 @@ class App:
             self.task = self._task_manager.register_single_task
             self.timer_task = self._task_manager.register_interval_task
 
-            self.include_subjects = None
-            self.exclude_subjects = None
-
             global _app
             _app = self
 
@@ -142,31 +142,7 @@ class App:
             self.http_server = HTTPServer(routes=self.http, host=host, port=port, web_server_params=params)
 
     def add_filters(self, include: list = None, exclude: list = None):
-        self.include_subjects = include
-        self.exclude_subjects = exclude
-
-    def _filter_subjects(self):
-        assert self.include_subjects or self.exclude_subjects, "You can use either include or exclude. Not both!"
-
-        subscriptions = self._event_manager.subscriptions
-
-        if self.include_subjects:
-            for subject in subscriptions.copy():
-                success = False
-                for subject_include in self.include_subjects:
-                    if subject_include in subject:
-                        success = True
-                        break
-                if not success:
-                    del self._event_manager.subscriptions[subject]
-
-        if self.exclude_subjects:
-            for subject in subscriptions.copy():
-                for subject_exclude in self.exclude_subjects:
-                    if subject_exclude in subject:
-                        del self._event_manager.subscriptions[subject]
-                        break
-
+        return self.nats.add_filters(include, exclude)
 
     def set_logger(
             self,
@@ -217,6 +193,16 @@ class App:
     ):
         return await self.nats.publish(subject, message, reply_to, force, data_type)
 
+    def publish_sync(
+            self,
+            subject: str,
+            message,
+            reply_to: str = None,
+            force: bool = False,
+            data_type: type or str = "json.dumps",
+    ):
+        return self.nats.publish_sync(subject, message, reply_to, force, data_type)
+
     async def request(
             self,
             subject: str,
@@ -226,6 +212,41 @@ class App:
             callback: typing.Callable = None
     ):
         return await self.nats.request(subject, message, timeout, data_type, callback)
+
+    def request_sync(
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
+            data_type: type or str = "json.dumps",
+            callback: typing.Callable = None,
+    ):
+        return self.nats.request_sync(subject, message, timeout, data_type, callback)
+
+    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
+        return self.nats.subscribe_new_subject_sync(subject, callback, **kwargs)
+
+    async def subscribe_new_subject(
+            self,
+            subject: str,
+            callback: CoroutineType,
+            init_subscription=False,
+            is_async=False,
+            data_type=None
+    ):
+        return await self.nats.subscribe_new_subject(subject, callback, init_subscription, is_async, data_type)
+
+    def unsubscribe_subject_sync(self, subject: str):
+        return self.nats.unsubscribe_subject_sync(subject)
+
+    async def unsubscribe_subject(self, subject: str):
+        return await self.nats.unsubscribe_subject(subject)
+
+    def unsubscribe_ssid_sync(self, ssid: int, subject: str = None):
+        return self.nats.unsubscribe_ssid_sync(ssid, subject)
+
+    async def unsubscribe_ssid(self, ssid: int, subject: str = None):
+        return await self.nats.unsubscribe_ssid(ssid, subject)
 
     def add_middleware(self, cls, *args, **kwargs):
         return self.nats.middleware_manager.add_middleware(cls, *args, **kwargs)

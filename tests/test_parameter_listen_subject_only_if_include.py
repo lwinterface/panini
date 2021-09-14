@@ -11,6 +11,7 @@ def run_panini():
         port=4222,
         logger_in_separate_process=False,
     )
+    app.add_filters(include=["foo", "bar"])
 
     @app.listen("test_parameter_listen_subject_only_if_include.start")
     async def start(msg):
@@ -24,7 +25,6 @@ def run_panini():
     async def start(msg):
         return {"data": 3}
 
-    app.add_filters(include=["foo", "bar"])
     app.start()
 
 
