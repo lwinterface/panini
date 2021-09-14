@@ -1,20 +1,24 @@
 from aiohttp import web
+from aiohttp.web_routedef import RouteTableDef
 
 
 class HTTPServer:
     def __init__(
         self,
-        base_app,
+        routes: RouteTableDef,
         host: str = None,
         port: int = None,
         web_app: web.Application = None,
-        web_server_params: dict = {},
+        web_server_params=None,
     ):
-        self.app = base_app
-        self.routes = base_app.http
+        if web_server_params is None:
+            web_server_params = {}
+
+        self.routes = routes
         self.host = host
         self.port = port
         self.web_server_params = web_server_params
+
         if web_app:
             self.web_app = web_app
         else:

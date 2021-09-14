@@ -42,6 +42,7 @@ def client():
 def test_timer_task(client):
     assert global_object.another_variable == 0
     client.wait(20)
+    # client.wait(20 * 100000)
     start_time = time.time()
     assert global_object.another_variable == 40
     client.wait(20)

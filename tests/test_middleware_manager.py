@@ -3,8 +3,9 @@ import asyncio
 import pytest
 
 from panini import app as panini_app
-from panini.managers import _MiddlewareManager
+
 from panini.middleware import Middleware
+from panini.middleware.manager.middleware_manager import MiddlewareManager
 
 
 class FooMiddleware(Middleware):
@@ -92,14 +93,14 @@ def app():
         host="127.0.0.1",
         port=4222,
     )
-    _MiddlewareManager.MIDDLEWARE = {
+    app.nats.middlewares = {
         "send_publish_middleware": [],
         "listen_publish_middleware": [],
         "send_request_middleware": [],
         "listen_request_middleware": [],
     }
     yield app
-    _MiddlewareManager.MIDDLEWARE = {
+    app.nats.middlewares = {
         "send_publish_middleware": [],
         "listen_publish_middleware": [],
         "send_request_middleware": [],
@@ -109,7 +110,7 @@ def app():
 
 def test_foo_middleware(app):
     app.add_middleware(FooMiddleware)
-    middleware_dict = _MiddlewareManager.MIDDLEWARE
+    middleware_dict = app.nats.middlewares
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 0
     assert len(middleware_dict["listen_publish_middleware"]) == 1
@@ -131,7 +132,7 @@ def test_foo_middleware(app):
 
 def test_bar_middleware(app):
     app.add_middleware(BarMiddleware)
-    middleware_dict = _MiddlewareManager.MIDDLEWARE
+    middleware_dict = app.nats.middlewares
 
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 1
@@ -158,7 +159,7 @@ def test_bar_middleware(app):
 
 def test_foo_bar_middleware(app):
     app.add_middleware(FooBarMiddleware, "foo", bar="bar")
-    middleware_dict = _MiddlewareManager.MIDDLEWARE
+    middleware_dict = app.nats.middlewares
     assert len(middleware_dict["send_publish_middleware"]) == 1
     assert len(middleware_dict["send_request_middleware"]) == 1
     assert len(middleware_dict["listen_publish_middleware"]) == 0
@@ -183,7 +184,7 @@ def test_multiple_middlewares_order(app):
     app.add_middleware(FooMiddleware)
     app.add_middleware(BarMiddleware)
     app.add_middleware(FooBarMiddleware, "foo", bar="bar")
-    middleware_dict = _MiddlewareManager.MIDDLEWARE
+    middleware_dict = app.nats.middlewares
     assert len(middleware_dict["send_publish_middleware"]) == 3
     assert len(middleware_dict["send_request_middleware"]) == 2
     assert len(middleware_dict["listen_publish_middleware"]) == 2

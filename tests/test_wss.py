@@ -14,11 +14,10 @@ def run_panini():
         service_name="test_wss",
         host="127.0.0.1",
         port=4222,
-        web_server=True,
-        web_port=1111,
-        logger_in_separate_process=False,
+        logger_in_separate_process=False
     )
 
+    app.setup_web_server(port=1111)
     manager = WSSManager(app)
 
     @app.listen("test_wss.start")

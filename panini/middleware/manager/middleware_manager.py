@@ -14,6 +14,10 @@ class MiddlewareManager:
             "listen_request_middleware": [],
         }
 
+    @property
+    def middleware(self):
+        return self._middleware
+
     def add_middleware(self, middleware_cls: Type[Middleware], *args, **kwargs):
         assert issubclass(middleware_cls, Middleware), \
             "Each custom middleware class must be a subclass of Middleware"

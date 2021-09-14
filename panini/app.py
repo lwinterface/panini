@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import typing
 import uuid
 
 from aiohttp import web
@@ -23,20 +24,20 @@ _app = None
 
 class App:
     def __init__(
-        self,
-        host: str,
-        port: int,
-        service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
-        client_id: str = None,
-        reconnect: bool = False,
-        max_reconnect_attempts: int = 60,
-        reconnecting_time_sleep: int = 2,
-        allocation_queue_group: str = "",
+            self,
+            host: str,
+            port: int or str,
+            service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
+            client_id: str = None,
+            reconnect: bool = False,
+            max_reconnect_attempts: int = 60,
+            reconnecting_time_sleep: int = 2,
+            allocation_queue_group: str = "",
 
-        logger_required: bool = True,
-        logger_files_path: str = None,
-        logger_in_separate_process: bool = False,
-        pending_bytes_limit=65536 * 1024 * 10,
+            logger_required: bool = True,
+            logger_files_path: str = None,
+            logger_in_separate_process: bool = False,
+            pending_bytes_limit=65536 * 1024 * 10,
     ):
         """
         :param host: NATS broker host
@@ -65,8 +66,6 @@ class App:
         :param logger_in_separate_process: use log in the same or in different process
         """
 
-
-
         try:
             # client_id initialization
             if client_id is None:
@@ -79,7 +78,7 @@ class App:
 
             self._event_manager = EventManager()
             self._task_manager = TaskManager()
-            self._nats_client = NATSClient(
+            self.nats = NATSClient(
                 host=host,
                 port=port,
                 client_id=self.client_id,
@@ -122,6 +121,12 @@ class App:
             self.http_server = None
             self.http = None
 
+            self.task = self._task_manager.register_single_task
+            self.timer_task = self._task_manager.register_interval_task
+
+            self.include_subjects = None
+            self.exclude_subjects = None
+
             global _app
             _app = self
 
@@ -129,65 +134,53 @@ class App:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
 
-    def setup_web_server(self, host=None, port=None, web_app=None, web_server_params: dict = None):
-        if web_server_params is None:
-            web_server_params = {}
+    def setup_web_server(self, host=None, port=None, web_app=None, params: dict = None):
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
-            self.http_server = HTTPServer(base_app=self, web_app=web_app, web_server_params=web_server_params)
+            self.http_server = HTTPServer(routes=self.http, web_app=web_app, web_server_params=params)
         else:
-            self.http_server = HTTPServer(
-                base_app=self, host=host, port=port, web_server_params=web_server_params
-            )
+            self.http_server = HTTPServer(routes=self.http, host=host, port=port, web_server_params=params)
 
-    def filter_subjects(self, include: list = None, exclude: list = None):
-        assert include and exclude, "You can use either include or exclude. Not both!"
+    def add_filters(self, include: list = None, exclude: list = None):
+        self.include_subjects = include
+        self.exclude_subjects = exclude
 
-        try:
-            subscriptions = self._event_manager.subscriptions
+    def _filter_subjects(self):
+        assert self.include_subjects or self.exclude_subjects, "You can use either include or exclude. Not both!"
 
-            if include:
-                for subject in subscriptions.copy():
-                    success = False
-                    for subject_include in include:
-                        if subject_include in subject:
-                            success = True
-                            break
-                    if not success:
+        subscriptions = self._event_manager.subscriptions
+
+        if self.include_subjects:
+            for subject in subscriptions.copy():
+                success = False
+                for subject_include in self.include_subjects:
+                    if subject_include in subject:
+                        success = True
+                        break
+                if not success:
+                    del self._event_manager.subscriptions[subject]
+
+        if self.exclude_subjects:
+            for subject in subscriptions.copy():
+                for subject_exclude in self.exclude_subjects:
+                    if subject_exclude in subject:
                         del self._event_manager.subscriptions[subject]
+                        break
 
-            if exclude:
-                for subject in subscriptions.copy():
-                    for subject_exclude in exclude:
-                        if subject_exclude in subject:
-                            del self._event_manager.subscriptions[subject]
-                            break
-
-        except InitializingEventManagerError as e:
-            error = f"App.event_registrar critical error: {str(e)}"
-            raise InitializingEventManagerError(error)
-
-    # TODO: implement change logging configuration during runtime to make it work properly
-    def change_log_config(self, new_formatters: dict, new_handlers: dict):
-        self.change_logger_config_listener_queue.put(
-            {"new_formatters": new_formatters, "new_handlers": new_handlers}
-        )
-        raise NotImplementedError
 
     def set_logger(
-        self,
-        service_name,
-        app_root_path,
-        logger_files_path,
-        in_separate_process,
-        client_id,
+            self,
+            service_name,
+            app_root_path,
+            logger_files_path,
+            in_separate_process,
+            client_id
     ):
         if in_separate_process:
             (
                 self.log_listener_queue,
                 self.log_stop_event,
-                self.logger_process,
-                self.change_logger_config_listener_queue,
+                self.logger_process
             ) = logger.set_logger(
                 service_name,
                 app_root_path,
@@ -206,39 +199,40 @@ class App:
         self.logger.logger = logging.getLogger(service_name)
 
     def listen(
-        self,
-        subject: list or str,
-        validator: type = None,
-        dynamic_subscription=False,
-        data_type="json.loads"
+            self,
+            subject: list or str,
+            validator: type = None,
+            dynamic_subscription=False,
+            data_type="json.loads"
     ):
         return self._event_manager.listen(subject, validator, dynamic_subscription, data_type)
 
-    def register_listener(self):
-        pass
+    async def publish(
+            self,
+            subject: str,
+            message,
+            reply_to: str = None,
+            force: bool = False,
+            data_type: type or str = "json.dumps"
+    ):
+        return await self.nats.publish(subject, message, reply_to, force, data_type)
 
-    async def publish(self, subject: str, message: dict):
-        self._nats_client.client.publish(subject, message)
-
-    async def request(self, subject, payload, timeout=0.5, expected=1, cb=None):
-        return await self._nats_client.client.request(subject, payload, timeout, expected, cb)
-
-    @property
-    def task(self):
-        return self._task_manager
-
-    def register_single_task(self, task):
-        self._task_manager.register_single_task(task=task)
-
-    def register_interval_task(self, task, interval):
-        self._task_manager.register_interval_task(task=task, interval=interval)
+    async def request(
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
+            data_type: type or str = "json.dumps",
+            callback: typing.Callable = None
+    ):
+        return await self.nats.request(subject, message, timeout, data_type, callback)
 
     def add_middleware(self, cls, *args, **kwargs):
-        return self._nats_client.middleware_manager.add_middleware(cls, *args, **kwargs)
+        return self.nats.middleware_manager.add_middleware(cls, *args, **kwargs)
 
     def _start_event(self):
         asyncio.ensure_future(
-            self._nats_client.client.publish(
+            self.nats.client.publish(
                 f"panini_events.{self.service_name}.{self.client_id}.started",
                 b"{}",
             )
@@ -246,9 +240,9 @@ class App:
 
     def start(self):
         if (
-            os.environ.get("PANINI_TEST_MODE")
-            and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
-            == "true"
+                os.environ.get("PANINI_TEST_MODE")
+                and os.environ.get("PANINI_TEST_MODE_USE_ERROR_MIDDLEWARE", "false")
+                == "true"
         ):
             def exception_handler(e, **kwargs):
                 self.logger.exception(f"Error: {e}, for kwargs: {kwargs}")
@@ -266,14 +260,19 @@ class App:
                 self.client_id,
             )
 
-        self._nats_client.set_listen_subjects_callbacks(self._event_manager.subscriptions)
-        self._nats_client.start()
+        self.nats.set_listen_subjects_callbacks(self._event_manager.subscriptions)
+        self.nats.start()
+
+        loop = asyncio.get_event_loop()
+
+        self._start_event()
 
         if self.http_server:
             self.http_server.start_server()
 
-        self._start_event()
-        asyncio.get_event_loop().run_forever()
+        tasks = asyncio.all_tasks(loop)
+        self._task_manager.create_tasks()
+        loop.run_until_complete(asyncio.gather(*tasks))
 
 
 def get_app() -> App:

@@ -95,8 +95,13 @@ class NATSClient:
     def middleware_manager(self):
         return self._middleware_manager
 
+    @property
+    def middlewares(self):
+        return self._middleware_manager.middleware
+
     async def _establish_connection(self):
         # TODO: authorization
+        print("authorization")
         self.client = NATS()
         self.client.msg_class = Msg
         self.server = self.host + ":" + str(self.port)
