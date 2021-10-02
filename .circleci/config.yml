@@ -13,6 +13,9 @@ executors:
     docker:
       - image: python:<< parameters.version >>-slim-buster
       - image: nats
+    resource_class: small
+
+working_directory: ~/<< pipeline.parameters.repo >>
 
 commands:
   install-requirements:
@@ -31,10 +34,32 @@ commands:
     steps:
       - store_test_results:
           path: results
-
-working_directory: ~/<< pipeline.parameters.repo >>
+  deploy-docs:
+    steps:
+      - run:
+          name: Install rsync
+          command: sudo apt update ; sudo apt install rsync
+      - run:
+          name: Fill config file
+          command: |
+            echo -e $CONFIG_FILE > "${HOME}/${FILENAME}"
+            echo $KEY > "${HOME}/${KEYFILE}"
+      - run:
+          name: Sync repo
+          command: bash -c "$RSYNC_PARAMS"
+      - run:
+          name: Reload service
+          command: bash -c "ssh ${RELOAD_SERVICE}"
 
 jobs:
+  deploy-documentation:
+    working_directory: ~/<< pipeline.parameters.repo >>
+    docker:
+      - image: cimg/base:2021.04
+    resource_class: small
+    steps:
+      - checkout
+      - deploy-docs
   test:
     parameters:
       version:
@@ -47,10 +72,10 @@ jobs:
     steps:
       - checkout
       - when:
-          condition: 
+          condition:
             matches: { pattern: "3.10.*", value: <<parameters.version>> }
           steps:
-            - run: 
+            - run:
                 command: |
                   apt update && apt install -y libc6-dev gcc build-essential
                   sed -i 's/1.6.1/1.6.3/' requirements/defaults.txt
@@ -58,6 +83,12 @@ jobs:
       - run-tests
       - store-results
 workflows:
+  deployment:
+    jobs:
+      - deploy-documentation:
+          filters:
+            branches:
+              only: [docs-deployment]
   main:
     jobs:
       - test:
