@@ -88,7 +88,7 @@ workflows:
       - deploy-documentation:
           filters:
             branches:
-              only: [docs-deployment]
+              only: [documentation]
   main:
     jobs:
       - test:
