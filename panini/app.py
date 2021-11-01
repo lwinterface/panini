@@ -178,10 +178,9 @@ class App:
             self,
             subject: list or str,
             validator: type = None,
-            dynamic_subscription=False,
             data_type="json.loads"
     ):
-        return self._event_manager.listen(subject, validator, dynamic_subscription, data_type)
+        return self._event_manager.listen(subject, validator, data_type)
 
     async def publish(
             self,
