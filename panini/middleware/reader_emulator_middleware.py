@@ -5,7 +5,7 @@ import copy
 
 from panini.emulator_client import EmulatorClient
 from panini.middleware import Middleware
-from panini.nats_client import Msg
+from panini.managers.nats_client import Msg
 from panini.utils.helper import start_thread
 
 

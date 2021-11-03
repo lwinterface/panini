@@ -5,10 +5,10 @@ app = panini_app.App(
     service_name="async_web_server",
     host="127.0.0.1",
     port=4222,
-    web_server=True,
 )
 
-log = app.logger
+app.setup_web_server()
+
 
 message = {
     "key1": "value1",

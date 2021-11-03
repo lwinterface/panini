@@ -27,7 +27,7 @@ async def publish():
         log.info(f"send message {message}")
 
 
-@app.timer_task(interval=2)
+@app.task(interval=2)
 async def publish_periodically():
     for _ in range(10):
         await app.publish(subject="some.publish.subject", message=message)

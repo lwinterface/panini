@@ -1,0 +1,71 @@
+import asyncio
+import time
+from typing import Callable
+
+from panini.exceptions import InitializingTaskError
+
+
+class TaskManager:
+    """
+    Collect all functions from each module wrapped by @app.task or @TaskManager.task
+    """
+
+    def __init__(self):
+        self._tasks = []
+        self._loop = asyncio.get_event_loop()
+
+    @property
+    def tasks(self):
+        return self._tasks
+
+    def __call__(self, interval: float or int = None, **kwargs):
+        def wrapper(task):
+            if interval:
+                self.register_interval_task(interval, task)
+            else:
+                self.register_single_task(task)
+            self.register_single_task(task)
+            return task
+
+        return wrapper
+
+    def register_single_task(self):
+        def wrapper(task):
+            self._check_task(task)
+            self._tasks.append(task)
+        # self._loop.create_task(task())
+        return wrapper
+
+    def register_interval_task(self, interval: int or float):
+        def wrapper(task):
+            self._check_task(task)
+            interval_task = self.wrapper_for_interval_task(interval, task)
+            self._tasks.append(interval_task)
+            # self._loop.create_task(interval_task())
+        return wrapper
+
+    def wrapper_for_interval_task(self, interval, task):
+        async def wrapper(**kwargs):
+            while True:
+                try:
+                    start = time.time()
+                    await task(**kwargs)
+                    duration = time.time() - start
+
+                    if duration < interval:
+                        await asyncio.sleep(interval - duration)
+
+                except InitializingTaskError:
+                    # TODO: warning log
+                    pass
+
+        return wrapper
+
+    def _check_task(self, task):
+        if not asyncio.iscoroutinefunction(task):
+            raise InitializingTaskError("Only coroutine tasks allowed")
+
+    def create_tasks(self):
+        loop = asyncio.get_event_loop()
+        for task in self._tasks:
+            loop.create_task(task())

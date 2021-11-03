@@ -12,10 +12,10 @@ def run_panini():
         service_name="test_web_server",
         host="127.0.0.1",
         port=4222,
-        web_server=True,
-        web_port=8084,
-        logger_in_separate_process=False,
+        logger_in_separate_process=False
     )
+
+    app.setup_web_server(port=8084)
 
     @app.listen("test_web_server.foo")
     async def foo(msg):
