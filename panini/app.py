@@ -26,9 +26,10 @@ _app = None
 class App:
     def __init__(
             self,
-            host: str,
-            port: int or str,
+            host: str = None,
+            port: int or str = None,
             service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
+            servers: list = None,
             client_id: str = None,
             reconnect: bool = False,
             max_reconnect_attempts: int = 60,
@@ -45,6 +46,7 @@ class App:
         :param host: NATS broker host
         :param port: NATS broker port
         :param service_name: Name of microservice
+        :param servers: Alternative to NATS broker host+NATS broker port. Allowed establish connection to multiple NATS brokers
         :param client_id: id of microservice, name and client_id used for NATS client name generating
         :param tasks: List of additional tasks
         :param reconnect: allows reconnect if connection to NATS has been lost
@@ -83,6 +85,7 @@ class App:
             self.nats = NATSClient(
                 host=host,
                 port=port,
+                servers=servers,
                 client_id=self.client_id,
                 allow_reconnect=reconnect,
                 queue=allocation_queue_group,
