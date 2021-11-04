@@ -1,7 +1,12 @@
 # Changelog
 ## [v0.6.0](https://github.com/lwinterface/panini/tree/v0.5.2) (2021-11-04)
 
-
+- Global refactoring
+- Added new interface for pereodic tasks: @app.task(interval=1)
+- Changed `listen_subject_only_if_include` param in App to function `app.add_filters(include, exclude)`
+- Added ability to use all authorization methods from nats.py
+- Added ability to establish connection to multiple NATS brokers
+- Added start message when starting in terminal
 
 ## [v0.5.2](https://github.com/lwinterface/panini/tree/v0.5.2) (2021-08-17)
 
