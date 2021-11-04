@@ -144,6 +144,17 @@ class NATSClient:
                     await self.subscribe_new_subject(
                         subject, callback, init_subscription=True
                     )
+            self.print_connect()
+
+    def print_connect(self):
+        print('\n======================================================================================')
+        print(f'Panini service connected to NATS..')
+        print(f"id: {self.client.client_id}")
+        print(f"name: {self.client_id}")
+        print(f'\nNATS brokers:')
+        for i in self.servers:
+            print("* ",i)
+        print('======================================================================================\n')
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
