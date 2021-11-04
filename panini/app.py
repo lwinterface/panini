@@ -135,6 +135,9 @@ class App:
             raise InitializingEventManagerError(error)
 
     def setup_web_server(self, host=None, port=None, web_app=None, params: dict = None):
+        """
+        Setup server and run with NATS when called app.start()
+        """
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
             self.http_server = HTTPServer(routes=self.http, web_app=web_app, web_server_params=params)
@@ -142,6 +145,9 @@ class App:
             self.http_server = HTTPServer(routes=self.http, host=host, port=port, web_server_params=params)
 
     def add_filters(self, include: list = None, exclude: list = None):
+        """
+        Allows to listen subject only if subject include or exclude string from lists in agrs
+        """
         return self.nats.add_filters(include, exclude)
 
     def set_logger(
