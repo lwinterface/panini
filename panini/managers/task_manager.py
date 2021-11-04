@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Callable
+from typing import Union
 
 from panini.exceptions import InitializingTaskError
 
@@ -18,14 +18,23 @@ class TaskManager:
     def tasks(self):
         return self._tasks
 
-    def __call__(self, interval: float or int = None, **kwargs):
+    # def __call__(self, interval: float or int = None, **kwargs):
+    #     def wrapper(task):
+    #         if interval:
+    #             self.register_interval_task(interval, task)
+    #         else:
+    #             self.register_single_task(task)
+    #         self.register_single_task(task)
+    #         return task
+    #
+    #     return wrapper
+
+    def register_task(self, interval: Union[float, int] = None):
         def wrapper(task):
+            self._check_task(task)
             if interval:
-                self.register_interval_task(interval, task)
-            else:
-                self.register_single_task(task)
-            self.register_single_task(task)
-            return task
+                task = self.wrapper_for_interval_task(interval, task)
+            self._tasks.append(task)
 
         return wrapper
 
