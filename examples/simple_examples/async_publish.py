@@ -22,14 +22,14 @@ message = {
 
 @app.task()
 async def publish():
-    for _ in range(10):
+    for _ in range(1):
         await app.publish(subject="some.publish.subject", message=message)
         log.info(f"send message {message}")
 
 
 @app.task(interval=2)
 async def publish_periodically():
-    for _ in range(10):
+    for _ in range(1):
         await app.publish(subject="some.publish.subject", message=message)
         log.info(f"send message from periodic task {message}")
 

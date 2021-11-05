@@ -3,18 +3,31 @@ import random
 import json
 from aiohttp import web
 from panini import app as panini_app
-from examples.simple_examples._wss_manager import WSSManager, html
-
+from _wss_manager import WSSManager, html
 
 app = panini_app.App(
     service_name="async_NATS_WSS_bridge",
-    # host='nats-server' if 'HOSTNAME' in os.environ else '127.0.0.1',
-    host="54.36.108.188",
+    host='127.0.0.1',
     port=4222,
 )
+app.setup_web_server(port=5001)
+logger = app.logger
 
-app.setup_web_server(port=1111)
-log = app.logger
+async def incoming_messages_callback(subscriber, msg, **kwargs):
+    """
+    app calls it for each new message from
+    NATS and redirects the message
+    """
+    try:
+        await subscriber.send_str(
+            json.dumps({"subject": msg.subject, "data": msg.data})
+        )
+    except Exception as e:
+        logger.error(f"error: {str(e)}")
+
+manager = WSSManager(app)
+manager.callback = incoming_messages_callback
+
 test_msg = {
     "key1": "value1",
     "key2": 2,
@@ -25,10 +38,7 @@ test_msg = {
     "key7": None,
 }
 
-manager = WSSManager(app)
-
-
-@app.timer_task(interval=1)
+@app.task(interval=1)
 async def publish_periodically_for_test():
     test_msg["key3"] = random.random()
     await app.publish("test.subject", test_msg)
@@ -51,6 +61,7 @@ async def web_endpoint_listener(request):
 
 @app.http.get("/stream")
 async def web_endpoint_listener(request):
+    """WebSocket connection """
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     connection_id = str(uuid.uuid4())[:10]
@@ -59,20 +70,23 @@ async def web_endpoint_listener(request):
     try:
         await ws.close()
     except Exception as e:
-        log.error(str(e))
+        logger.error(str(e))
     return ws
 
 
 async def incoming_messages_callback(subscriber, msg, **kwargs):
+    """
+    app calls it for each new message from
+    NATS and redirects the message
+    """
     try:
         await subscriber.send_str(
             json.dumps({"subject": msg.subject, "data": msg.data})
         )
     except Exception as e:
-        log.error(f"error: {str(e)}")
+        logger.error(f"error: {str(e)}")
 
 
 if __name__ == "__main__":
-    manager.callback = incoming_messages_callback
     app.http_server.web_app["subscribers"] = {}
     app.start()
