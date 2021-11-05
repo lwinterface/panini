@@ -283,13 +283,13 @@ class App:
         loop = asyncio.get_event_loop()
 
         self._start_event()
+        tasks = asyncio.all_tasks(loop)
+        self._task_manager.create_tasks()
 
         if self.http_server:
             self.http_server.start_server()
-
-        tasks = asyncio.all_tasks(loop)
-        self._task_manager.create_tasks()
-        loop.run_until_complete(asyncio.gather(*tasks))
+        else:
+            loop.run_until_complete(asyncio.gather(*tasks))
 
 
 
