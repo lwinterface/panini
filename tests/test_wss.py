@@ -30,7 +30,7 @@ def run_panini():
         await ws.prepare(request)
         connection_id = str(uuid.uuid4())[:10]
         await ws.send_str(
-            json.dumps({"success": True, "data": "Successfully connected"})
+            json.dumps({"success": True, "message": "Successfully connected"})
         )
         await manager.client_listener(ws, connection_id)
         await ws.close()
@@ -67,10 +67,11 @@ def test_wss_bridge(client):
     client.websocket_session.send(json.dumps(subscribe_message))
     response = json.loads(client.websocket_session.recv())
     assert response["success"] is True
-    assert response["data"] == "Successfully connected"
+    assert response["message"] == "Successfully connected"
 
     response = json.loads(client.websocket_session.recv())
-    assert response["data"] == "Successfully connected to events: 'test_wss.foo.bar'"
+    print(response)
+    assert response["message"] == "Successfully connected to events: 'test_wss.foo.bar'"
 
     client.publish("test_wss.start", {})
     response = json.loads(client.websocket_session.recv())["data"]
@@ -84,6 +85,6 @@ def test_wss_bridge(client):
     response = json.loads(client.websocket_session.recv())
 
     assert response["success"] is True
-    assert response["data"] == "Successfully unsubscribed from event: test_wss.foo.bar"
+    assert response["message"] == "Successfully unsubscribed from event: test_wss.foo.bar"
 
     client.websocket_session.close()
