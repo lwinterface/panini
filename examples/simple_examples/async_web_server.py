@@ -8,7 +8,7 @@ app = panini_app.App(
 )
 
 app.setup_web_server()
-
+log = app.logger
 
 message = {
     "key1": "value1",
