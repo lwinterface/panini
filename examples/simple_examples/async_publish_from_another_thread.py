@@ -27,7 +27,7 @@ async def publish_periodically():
 
 def another_thread_func():
     for _ in range(10):
-        app.connector.publish_from_another_thread(
+        app.nats.publish_from_another_thread(
             subject="some.publish.subject", message=message
         )
 

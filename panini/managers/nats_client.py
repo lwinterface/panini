@@ -4,11 +4,13 @@ import asyncio
 import threading
 import nest_asyncio
 from types import CoroutineType
+from typing import Union, List
 from nats.aio.client import Client as NATS
 from panini.exceptions import DataTypeError
 from panini.managers.middleware_manager import MiddlewareManager
 from panini.utils.logger import get_logger
 
+NoneType = type(None)
 nest_asyncio.apply()
 
 
@@ -40,13 +42,14 @@ class Msg:
 class NATSClient:
     def __init__(
             self,
+            host: Union[str, NoneType],
+            port: Union[int, str],
+            servers: Union[List[str], NoneType],
             client_id: str,
-            host: str,
-            port: int or str,
-            allow_reconnect: bool or None,
+            allow_reconnect: Union[bool, NoneType],
             max_reconnect_attempts: int = 60,
             reconnecting_time_wait: int = 2,
-            auth: dict = None,
+            auth: Union[dict, NoneType] = None,
             queue="",
             pending_bytes_limit=65536 * 1024 * 10,
             **kwargs
@@ -65,6 +68,7 @@ class NATSClient:
         self.client_id = client_id
         self.host = host
         self.port = port
+        self.servers = servers
         self.queue = queue
         self.auth = auth
         self.listen_subjects_callbacks = None
@@ -117,11 +121,14 @@ class NATSClient:
         self._middleware_manager.middlewares = value
 
     async def _establish_connection(self):
-        # TODO: authorization
         self.client = NATS()
         self.client.msg_class = Msg
-        self.server = self.host + ":" + str(self.port)
-        kwargs = {"servers": self.server, "loop": self.loop, "name": self.client_id, **self._connection_kwargs}
+
+        if self.servers is None:
+            server = 'nats://' + self.host + ":" + str(self.port)
+            self.servers = [server]
+
+        kwargs = {"servers": self.servers, "loop": self.loop, "name": self.client_id, **self._connection_kwargs}
         if self.allow_reconnect:
             kwargs["allow_reconnect"] = self.allow_reconnect
         if self.max_reconnect_attempts:
@@ -137,6 +144,17 @@ class NATSClient:
                     await self.subscribe_new_subject(
                         subject, callback, init_subscription=True
                     )
+            self.print_connect()
+
+    def print_connect(self):
+        print('\n======================================================================================')
+        print(f'Panini service connected to NATS..')
+        print(f"id: {self.client.client_id}")
+        print(f"name: {self.client_id}")
+        print(f'\nNATS brokers:')
+        for i in self.servers:
+            print("* ",i)
+        print('======================================================================================\n')
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
