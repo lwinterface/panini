@@ -2,6 +2,13 @@
   
 Panini is a modern framework for fast and straightforward microservices development. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
+## Supported platforms
+
+Should be compatible with [Python 3.8](https://docs.python.org/3.8/library/asyncio.html) and [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
+
+
+## Overview
+
 The framework allows you to work with NATS features and some additional logic using a simple interface:
 *  easy to initialize application
 ```python
