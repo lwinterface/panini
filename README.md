@@ -2,6 +2,13 @@
   
 Panini is a modern framework for fast and straightforward microservices development. Our goal is to create fastapi/aiohttp/flask-like solution but for NATS streaming.
  
+## Supported platforms
+
+Should be compatible with [Python 3.8](https://docs.python.org/3.8/library/asyncio.html) and [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
+
+
+## Overview
+
 The framework allows you to work with NATS features and some additional logic using a simple interface:
 *  easy to initialize application
 ```python
@@ -14,8 +21,9 @@ app = panini_app.App(
 )
 ```
 *  stream via NATS broker to some subject
+
 ```python
-@app.task()
+@app.single()
 async def publish():
     while True:
         message = get_some_update()
@@ -43,25 +51,29 @@ async def request_listener(msg):
     return {'success': True, 'data': 'request has been processed'}
 ```
 * create periodic tasks
+
 ```python
-@app.timer_task(interval=2)
+@app.interval(interval=2)
 async def your_periodic_task():
     for _ in range(10):
-        await app.publish(subject='some.publish.subject', message={'some':'data'})
+        await app.publish(subject='some.publish.subject', message={'some': 'data'})
 ```
 * synchronous and asynchronous endpoints
+
 ```python
-@app.timer_task(interval=2)
+@app.interval(interval=2)
 def your_periodic_task():
     for _ in range(10):
-        app.publish_sync(subject='some.publish.subject', message={'some':'data'})
+        app.publish_sync(subject='some.publish.subject', message={'some': 'data'})
 ```
 * accept different datatypes: dict, str, bytes
+
 ```python
-@app.timer_task(interval=2)
+@app.interval(interval=2)
 def your_periodic_task():
     for _ in range(10):
-        app.publish_sync(subject='some.publish.subject', message=b'messageinbytesrequiresminimumoftimetosend', data_type=bytes)
+        app.publish_sync(subject='some.publish.subject', message=b'messageinbytesrequiresminimumoftimetosend',
+                         data_type=bytes)
 ```
 * create middlewares for NATS messages
 

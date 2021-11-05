@@ -66,15 +66,13 @@ def set_logger(
         (
             logger_queue,
             log_stop_event,
-            log_process,
-            change_log_config_listener_queue,
+            log_process
         ) = _set_log_recorder_process(logger_config)
         _set_main_logging_config(logger_queue)
         return (
             logger_queue,
             log_stop_event,
-            log_process,
-            change_log_config_listener_queue,
+            log_process
         )
     else:
         logging.config.dictConfig(logger_config)
@@ -254,25 +252,18 @@ def _emergency_logging() -> None:
 def _dedicated_listener_process(
     log_listener_queue: Queue,
     stop_event: Event,
-    config: dict,
-    change_config_listener_queue: Queue,
+    config: dict
 ) -> None:
     logging.config.dictConfig(config)
     log_listener = logging.handlers.QueueListener(log_listener_queue, LogHandler())
-    change_log_config_listener = logging.handlers.QueueListener(
-        change_config_listener_queue, ChangeConfigHandler()
-    )
-    change_log_config_listener.start()
     log_listener.start()
     stop_event.wait()
     log_listener.stop()
-    change_log_config_listener.stop()
 
 
-def _set_log_recorder_process(config: dict) -> (Queue, Event, Process, Queue):
+def _set_log_recorder_process(config: dict) -> (Queue, Event, Process):
     try:
         log_listener_queue = Queue()
-        change_log_config_listener_queue = Queue()
         stop_event = Event()
         listener_process = Process(
             target=_dedicated_listener_process,
@@ -280,16 +271,14 @@ def _set_log_recorder_process(config: dict) -> (Queue, Event, Process, Queue):
             args=(
                 log_listener_queue,
                 stop_event,
-                config,
-                change_log_config_listener_queue,
+                config
             ),
         )
         listener_process.start()
         return (
             log_listener_queue,
             stop_event,
-            listener_process,
-            change_log_config_listener_queue,
+            listener_process
         )
 
     except Exception as e:
