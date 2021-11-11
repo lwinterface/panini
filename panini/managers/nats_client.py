@@ -46,6 +46,7 @@ class NATSClient:
             port: Union[int, str],
             servers: Union[List[str], NoneType],
             client_id: str,
+            loop: asyncio.AbstractEventLoop,
             allow_reconnect: Union[bool, NoneType],
             max_reconnect_attempts: int = 60,
             reconnecting_time_wait: int = 2,
@@ -91,7 +92,7 @@ class NATSClient:
 
         self._connection_kwargs = kwargs
 
-        self.loop = asyncio.get_event_loop()
+        self.loop = loop
 
     def set_listen_subjects_callbacks(self, subscriptions: list):
         subscriptions = self.filter_subjects(subscriptions)
