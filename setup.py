@@ -19,7 +19,7 @@ The framework allows you to work with NATS features and some additional logic us
 
 setup(
     name="panini",
-    version="0.6.1",
+    version="0.6.2a1",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -50,7 +50,7 @@ setup(
     install_requires=[
         "aiohttp>=3.8.0",
         "aiohttp-cors>=0.7.0",
-        "async-timeout>=3.0.1",
+        "async-timeout==4.0.0",
         "asyncio-nats-client>=0.11.4",
         "websocket-client>=0.58.0",
         "requests>=2.24.0",
