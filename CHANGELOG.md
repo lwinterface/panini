@@ -1,5 +1,10 @@
 # Changelog
-## [v0.6.0](https://github.com/lwinterface/panini/tree/v0.5.2) (2021-11-04)
+## [v0.6.2](https://github.com/lwinterface/panini/tree/v0.6.2) (2021-11-11)
+
+- Fixed bug: tasks doesn't works with HTTP server
+- Fixed package incompatibility
+
+## [v0.6.0](https://github.com/lwinterface/panini/tree/v0.6.0) (2021-11-04)
 
 - Global refactoring
 - Added new interface for pereodic tasks: @app.task(interval=1)
