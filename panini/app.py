@@ -66,6 +66,8 @@ class App:
                 self.client_id = client_id
             os.environ["CLIENT_ID"] = self.client_id
 
+            self.loop = asyncio.get_event_loop()
+
             self.service_name = service_name
 
             self._event_manager = EventManager()
@@ -75,6 +77,7 @@ class App:
                 port=port,
                 servers=servers,
                 client_id=self.client_id,
+                loop=self.loop,
                 allow_reconnect=reconnect,
                 queue=allocation_queue_group,
                 max_reconnect_attempts=max_reconnect_attempts,
@@ -131,9 +134,9 @@ class App:
         """
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
-            self.http_server = HTTPServer(routes=self.http, web_app=web_app, web_server_params=params)
+            self.http_server = HTTPServer(routes=self.http, loop=self.loop, web_app=web_app, web_server_params=params)
         else:
-            self.http_server = HTTPServer(routes=self.http, host=host, port=port, web_server_params=params)
+            self.http_server = HTTPServer(routes=self.http, loop=self.loop, host=host, port=port, web_server_params=params)
 
     def add_filters(self, include: list = None, exclude: list = None):
         """
