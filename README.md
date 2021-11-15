@@ -23,7 +23,7 @@ app = panini_app.App(
 *  stream via NATS broker to some subject
 
 ```python
-@app.single()
+@app.task()
 async def publish():
     while True:
         message = get_some_update()
