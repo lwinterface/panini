@@ -25,14 +25,14 @@ async def receive_bytes(msg):
     log.info(f"got message {msg.data}")
 ```
 
-If an incoming message to a microservice requires an answer, Panini expects dict as output type. For example:
+If an incoming message to a microservice requires an answer, Panini expects the output type to be the same as the input type. For example:
 
 ```python
 @app.listen("subject.for.request.in.bytes", data_type=bytes)
 async def receive_bytes(msg):
     data = msg.data
 	  result = some_process_of_request(data)
-    validate_result_is_jsonfyible_dict(result)  # the result should be returned as jsonfyible dict
+    validate_result_is_bytes(result)  # the result should be returned as bytes
     return result
 ```
 

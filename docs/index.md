@@ -1,4 +1,4 @@
-# Panini documentation
+# Panini Docks
 
 <span style="font-size:4em;">👋</span>
  
@@ -6,7 +6,7 @@
 
 Welcome to Panini's explanatory documentation! Here you can become familiar with the concept, learn how to setup a working environment, and take your first steps towards building with it.
 
-Panini is a python microframework based on the [nats.py](http://nats.py/) library. Its goal is to offer developers an easy way to create NATS microservices with a lower barrier of entry. It provides a specific template for creating microservices, similarly to FastAPI, Aiohttp, or Flask. Like all of the above frameworks, Panini has its design limits and edge cases. In the case that you become restricted by Panini's capabilities, we recommend switching to [nats.py](https://github.com/nats-io/nats.py).
+Panini is a python microframework based on the [nats.py](http://nats.py/) library. Its goal is to offer developers an easy way to create NATS microservices with a lower barrier of entry. It provides a specific template for creating microservices, similarly to FastAPI, Aiohttp, or Flask. Like all of the above frameworks, Panini has its design limits and edge cases. In the event that you become restricted by Panini's capabilities, we recommend switching to [nats.py](https://github.com/nats-io/nats.py).
 
 Panini was inspired by [Faust](https://github.com/robinhood/faust) project.
 
