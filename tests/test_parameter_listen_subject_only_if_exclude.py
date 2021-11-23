@@ -9,9 +9,10 @@ def run_panini():
         service_name="test_parameter_listen_subject_only_if_exclude",
         host="127.0.0.1",
         port=4222,
-        listen_subject_only_if_exclude=["start"],
         logger_in_separate_process=False,
     )
+
+
 
     @app.listen("test_parameter_listen_subject_only_if_exclude.start")
     async def start(msg):
@@ -25,6 +26,7 @@ def run_panini():
     async def start(msg):
         return {"data": 3}
 
+    app.add_filters(exclude=["start"])
     app.start()
 
 

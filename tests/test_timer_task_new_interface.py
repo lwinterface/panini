@@ -16,7 +16,7 @@ def run_panini():
         logger_in_separate_process=False,
     )
 
-    @app.timer_task(0.1)
+    @app.task(0.1)
     async def publish_periodically():
         await app.publish(subject="test_timer_task.foo", message={})
 

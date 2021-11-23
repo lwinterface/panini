@@ -3,6 +3,7 @@ import shutil
 import threading
 import json
 import random
+import time
 import typing
 from urllib.parse import urljoin
 
@@ -12,7 +13,7 @@ from pynats import NATSClient, NATSMessage
 
 from .exceptions import TestClientError
 from .utils.helper import start_process, start_thread
-from panini.nats_client import Msg
+from panini.managers.nats_client import Msg
 
 
 # Annotations for `Session.request()`
