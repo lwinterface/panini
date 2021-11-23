@@ -1,19 +1,10 @@
-# Panini
-  
-Panini is a python microframework based on the [nats.py](http://nats.py/) library. Its goal is to offer developers an easy way to create NATS microservices with a lower barrier of entry. It provides a specific template for creating microservices, similarly to FastAPI, Aiohttp, or Flask. Like all of the above frameworks, Panini has its design limits and edge cases. In the case that you become restricted by Panini's capabilities, we recommend switching to [nats.py](https://github.com/nats-io/nats.py).
+Panini is a modern framework for fast and straightforward microservice development. It's a Flask-like solution but for NATS streaming. 
 
+For this quickstart, we expect the reader to have a minimal experience with:
 
-Panini was inspired by [Faust](https://github.com/robinhood/faust) project. 
-## Documentation
-
-Documentation is [here](https://panini.technology/).
-
-## Supported platforms
-
-Compatible with [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
-
-
-
+- Python
+- basic knowledge about NATS
+- FastAPI or Aiohttp or Flask
 
 ## A simple listener app example
 
@@ -53,12 +44,9 @@ What's going on here?
 
 Save the above code to file *listener*_*app.py.*
 
-
-<aside>
-💡 The current function expects only JSON formattable returns, dict or list. However, you can also specify it as string or bytes. More details about this in Datatypes section._
-
-</aside>
-
+<div class="attention">
+<p class="attention__emoji-icon">💡</p><p> The current function expects only JSON formattable returns, dict or list. However, you can also specify it as string or bytes. More details about this in Datatypes section.</p>
+</div>
 
 Make sure that you have all prerequisites from Install. Open the terminal to run the app:
 
@@ -278,33 +266,3 @@ app = panini_app.App(
 ```
 
 Need more examples? Check [here](https://github.com/lwinterface/panini/tree/master/examples).
-## Testing
-
-We use [pytest](https://docs.pytest.org/en/stable/) for testing
-
-To run tests (notice, that nats-server must be running on port 4222 for tests): 
-```shell
-pytest
-```
- 
-## Contributing
-
-Welcome contributor! We are looking developers to make Panini a great project.
-
-Working on your first Pull Request? You can learn how from this *free* series, [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github).
-
-Here's how you can help:
-
-* suggest new updates or report about bug [here](https://github.com/lwinterface/panini/issues)
-* review a [pull request](https://github.com/lwinterface/panini/pulls)
-* fix an [issue](https://github.com/lwinterface/panini/issues)
-* write a tutorial
-* always follow by [this](https://github.com/firstcontributions/first-contributions) guide for your contributions
-
-At this point, you're ready to make your changes! Feel free to ask for help :smile_cat:
-
-
-
-
-
-
