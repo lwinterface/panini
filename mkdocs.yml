@@ -2,43 +2,44 @@ site_name: Panini
 repo_url: https://github.com/lwinterface/panini
 repo_name: lwinterface/panini
 nav:
-    - Install: Install.md
-    - Quickstart: Quickstart.md
-    - What is NATS?: What_is_NATS.md
-    - How Panini works?: 
-        - First Step: How_first_step.md
-        - Arguments panini app takes: How_arguments.md
-        - Main functions of panini app : How_main_func.md
-        - Incoming message strucutre: How_incoming_msg.md
-    - Datatypes: Datatypes.md
-    - Validation for incoming data: Validation_for_incoming_data.md
-    - Middlewares: Middlewares.md
-    - HTTP server: HTTP_server.md
-    - WebSocket server: WebSocket_server.md
-    - Balancer: Balancer.md
-    - Middlewares: Middlewares.md
-    - Monitoring application: Monitoring_application.md
-    - Emulator - "time machine" debug: Emulator.md
-    - Distributed tracing: Distributed_tracing.md
-    - Deployment: Deployment.md
-    - Changelog: Changelog.md
-    - License: License.md
-    - How to contribute: How_to_contribute.md
-    - Testing: Testing.md
-    - AsyncTesting: AsyncTesting.md
-    - Logger: Logger.md
-    - Examples: Examples.md
+    - 🏰 What is NATS?: What_is_NATS.md
+    - 🚚 Install: Install.md
+    - 🍳 Quickstart: Quickstart.md
+    - 👩‍🎓 Panini interface: 
+        - App Arguments: Panini_App_Arguments.md
+        - App Functions: Panini_App_Functions.md
+        - Incoming message structure: Incoming_Message_Structure.md
+        - How to validate that microservice connected to NATS: Panini_Validation.md
+    - 👨‍👩‍👧‍👦 Datatypes: Datatypes.md
+    - 🔑 Authentication: Authentication.md
+    - 👮‍♂️ Incoming data validation: Data_Validation.md
+    - 🖖 Middlewares: Middlewares.md
+    - 🦆 HTTP server: HTTP_server.md
+    - 🦅 WebSocket server example: WebSocket_server.md
+    - 🤹 Balancer: Balancer.md
+    - 👀 Application Monitoring : Application_monitoring.md
+    - 🕰️ Emulator - "time machine" debug: Emulator.md
+    - 🔍 Distributed tracing: Distributed_tracing.md
+    - 🏗️ Deployment: Deployment.md
+    - 📋 Changelog: Changelog.md
+    - 🗽 License: License.md
+    - 👐 How to contribute: How_to_contribute.md
+    - 🔧 Testing: Testing.md
+    - 📋 Logger: Logger.md
 plugins:
   - search:
       separator: '[\s\-\.]+'
       lang: en    
 theme:
   name: material
+  logo: assets/logo_p.svg
   features:
    - search.suggest
    - search.highlight
   palette:
     primary: light blue
+extra_css:
+  - stylesheets/extra.css
 markdown_extensions:
   - admonition
   - abbr
