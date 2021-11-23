@@ -1,6 +1,7 @@
 site_name: Panini
 repo_url: https://github.com/lwinterface/panini
 repo_name: lwinterface/panini
+edit_uri: ""
 nav:
     - 🏰 What is NATS?: What_is_NATS.md
     - 🚚 Install: Install.md
@@ -32,7 +33,6 @@ plugins:
       lang: en    
 theme:
   name: material
-  logo: assets/logo_p.svg
   features:
    - search.suggest
    - search.highlight
