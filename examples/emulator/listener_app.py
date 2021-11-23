@@ -1,8 +1,7 @@
 from panini.app import App
 
 from panini.middleware.reader_emulator_middleware import ReaderEmulatorMiddleware
-from panini.middleware.writer_emulator_middleware import WriterEmulatorMiddleware
-from panini.nats_client import Msg
+from panini.managers.nats_client import Msg
 
 app = App(service_name="listener", host="127.0.0.1", port=4222)
 

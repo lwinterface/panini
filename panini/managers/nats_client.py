@@ -4,11 +4,13 @@ import asyncio
 import threading
 import nest_asyncio
 from types import CoroutineType
+from typing import Union, List
 from nats.aio.client import Client as NATS
 from panini.exceptions import DataTypeError
+from panini.managers.middleware_manager import MiddlewareManager
 from panini.utils.logger import get_logger
-from panini.managers import _MiddlewareManager
 
+NoneType = type(None)
 nest_asyncio.apply()
 
 
@@ -39,17 +41,19 @@ class Msg:
 
 class NATSClient:
     def __init__(
-        self,
-        client_id: str,
-        host: str,
-        port: int or str,
-        listen_subjects_callbacks: dict,
-        allow_reconnect: bool or None,
-        max_reconnect_attempts: int = 60,
-        reconnecting_time_wait: int = 2,
-        auth: dict = None,
-        queue="",
-        pending_bytes_limit=65536 * 1024 * 10,
+            self,
+            host: Union[str, NoneType],
+            port: Union[int, str],
+            servers: Union[List[str], NoneType],
+            client_id: str,
+            loop: asyncio.AbstractEventLoop,
+            allow_reconnect: Union[bool, NoneType],
+            max_reconnect_attempts: int = 60,
+            reconnecting_time_wait: int = 2,
+            auth: Union[dict, NoneType] = None,
+            queue="",
+            pending_bytes_limit=65536 * 1024 * 10,
+            **kwargs
     ):
         """
         :param client_id: instance identifier for NATS, str
@@ -65,32 +69,67 @@ class NATSClient:
         self.client_id = client_id
         self.host = host
         self.port = port
+        self.servers = servers
         self.queue = queue
         self.auth = auth
-        self.listen_subjects_callbacks = listen_subjects_callbacks
+        self.listen_subjects_callbacks = None
         self.allow_reconnect = allow_reconnect
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnecting_time_wait = reconnecting_time_wait
         self.pending_bytes_limit = pending_bytes_limit
         self.ssid_map = {}
 
+        self.include_subjects = None
+        self.exclude_subjects = None
+
+        self._middleware_manager = MiddlewareManager()
+
+        def not_assigned_method(*args, **kwargs):
+            raise Exception("used before assignment")
+
+        self._publish_wrapped = not_assigned_method
+        self._request_wrapped = not_assigned_method
+
+        self._connection_kwargs = kwargs
+
+        self.loop = loop
+
+    def set_listen_subjects_callbacks(self, subscriptions: list):
+        subscriptions = self.filter_subjects(subscriptions)
+        self.listen_subjects_callbacks = subscriptions
+
+    def start(self):
         # inject send_middlewares
-        self._publish_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+        self._publish_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "publish"
         )(self._publish)
-        self._request_wrapped = _MiddlewareManager._wrap_function_by_middleware(
+        self._request_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "request"
         )(self._request)
 
-        self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self._establish_connection())
 
+    @property
+    def middleware_manager(self):
+        return self._middleware_manager
+
+    @property
+    def middlewares(self):
+        return self._middleware_manager.middlewares
+
+    @middlewares.setter
+    def middlewares(self, value: dict):
+        self._middleware_manager.middlewares = value
+
     async def _establish_connection(self):
-        # TODO: authorization
         self.client = NATS()
         self.client.msg_class = Msg
-        self.server = self.host + ":" + str(self.port)
-        kwargs = {"servers": self.server, "loop": self.loop, "name": self.client_id}
+
+        if self.servers is None:
+            server = 'nats://' + self.host + ":" + str(self.port)
+            self.servers = [server]
+
+        kwargs = {"servers": self.servers, "loop": self.loop, "name": self.client_id, **self._connection_kwargs}
         if self.allow_reconnect:
             kwargs["allow_reconnect"] = self.allow_reconnect
         if self.max_reconnect_attempts:
@@ -104,23 +143,35 @@ class NATSClient:
             for subject, callbacks in listen_subjects_callbacks.items():
                 for callback in callbacks:
                     await self.subscribe_new_subject(
-                            subject, callback, init_subscription=True
-                        )
+                        subject, callback, init_subscription=True
+                    )
+            self.print_connect()
+
+    def print_connect(self):
+        print('\n======================================================================================')
+        print(f'Panini service connected to NATS..')
+        print(f"id: {self.client.client_id}")
+        print(f"name: {self.client_id}")
+        print(f'\nNATS brokers:')
+        for i in self.servers:
+            print("* ",i)
+        print('======================================================================================\n')
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
 
     async def subscribe_new_subject(
-        self,
-        subject: str,
-        callback: CoroutineType,
-        init_subscription=False,
-        is_async=False,
-        data_type=None
+            self,
+            subject: str,
+            callback: CoroutineType,
+            init_subscription=False,
+            is_async=False,
+            data_type=None
     ):
         if data_type == None:
             data_type = getattr(callback, 'data_type', 'json.loads')
-        callback = _MiddlewareManager._wrap_function_by_middleware("listen")(callback)
+
+        callback = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type)
         ssid = await self.client.subscribe(
             subject,
@@ -168,12 +219,12 @@ class NATSClient:
                     self.listen_subjects_callbacks[subject].remove(ssid)
 
     def publish_sync(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
+            self,
+            subject: str,
+            message,
+            reply_to: str = None,
+            force: bool = False,
+            data_type: type or str = "json.dumps",
     ):
         asyncio.ensure_future(
             self.publish(subject, message, reply_to, force, data_type)
@@ -183,12 +234,12 @@ class NATSClient:
         self.loop.call_soon_threadsafe(self.publish_sync, subject, message)
 
     def request_sync(
-        self,
-        subject: str,
-        message,
-        timeout: int = 10,
-        data_type: type or str = "json.dumps",
-        callback: typing.Callable = None,
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
+            data_type: type or str = "json.dumps",
+            callback: typing.Callable = None,
     ):
         # asyncio.ensure_future(self.request(subject, message, timeout, data_type))
         return self.loop.run_until_complete(
@@ -196,10 +247,10 @@ class NATSClient:
         )
 
     def request_from_another_thread_sync(
-        self,
-        subject: str,
-        message,
-        timeout: int = 10,
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
     ):
         try:
             loop = asyncio.get_event_loop()
@@ -210,10 +261,10 @@ class NATSClient:
         )
 
     async def request_from_another_thread(
-        self,
-        subject: str,
-        message,
-        timeout: int = 10,
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
     ):
         # return self.loop.call_soon_threadsafe(self.request_sync, subject, message, timeout)
         fut = asyncio.run_coroutine_threadsafe(
@@ -245,12 +296,12 @@ class NATSClient:
         return message
 
     async def _publish(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
+            self,
+            subject: str,
+            message,
+            reply_to: str = None,
+            force: bool = False,
+            data_type: type or str = "json.dumps",
     ):
         message = self.format_message_data_type(message, data_type)
 
@@ -262,12 +313,12 @@ class NATSClient:
             await self.client.flush()
 
     async def publish(
-        self,
-        subject: str,
-        message,
-        reply_to: str = None,
-        force: bool = False,
-        data_type: type or str = "json.dumps",
+            self,
+            subject: str,
+            message,
+            reply_to: str = None,
+            force: bool = False,
+            data_type: type or str = "json.dumps",
     ):
         return await self._publish_wrapped(
             subject=subject,
@@ -278,12 +329,12 @@ class NATSClient:
         )
 
     async def _request(
-        self,
-        subject: str,
-        message,
-        timeout: int = 10,
-        data_type: type or str = "json.dumps",
-        callback: typing.Callable = None,
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
+            data_type: type or str = "json.dumps",
+            callback: typing.Callable = None,
     ):
         message = self.format_message_data_type(message, data_type)
         if callback is not None:
@@ -297,12 +348,12 @@ class NATSClient:
         return response
 
     async def request(
-        self,
-        subject: str,
-        message,
-        timeout: int = 10,
-        data_type: type or str = "json.dumps",
-        callback: typing.Callable = None,
+            self,
+            subject: str,
+            message,
+            timeout: int = 10,
+            data_type: type or str = "json.dumps",
+            callback: typing.Callable = None,
     ):
         return await self._request_wrapped(
             subject=subject,
@@ -324,6 +375,32 @@ class NATSClient:
             self.log.info("NATS Client status: CONNECTED")
             return True
         self.log.warning("NATS Client status: DISCONNECTED")
+
+    def add_filters(self, include: list = None, exclude: list = None):
+        self.include_subjects = include
+        self.exclude_subjects = exclude
+
+    def filter_subjects(self, subscriptions):
+        assert not self.include_subjects or not self.exclude_subjects, "You can use either include or exclude. Not both"
+
+        if self.include_subjects:
+            for subject in subscriptions.copy():
+                success = False
+                for subject_include in self.include_subjects:
+                    if subject_include in subject:
+                        success = True
+                        break
+                if not success:
+                    del subscriptions[subject]
+
+        if self.exclude_subjects:
+            for subject in subscriptions.copy():
+                for subject_exclude in self.exclude_subjects:
+                    if subject_exclude in subject:
+                        del subscriptions[subject]
+                        break
+
+        return subscriptions
 
 
 class _ReceivedMessageHandler:

@@ -1,7 +1,10 @@
-# Logger
+What is the Panini internal logger? 
+
+It is a default python logger with some settings that the Panini team found convenient. If you are using your own logging style, just skip this section.
+
 Logger has 2 important parameters:
 
-- logger_files_path - the path to the log folder - can be absolute or relative (will relate to the app root path):
+- <span class="red">logger_files_path</span> - the path to the log folder - it can be absolute or relative (will relate to the app root path):
 
 ```python
 from panini import app as panini_app
@@ -18,7 +21,7 @@ log = app.logger
 log.info("some log")  # write log
 ```
 
-- in_separate_process - specify, if you want logger to be as separate process or to log in main process:
+- <span class="red">in_separate_process</span> - specify, if you want logger in a separate process or in the main process:
 
 ```python
 from panini import app as panini_app
@@ -38,7 +41,7 @@ log.info("some log")  # write log
 
 # Log Config:
 
-In the logger we use simple default config, that fit majority of logger needs:
+In the logger we use a simple default config that fits most logger needs:
 
 ```json
 `{
@@ -140,14 +143,13 @@ In the logger we use simple default config, that fit majority of logger needs:
 ```
 
 Also, you can provide a custom log configuration for advanced logging.
-To do that - just create `config/log_config.json` file inside your app root path.
+To do that - just create <span class="red">`config/log_config.json`</span> file inside your app root path.
 (see [log_config.json.sample](https://github.com/lwinterface/panini/blob/master/examples/simple_examples/config/log_config.json.sample))
 
 *Please notice, that some formatters and loggers will be added to your custom config,
-but not overwritten if they exist (such as panini and inter_services_request loggers
-and detailed formatter)*
+but not overwritten if they exist.*
 
-You can also provide some keywords to custom log config file, that will be replaced to
+You can also provide some keywords to the custom log config file that will be replaced by
 some meaningful data, such as:
 
 ```
@@ -157,11 +159,11 @@ some meaningful data, such as:
 
 ```
 
-*Notice, that this keywords works only inside "filename" log configuration*
+*Notice, that these keywords work only inside the "filename" log configuration.*
 
-## Additional logger information:
+## Additional logger settings:
 
-If you want to be able to log some *extra* parameters, the things should be done as next:
+If you want to be able to log some *extra* parameters, these things should be done next:
 
 ```python
 from panini.utils.logger import get_logger
@@ -171,7 +173,7 @@ log = get_logger('app')
 log.warning('some log', extra_parameter='some extra parameter')
 ```
 
-That will be logged due to your config (or only in the file, as it is done by default) -
+These extra parameters will be logged with each log -
 see %(extra)s argument in the default configuration format.
 
-*Notice, that extra parameters will be added to your logs only if you add "%(extra)s" to your log config formatter*
+*Notice that extra parameters will be added to your logs only if you add "%(extra)s" to your log config formatter.*

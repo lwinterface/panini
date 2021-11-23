@@ -1,23 +1,21 @@
-#Testing
-Panini testing is possible with various testing frameworks.
-We will show testing based on [pytest](https://docs.pytest.org/) framework.
+Panini testing is possible with various testing frameworks. 
+Here we will show testing based on [pytest](https://docs.pytest.org/) framework.
 
 ## Using TestClient
 
-Import `TestClient`.
+Import <span class="red">`TestClient`</span>.
 
-Create a `TestClient` using [pytest.fixture](https://docs.pytest.org/en/latest/how-to/fixtures.html) with passing to it the function that `runs panini`.
+Create a <span class="red">`TestClient`</span> using [pytest.fixture](https://docs.pytest.org/en/latest/how-to/fixtures.html) by passing it to the function that runs panini.
 
-TestClient object `.start()` will start the panini app for testing.
+TestClient object <span class="red">`.start()`</span> will start the panini app for testing.
 
-Create `functions` with a name that starts with `test_` (this is standard `pytest` conventions).
+Create <span class="red">`functions`</span> with a name that starts with <span class="red">`test_`</span> (this is standard <span class="red">`pytest`</span> convention).
 
-Use the `TestClient` object for nats communication the same way as you do with `panini` 
-(but with some limitations)
+Use the <span class="red">`TestClient`</span> object for NATS communication the same way you would do with <span class="red">`panini`</span> 
 
-(The panini uses [nats-python](https://github.com/Gr1N/nats-python) synchronous NATS client for testing)
+Panini uses [nats-python](https://github.com/Gr1N/nats-python) synchronous NATS client for testing
 
-Write simple `assert` statements with the standard Python expressions that you need to check (`pytest` standard).
+Write simple <span class="red">`assert`</span> statements with the standard Python expressions that you need to check (<span class="red">`pytest`</span> standard).
 
 ```python
 import pytest
@@ -32,7 +30,7 @@ def run_panini():
     )
 
     @app.listen("main.subject")
-    async def main_subject(msg):
+    def main_subject(msg):
         return {"message": "Hello World!"}
 
     app.start()
@@ -47,27 +45,33 @@ def test_main_subject(client):
     response = client.request("main.subject", {})
     assert response["message"] == "Hello World!"
 ```
+<div class="attention">
+<p class="attention__emoji-icon">🔥</p><p> Notice that the testing functions are normal <span class="red">def</span>, not <span class="red">async def</span>.
+Also, the calls to the client are also normal calls, not using <span class="red">await</span>.
+This allows you to use <span class="red">pytest</span> directly without complications.</p>
+</div>
 
-Notice that the testing functions are normal `def`, not `async def`.
-And the calls to the client are also normal calls, not using `await`.
-This allows you to use `pytest` directly without complications.
 
-Notice that panini TestClient will run panini app in the `different process`. 
-The Windows and Mac platforms have limitations for transferring objects to different process.
-So we have to use `run_panini` function that will implement or import our app, and we must use `fixtures` to setup TestClient.
+<div class="attention">
+<p class="attention__emoji-icon">🛠</p><p> Notice that panini TestClient will run a panini app in a  <span class="red">different process</span>. 
+The Windows and Mac platforms have limitations for transferring objects to a different process.
+So we have to use  <span class="red">run_panini</span> function that will implement or import our app, and we must use  <span class="red">fixtures</span> to setup TestClient.</p>
+</div>
+<div class="attention">
+<p class="attention__emoji-icon">🔑</p><p>  Notice that if you use <span class="red">pytest.fixture</span> without <span class="red">scope</span> the panini App will setup and teardown for each test.
+If you don't want this - please use <span class="red">pytest.fixture(scope="module)</span></p>
+</div>
 
-Notice that if you use pytest.fixture without `scope` the panini App will setup and teardown for each test.
-If you don't want this - please use `pytest.fixture(scope="module)`
 
 ## Separating tests
 
 In a real application, you mostly would have your tests in a different file.
 
-And you **Panini** app can be also in different files or modules.
+Your **Panini** app can also be in different files or modules.
 
 ### Panini **app file**
 
-Let's say you have a file `[main.py](http://main.py)` with your **Panini** app:
+Let's say you have a file <span class="red">`main.py`</span> with your **Panini** app:
 
 ```python
 from panini import app as panini_app
@@ -79,7 +83,7 @@ app = panini_app.App(
 )
 
 @app.listen("main.subject")
-async def main_subject(msg):
+def main_subject(msg):
     return {"message": "Hello World!"}
 
 if __name__ == '__main__':
@@ -88,7 +92,7 @@ if __name__ == '__main__':
 
 ### Testing file
 
-Then you could have a file `test_main.py` with your tests, and import your `app` from the `main` module (`main.py`):
+Then you could have a file <span class="red">`test_main.py`</span> with your tests, and import your <span class="red">app</span> from the <span class="red">`main`</span> module (<span class="red">`main.py`</span>):
 
 ```python
 import pytest
@@ -112,10 +116,19 @@ def test_main_subject(client):
 ## Advanced testing
 
 Now, let's dig into more details to see how to test different parts.
+<div class="attention">
+<p class="attention__emoji-icon">⚙</p><p> Under the hood, <span class="red">TestClient</span> will run your panini application inside the different process.
+And will communicate with it only using NATS messaging.
+This is how you can <b>simulate</b> your panini app activity.</p>
+</div>
+<div class="attention">
+<p class="attention__emoji-icon">🛠</p><p><span class="red">TestClient</span> will run 2 NATS clients for testing (one for sending, and one for listening).
+The sending NATS client is in the <b>main Thread</b>, while the listening client can be in a separate thread.</p>
+</div>
 
 ### Error testing
 
-Let's say we need to check that the subject always require the authorization.
+Let's say we need to check that the subject always requires an authorization.
 
 ```python
 from panini import app as panini_app
@@ -127,7 +140,7 @@ app = panini_app.App(
 )
 
 @app.listen("subject.with.authorization")
-async def get_secret(msg):
+def get_secret(msg):
     if "authorization" not in msg.data:
         raise ValueError("You need to be authorized, to get the secret data!")
     return {"secret": "some meaningful data"}
@@ -161,15 +174,15 @@ def test_unauthorized_secret_subject(client):
         client.request("subject.with.authorization", {})
 ```
 
-We can use this method of testing, but if we look precisely here - it is strange, that we are getting `OSError` instead of `ValueError` which we raised (also the tests will run extremely long because of nats-timeout).
+We can use this method of testing, but if we take a better look - it's strange that we are getting a <span class="red">`OSError`</span> instead of a <span class="red">`ValueError`</span> Also, the tests will run for an extremely long time because of nats-timeout.
 
- The reason of this, that `TestClient` is a separate `nats` service, that perform in our case simple request, but did not get the response, because of the error on application side.
+The reason for this is that <span class="red">`TestClient`</span> is a separate NATS service, that performs a simple request in our case. It does not get the response, because of an error on the application side.
 
 But still, let's modify a bit our functions, to get the more obvious result:
 
 ```python
 @app.listen("subject.with.authorization")
-async def get_secret(msg):
+def get_secret(msg):
     if "authorization" not in msg.data:
         return {"success": False, "message": "You have to be authorized, to get the secret data!"}
     return {"success": True, "secret": "some meaningful data"}
@@ -184,15 +197,15 @@ def test_unauthorized_secret_subject(client):
     assert response["message"] == "You have to be authorized, to get the secret data!"
 ```
 
-So we get the results faster and in more obvious way.
+So we get the results faster and in a more obvious way.
 
 ### Testing microservice with dependencies
 
-Let's say we want to test an **authorization application**, which **depends** on another panini application, that gets data from the DB.
+Let's say we want to test an **authorization application**, which **depends** on another panini application, that fetches data from a DB.
 
-But for our testing purpose, we don't want to create & support the database, because our application does not have direct dependency on DB.
+For our testing purpose, we don't want to create & support the database, because our application does not have a direct dependency on DB.
 
-Using `TestClient` we can `mock` the communication between those applications. 
+Using <span class="red">`TestClient`</span> we can <span class="red">`mock`</span> the communication between those applications. 
 
 Let's dive into the code:
 
@@ -216,7 +229,7 @@ if __name__ == '__main__':
     app.start()
 ```
 
-And then, apply `mocking` using TestClient object `.listen` function.
+And then, apply <span class="red">`mocking`</span> using <span class="red">`TestClient`</span> object <span class="red">`.listen`</span> function.
 
  
 
@@ -246,14 +259,23 @@ def test_get_token(client):
     response = client.request("get.token", {"email": "test_email", "password": "test_password"})
     assert response["token"] == "test_token"
 ```
-
-Notice that you have to call `@client.listen` decorator before `client.start()`
+<div class="attention">
+<p class="attention__emoji-icon">💡</p><p>Notice that you have to call <span class="red">@client.listen</span> decorator before <span class="red">client.start()</span></p>
+</div>
 
 ### TestClient publish & wait
 
-We **strongly recommend** using other tools for testing (like `client.request` & `client.listen` only), but sometimes we need a specific `client.publish` & `client.wait` functions to test the panini application.
+We **strongly recommend** using other tools for testing (like <span class="red">`client.request`</span> & <span class="red">`client.listen`</span> only), but sometimes we need a specific <span class="red">`client.publish`</span> & <span class="red">`client.wait`</span> to test the panini application.
+<div class="attention">
+<p class="attention__emoji-icon">📖</p><p><span class="red">client.wait</span> is used to manually wait for <span class="red">@client.listen</span> callback to be called.
+It was previously done automatically</p>
+</div>
 
-**Example for `client.publish` & `client.wait`**:
+<div class="attention">
+<p class="attention__emoji-icon">☝</p><p>You should specify <span class="red">client.start(do_always_listen=False)</span> to be able to use <span class="red">client.wait</span></p>
+</div>
+
+**Example for <span class="red">`client.publish`</span> & <span class="red">`client.wait`</span>**:
 
 ```python
 from panini import app as panini_app
@@ -266,7 +288,7 @@ app = panini_app.App(
 
 @app.listen("start")
 async def start(msg):
-    await app.request("app.started", {"success": True})
+    await app.publish("app.started", {"success": True})
 
 if __name__ == '__main__':
     app.start()
@@ -293,7 +315,7 @@ def client():
         global is_app_started
         is_app_started = True
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 
@@ -303,10 +325,11 @@ def test_get_token(client):
     client.wait(1)  # wait for @client.listen callback to work
     assert is_app_started is True
 ```
+<div class="attention">
+<p class="attention__emoji-icon">💡</p><p>Use <span class="red">client.publish</span> only, when <span class="red">@client.listen</span> returns nothing or <b>subject</b>. But you will need another subject, to check, if the call was successful.</p>
+</div>
 
-Use `client.publish` only, when `@client.listen` returns nothing or **subject**, you want to test returns nothing (but you will need another subject, to check, if the call was successful)
-
-**Example for `client.wait`:**
+**Example for <span class="red">`client.wait`</span>:**
 
 Let's say you want to test `@app.task` job:
 
@@ -327,7 +350,7 @@ if __name__ == '__main__':
     app.start()
 ```
 
-You can use `@client.listen` and `client.wait` for this stuff:
+You can use `@client.listen` and `client.wait` for this:
 
 ```python
 import pytest
@@ -348,7 +371,7 @@ def client():
         global task_data
         task_data = msg.data["job"]
 
-    client.start()
+    client.start(do_always_listen=False)
     yield client
     client.stop()
 

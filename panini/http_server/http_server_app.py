@@ -1,18 +1,27 @@
+import asyncio
 from aiohttp import web
+from aiohttp.web_routedef import RouteTableDef
 
 
 class HTTPServer:
     def __init__(
         self,
-        base_app,
+        routes: RouteTableDef,
+        loop: asyncio.AbstractEventLoop,
         host: str = None,
         port: int = None,
         web_app: web.Application = None,
+        web_server_params=None,
     ):
-        self.app = base_app
-        self.routes = base_app.http
+        if web_server_params is None:
+            web_server_params = {}
+
+        self.routes = routes
         self.host = host
         self.port = port
+        self.web_server_params = web_server_params
+        self.loop = loop
+
         if web_app:
             self.web_app = web_app
         else:
@@ -23,4 +32,4 @@ class HTTPServer:
 
     def _start_server(self):
         self.web_app.add_routes(self.routes)
-        web.run_app(self.web_app, host=self.host, port=self.port)
+        web.run_app(self.web_app, host=self.host, port=self.port, loop=self.loop, **self.web_server_params)

@@ -9,9 +9,9 @@ def run_panini():
         service_name="test_listen_subject_only_if_include",
         host="127.0.0.1",
         port=4222,
-        listen_subject_only_if_include=["foo", "bar"],
         logger_in_separate_process=False,
     )
+    app.add_filters(include=["foo", "bar"])
 
     @app.listen("test_parameter_listen_subject_only_if_include.start")
     async def start(msg):
