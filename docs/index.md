@@ -1,4 +1,4 @@
-# Panini Docks
+# Panini Documentation
 
 <span style="font-size:4em;">👋</span>
  
