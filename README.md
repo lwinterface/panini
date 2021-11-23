@@ -10,9 +10,16 @@ Documentation is [here](https://panini.technology/).
 
 ## Supported platforms
 
-Compatible with [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
+Compatible with [Python 3.8](https://docs.python.org/3.9/library/asyncio.html) & [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
 
 
+## How to install
+
+Before getting started make sure you have all the prerequisites installed:
+
+```python
+pip install panini
+```
 
 
 ## A simple listener app example
