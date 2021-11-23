@@ -1,0 +1,80 @@
+site_name: Panini
+repo_url: https://github.com/lwinterface/panini
+repo_name: lwinterface/panini
+nav:
+    - 🏰 What is NATS?: What_is_NATS.md
+    - 🚚 Install: Install.md
+    - 🍳 Quickstart: Quickstart.md
+    - 👩‍🎓 Panini interface: 
+        - App Arguments: Panini_App_Arguments.md
+        - App Functions: Panini_App_Functions.md
+        - Incoming message structure: Incoming_Message_Structure.md
+        - How to validate that microservice connected to NATS: Panini_Validation.md
+    - 👨‍👩‍👧‍👦 Datatypes: Datatypes.md
+    - 🔑 Authentication: Authentication.md
+    - 👮‍♂️ Incoming data validation: Data_Validation.md
+    - 🖖 Middlewares: Middlewares.md
+    - 🦆 HTTP server: HTTP_server.md
+    - 🦅 WebSocket server example: WebSocket_server.md
+    - 🤹 Balancer: Balancer.md
+    - 👀 Application Monitoring : Application_monitoring.md
+    - 🕰️ Emulator - "time machine" debug: Emulator.md
+    - 🔍 Distributed tracing: Distributed_tracing.md
+    - 🏗️ Deployment: Deployment.md
+    - 📋 Changelog: Changelog.md
+    - 🗽 License: License.md
+    - 👐 How to contribute: How_to_contribute.md
+    - 🔧 Testing: Testing.md
+    - 📋 Logger: Logger.md
+plugins:
+  - search:
+      separator: '[\s\-\.]+'
+      lang: en    
+theme:
+  name: material
+  logo: assets/logo_p.svg
+  features:
+   - search.suggest
+   - search.highlight
+  palette:
+    primary: light blue
+extra_css:
+  - stylesheets/extra.css
+markdown_extensions:
+  - admonition
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: squidfunk
+      repo: mkdocs-material
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde

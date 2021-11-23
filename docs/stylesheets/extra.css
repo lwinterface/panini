@@ -1,0 +1,24 @@
+.red{
+    color: #EB5757;
+}
+.red code{
+    color: #EB5757;
+}
+.attention {
+    padding: 5px;
+    background: #80808029;
+    border-radius: 3px;
+    display: flex;
+    margin-bottom: 10px;
+}
+.attention__emoji-icon{
+    margin-right: 10px;
+    margin-left: 10px;
+}
+
+.purple{
+    color: #9065b0;
+}
+.dkGreen{
+    color:#448361;
+}
