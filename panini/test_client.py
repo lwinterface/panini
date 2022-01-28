@@ -13,7 +13,7 @@ from pynats import NATSClient, NATSMessage
 
 from .exceptions import TestClientError
 from .utils.helper import start_process, start_thread
-from panini.managers.nats_client import Msg
+from nats.aio.client import Msg
 
 
 # Annotations for `Session.request()`

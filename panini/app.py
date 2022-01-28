@@ -180,7 +180,11 @@ class App:
             validator: type = None,
             data_type="json.loads"
     ):
-        return self._event_manager.listen(subject, validator, data_type)
+        return self._event_manager.listen(
+            subject=subject,
+            validator=validator,
+            data_type=data_type
+        )
 
     async def publish(
             self,
@@ -190,7 +194,13 @@ class App:
             force: bool = False,
             data_type: type or str = "json.dumps"
     ):
-        return await self.nats.publish(subject, message, reply_to, force, data_type)
+        return await self.nats.publish(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type
+        )
 
     def publish_sync(
             self,
@@ -200,7 +210,13 @@ class App:
             force: bool = False,
             data_type: type or str = "json.dumps",
     ):
-        return self.nats.publish_sync(subject, message, reply_to, force, data_type)
+        return self.nats.publish_sync(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type
+        )
 
     async def request(
             self,
@@ -208,9 +224,13 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json.dumps",
-            callback: typing.Callable = None
     ):
-        return await self.nats.request(subject, message, timeout, data_type, callback)
+        return await self.nats.request(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+        )
 
     def request_sync(
             self,
@@ -218,9 +238,13 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json.dumps",
-            callback: typing.Callable = None,
     ):
-        return self.nats.request_sync(subject, message, timeout, data_type, callback)
+        return self.nats.request_sync(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+        )
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         return self.nats.subscribe_new_subject_sync(subject, callback, **kwargs)
@@ -230,10 +254,14 @@ class App:
             subject: str,
             callback: CoroutineType,
             init_subscription=False,
-            is_async=False,
             data_type=None
     ):
-        return await self.nats.subscribe_new_subject(subject, callback, init_subscription, is_async, data_type)
+        return await self.nats.subscribe_new_subject(
+            subject=subject,
+            callback=callback,
+            init_subscription=init_subscription,
+            data_type=data_type
+        )
 
     def unsubscribe_subject_sync(self, subject: str):
         return self.nats.unsubscribe_subject_sync(subject)
@@ -241,20 +269,16 @@ class App:
     async def unsubscribe_subject(self, subject: str):
         return await self.nats.unsubscribe_subject(subject)
 
-    def unsubscribe_ssid_sync(self, ssid: int, subject: str = None):
-        return self.nats.unsubscribe_ssid_sync(ssid, subject)
-
-    async def unsubscribe_ssid(self, ssid: int, subject: str = None):
-        return await self.nats.unsubscribe_ssid(ssid, subject)
-
     def add_middleware(self, cls, *args, **kwargs):
         return self.nats.middleware_manager.add_middleware(cls, *args, **kwargs)
 
     def _start_event(self):
         asyncio.ensure_future(
-            self.nats.client.publish(
+            self.nats._publish(
                 f"panini_events.{self.service_name}.{self.client_id}.started",
                 b"{}",
+                data_type=bytes,
+                force=True
             )
         )
 
