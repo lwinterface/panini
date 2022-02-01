@@ -118,6 +118,7 @@ class App:
             self.http_server = None
             self.http = None
 
+            self.on_start_task = self._task_manager.register_on_start_task
             self.task = self._task_manager.register_task
             self.timer_task = self._task_manager.register_interval_task
 
@@ -308,6 +309,9 @@ class App:
         self.nats.start()
 
         loop = asyncio.get_event_loop()
+
+        for on_start in self._task_manager._on_start_tasks:
+            loop.run_until_complete(on_start())
 
         self._start_event()
         tasks = asyncio.all_tasks(loop)
