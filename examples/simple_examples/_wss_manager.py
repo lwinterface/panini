@@ -20,7 +20,7 @@ html = """
         <ul id='messages'>
         </ul>
         <script>
-            var ws = new WebSocket(`ws://${window.location.hostname}:5001/stream`);
+            var ws = new WebSocket(`ws://${window.location.hostname}:1111/stream`);
             ws.onmessage = function(event) {
                 var messages = document.getElementById('messages')
                 var message = document.createElement('li')
@@ -71,7 +71,7 @@ class WSSManager:
                     for subject in subjects:
                         await self.unsubscribe(client_ws_connection, subject)
             except Exception as e:
-                logger.error(f"WSS error: {str(e)} connection_id {connection_id}")
+                logger.exception(f"WSS error: {str(e)} connection_id {connection_id}")
                 try:
                     await self.send_to_ws(
                         client_ws_connection,
@@ -122,10 +122,10 @@ class WSSManager:
         await client_ws_connection.send_str(message)
 
     async def subscribe(self, subject, cb):
-        ssid = await self.app.subscribe_new_subject(subject, cb)
+        sub = await self.app.subscribe_new_subject(subject, cb)
         if subject not in self.ssid_map:
             self.ssid_map[subject] = []
-        self.ssid_map[subject].append(ssid)
+        self.ssid_map[subject].append(sub)
 
     async def unsubscribe(self, client_ws_connection, subject):
         if not subject in self.ssid_map:
@@ -135,8 +135,7 @@ class WSSManager:
                 message=f"The user did not subscribe to event {subject}"
             )
             return
-        for ssid in self.ssid_map[subject]:
-            await self.app.unsubscribe_ssid(ssid)
+        await self.app.unsubscribe_subject(subject)
         await self.send_to_ws(
             client_ws_connection,
             success=True,
