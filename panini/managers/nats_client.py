@@ -107,7 +107,6 @@ class NATSClient:
 
         kwargs = {
             "servers": self.servers,
-            # "loop": self.loop,
             "name": self.client_id,
             **self._connection_kwargs
         }
@@ -118,9 +117,9 @@ class NATSClient:
         if self.reconnecting_time_wait:
             kwargs["reconnect_time_wait"] = self.reconnecting_time_wait
         kwargs.update(self.auth)
-        nc = await self.client.connect(**kwargs)
+        await self.client.connect(**kwargs)
         if self.enable_js:
-            self.js_client = nc.jetstream()
+            self.js_client = self.client.jetstream()
         if self.client.is_connected:
             listen_subjects_callbacks = self.listen_subjects_callbacks
             for subject, callbacks in listen_subjects_callbacks.items():

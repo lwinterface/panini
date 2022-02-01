@@ -364,6 +364,7 @@ class AsyncTestClient:
                 incoming_message_data = self._bytes_to_dict(incoming_message.data)
 
                 msg = Msg(
+                    _client=None,
                     subject=incoming_message.subject,
                     data=incoming_message_data,
                     reply=incoming_message.reply,
