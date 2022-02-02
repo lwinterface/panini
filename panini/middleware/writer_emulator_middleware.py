@@ -111,7 +111,6 @@ class WriterEmulatorMiddleware(middleware.Middleware):
                 "event_type": "listen_publish",
                 "subject": msg.subject,
                 "message": msg.data,
-                "context": msg.context,
                 "timestamp": time.time(),
             }
         )
@@ -127,7 +126,6 @@ class WriterEmulatorMiddleware(middleware.Middleware):
                 "event_type": "listen_request",
                 "subject": msg.subject,
                 "message": msg.data,
-                "context": msg.context,
                 "response": response,
                 "timestamp": time.time(),
             }

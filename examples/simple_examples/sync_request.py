@@ -41,7 +41,7 @@ async def request_from_another_thread_sync_periodically():
 
 def another_thread_func():
     for _ in range(10):
-        response = app.request_from_another_thread_sync(
+        response = app.nats.request_from_another_thread_sync(
             subject="some.publish.subject", message=message
         )
         print(f"response: {response}")

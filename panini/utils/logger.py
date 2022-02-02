@@ -56,10 +56,10 @@ def set_logger(
     app_root_path: str,
     logger_files_path: str,
     in_separate_process: bool,
-    client_id: str = None,
+    client_nats_name: str = None,
 ):
     logger_config = _get_logger_config(
-        app_root_path, logger_files_path, ms_name, client_id
+        app_root_path, logger_files_path, ms_name, client_nats_name
     )
 
     if in_separate_process:

@@ -29,7 +29,7 @@ DEFAULT_BUCKETS = (
 
 DEFAULT_LABELS = (
     "app_name",
-    "client_id",
+    "client_nats_name",
     "subject",
     "status",
 )
@@ -51,7 +51,7 @@ class PrometheusMonitoringMiddleware(Middleware):
         self.pushgateway_url = pushgateway_url
         self.registry = CollectorRegistry()
         self.app_name = app.service_name
-        self.app_client_id = app.client_id
+        self.app_client_nats_name = app.client_nats_name
         self.buckets = buckets
         assert set(labels).issubset(
             set(DEFAULT_LABELS)
@@ -96,7 +96,7 @@ class PrometheusMonitoringMiddleware(Middleware):
     async def listen_any(self, msg, callback):
         labels = {
             "app_name": self.app_name,
-            "client_id": self.app_client_id,
+            "client_nats_name": self.app_client_nats_name,
             "subject": msg.subject,
         }
 

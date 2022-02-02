@@ -99,3 +99,7 @@ class DataTypeError(BaseError):
 
 class TestClientError(BaseError):
     pass
+
+
+class JetStreamNotEnabledError(BaseError):
+    pass

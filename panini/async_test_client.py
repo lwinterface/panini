@@ -13,7 +13,7 @@ from nats.aio.client import Client as NATS
 
 from .exceptions import TestClientError
 from .utils.helper import start_process
-from panini.managers.nats_client import Msg
+from nats.aio.client import Msg
 
 
 # Annotations for `Session.request()`
@@ -122,7 +122,7 @@ class AsyncTestClient:
         run_panini: typing.Callable = None,
         run_panini_args: list = None,
         run_panini_kwargs: dict = None,
-        run_panini_timeout: float = 5,
+        run_panini_timeout: float = 10,
         panini_service_name: str = "*",
         panini_client_id: str = "*",
         logger_files_path: str = "test_logs",
@@ -216,14 +216,14 @@ class AsyncTestClient:
 
             panini_started_future = asyncio.Future()
 
-            def panini_started(msg):
+            async def panini_started(msg):
                 panini_started_future.set_result(msg)
 
-            sid = await self.nats_client.subscribe(
+            sub = await self.nats_client.subscribe(
                 f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started",
                 cb=panini_started,
             )
-            await self.nats_client.auto_unsubscribe(sid, 1)
+            await asyncio.sleep(1)
 
             self.panini_process = start_process(
                 self.wrap_run_panini,
@@ -236,10 +236,10 @@ class AsyncTestClient:
                 ),
                 daemon=is_daemon,
             )
-
+            await asyncio.sleep(1)
             try:
                 await asyncio.wait_for(panini_started_future, self.run_panini_timeout)
-            except Exception:
+            except Exception as e:
                 raise TestClientError(
                     "TestClient was waiting panini to start, but panini does not started"
                 )
@@ -265,7 +265,7 @@ class AsyncTestClient:
     async def publish(self, subject: str, message: dict, reply_to: str = "") -> None:
         message = self._dict_to_bytes(message)
         if reply_to is not None:
-            await self.nats_client.publish_request(subject, reply_to, message)
+            await self.nats_client.publish(subject, message, reply_to)
         else:
             await self.nats_client.publish(subject, message)
 
@@ -364,6 +364,7 @@ class AsyncTestClient:
                 incoming_message_data = self._bytes_to_dict(incoming_message.data)
 
                 msg = Msg(
+                    _client=None,
                     subject=incoming_message.subject,
                     data=incoming_message_data,
                     reply=incoming_message.reply,
