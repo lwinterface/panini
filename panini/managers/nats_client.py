@@ -21,7 +21,7 @@ class NATSClient:
             host: Union[str, NoneType],
             port: Union[int, str],
             servers: Union[List[str], NoneType],
-            client_id: str,
+            client_nats_name: str,
             loop: asyncio.AbstractEventLoop,
             allow_reconnect: Union[bool, NoneType],
             max_reconnect_attempts: int = 60,
@@ -33,7 +33,7 @@ class NATSClient:
             **kwargs
     ):
         """
-        :param client_id: instance identifier for NATS, str
+        :param client_nats_name: instance identifier for NATS, str
         :param port: default '4222'
         :param allow_reconnect: False if you want to stop instance when connection lost
         :param max_reconnect_attempts:
@@ -43,7 +43,7 @@ class NATSClient:
             auth = {}
         self.log = get_logger("panini")
         self.connected = False
-        self.client_id = client_id
+        self.client_nats_name = client_nats_name
         self.host = host
         self.port = port
         self.servers = servers
@@ -107,7 +107,7 @@ class NATSClient:
 
         kwargs = {
             "servers": self.servers,
-            "name": self.client_id,
+            "name": self.client_nats_name,
             **self._connection_kwargs
         }
         if self.allow_reconnect:
@@ -133,7 +133,7 @@ class NATSClient:
         print('\n======================================================================================')
         print(f'Panini service connected to NATS..')
         print(f"id: {self.client.client_id}")
-        print(f"name: {self.client_id}")
+        print(f"name: {self.client_nats_name}")
         print(f'\nNATS brokers:')
         for i in self.servers:
             print("* ",i)
