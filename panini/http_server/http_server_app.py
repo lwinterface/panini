@@ -1,4 +1,6 @@
 import asyncio
+import aiohttp
+from packaging import version
 from aiohttp import web
 from aiohttp.web_routedef import RouteTableDef
 
@@ -32,4 +34,6 @@ class HTTPServer:
 
     def _start_server(self):
         self.web_app.add_routes(self.routes)
-        web.run_app(self.web_app, host=self.host, port=self.port, loop=self.loop, **self.web_server_params)
+        if version.parse(aiohttp.__version__) >= version.parse("3.8.0"):
+            self.web_server_params['loop'] = self.loop
+        web.run_app(self.web_app, host=self.host, port=self.port, **self.web_server_params)
