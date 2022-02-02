@@ -20,7 +20,7 @@ html = """
         <ul id='messages'>
         </ul>
         <script>
-            var ws = new WebSocket(`ws://${window.location.hostname}:1111/stream`);
+            var ws = new WebSocket(`ws://${window.location.hostname}:5001/stream`);
             ws.onmessage = function(event) {
                 var messages = document.getElementById('messages')
                 var message = document.createElement('li')

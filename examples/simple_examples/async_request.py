@@ -2,7 +2,7 @@ import json
 from panini import app as panini_app
 
 app = panini_app.App(
-    service_name="ms_template_async_by_lib",
+    service_name="async_request",
     host="127.0.0.1",
     port=4222,
 )

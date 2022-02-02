@@ -23,7 +23,7 @@ message = {
 async def request_to_another_subject():
     for _ in range(10):
         await app.publish(
-            subject="some.subject.for.request.with.response.to" ".another.subject",
+            subject="some.subject.for.request.with.response.to.another.subject",
             message=message,
             reply_to="reply.to.subject",
         )
