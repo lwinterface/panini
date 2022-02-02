@@ -30,7 +30,7 @@ class App:
             port: int or str = None,
             service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
             servers: list = None,
-            client_id: str = None,
+            client_nats_name: str = None,
             reconnect: bool = False,
             max_reconnect_attempts: int = 60,
             reconnecting_time_sleep: int = 2,
@@ -60,11 +60,11 @@ class App:
 
         try:
             # client_id initialization
-            if client_id is None:
-                self.client_id = create_client_code_by_hostname(service_name)
+            if client_nats_name is None:
+                self.client_nats_name = create_client_code_by_hostname(service_name)
             else:
-                self.client_id = client_id
-            os.environ["CLIENT_ID"] = self.client_id
+                self.client_nats_name = client_nats_name
+            os.environ["CLIENT_NATS_NAME"] = self.client_nats_name
 
             self.loop = asyncio.get_event_loop()
 
@@ -76,7 +76,7 @@ class App:
                 host=host,
                 port=port,
                 servers=servers,
-                client_id=self.client_id,
+                client_nats_name=self.client_nats_name,
                 loop=self.loop,
                 allow_reconnect=reconnect,
                 queue=allocation_queue_group,
@@ -107,7 +107,7 @@ class App:
                     self.app_root_path,
                     self.logger_files_path,
                     False,
-                    self.client_id,
+                    self.client_nats_name,
                 )
 
             self.logger_process = None
@@ -151,7 +151,7 @@ class App:
             app_root_path,
             logger_files_path,
             in_separate_process,
-            client_id
+            client_nats_name
     ):
         if in_separate_process:
             (
@@ -163,7 +163,7 @@ class App:
                 app_root_path,
                 logger_files_path,
                 in_separate_process,
-                client_id,
+                client_nats_name,
             )
         else:
             logger.set_logger(
@@ -171,7 +171,7 @@ class App:
                 app_root_path,
                 logger_files_path,
                 in_separate_process,
-                client_id,
+                client_nats_name,
             )
         self.logger.logger = logging.getLogger(service_name)
 
@@ -191,7 +191,7 @@ class App:
             self,
             subject: str,
             message,
-            reply_to: str = None,
+            reply_to: str = "",
             force: bool = False,
             data_type: type or str = "json.dumps"
     ):
@@ -207,7 +207,7 @@ class App:
             self,
             subject: str,
             message,
-            reply_to: str = None,
+            reply_to: str = "",
             force: bool = False,
             data_type: type or str = "json.dumps",
     ):
@@ -276,7 +276,7 @@ class App:
     def _start_event(self):
         asyncio.ensure_future(
             self.nats._publish(
-                f"panini_events.{self.service_name}.{self.client_id}.started",
+                f"panini_events.{self.service_name}.{self.client_nats_name}.started",
                 b"{}",
                 data_type=bytes,
                 force=True
@@ -302,7 +302,7 @@ class App:
                 self.app_root_path,
                 self.logger_files_path,
                 True,
-                self.client_id,
+                self.client_nats_name,
             )
 
         self.nats.set_listen_subjects_callbacks(self._event_manager.subscriptions)
