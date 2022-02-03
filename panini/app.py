@@ -314,8 +314,8 @@ class App:
             loop.run_until_complete(on_start())
 
         self._start_event()
-        tasks = asyncio.all_tasks(loop)
         self._task_manager.create_tasks()
+        tasks = asyncio.all_tasks(loop)
 
         if self.http_server:
             self.http_server.start_server()

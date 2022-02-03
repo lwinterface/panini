@@ -10,25 +10,12 @@ app = panini_app.App(
 log = app.logger
 NUM = 0
 
-@app.on_start_task()
-async def on_start_task():
-    # Persist messages on 'foo's subject.
-    await app.nats.js_client.add_stream(name="sample-stream-2", subjects=["test.*.stream"])
-
-
-def get_message():
-    return {
-        "id": app.nats.client.client_id,
-    }
-
-
-
 @app.task()
 async def subscribe_to_js_stream_push():
     async def cb(msg):
         log.info(f"got JS message ! {msg.subject}:{msg.data}")
-    await app.nats.js_client.subscribe("test.*.stream", cb=cb)
 
+    await app.nats.js_client.subscribe("test.*.stream", cb=cb, durable='consumer-1', stream="sample-stream-1")
 
 
 if __name__ == "__main__":

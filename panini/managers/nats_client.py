@@ -139,10 +139,10 @@ class NATSClient:
             print("* ",i)
         print('======================================================================================\n')
 
-    def add_js_stream(self, name: str, subjects: List[str], config: api.StreamConfig = None):
+    def add_js_stream(self, name: str, subjects: List[str], config: api.StreamConfig = None, **params):
         if not self.enable_js:
             JetStreamNotEnabledError('Required flag "enable_js" is True')
-        self.js_client.add_stream(name=name, subjects=subjects, config=config)
+        self.js_client.add_stream(name=name, subjects=subjects, config=config, **params)
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
@@ -193,7 +193,7 @@ class NATSClient:
             self,
             subject: str,
             message,
-            reply_to: str = None,
+            reply_to: str = "",
             force: bool = False,
             data_type: type or str = "json.dumps",
             headers: dict = None,
