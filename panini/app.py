@@ -193,14 +193,17 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps"
+            data_type: type or str = "json.dumps",
+            headers: dict = {},
+
     ):
         return await self.nats.publish(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type
+            data_type=data_type,
+            headers=headers
         )
 
     def publish_sync(
@@ -225,12 +228,14 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json.dumps",
+            headers: dict = None,
     ):
         return await self.nats.request(
             subject=subject,
             message=message,
             timeout=timeout,
             data_type=data_type,
+            headers=headers,
         )
 
     def request_sync(
@@ -239,12 +244,14 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json.dumps",
+            headers: dict = None,
     ):
         return self.nats.request_sync(
             subject=subject,
             message=message,
             timeout=timeout,
             data_type=data_type,
+            headers=headers
         )
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):

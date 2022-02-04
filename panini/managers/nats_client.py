@@ -6,6 +6,7 @@ import nest_asyncio
 from types import CoroutineType
 from typing import Union, List
 from nats.aio.client import Client as NATS
+from nats.aio.msg import Msg as DefaultMsg
 from nats.js import api
 from panini.exceptions import DataTypeError, JetStreamNotEnabledError
 from panini.managers.middleware_manager import MiddlewareManager
@@ -13,6 +14,20 @@ from panini.utils.logger import get_logger
 
 NoneType = type(None)
 nest_asyncio.apply()
+
+class Msg(DefaultMsg):
+    """
+    Extended Msg class with "context" field
+    """
+    __slots__ = (
+        'subject', 'reply', 'data', 'sid', '_client', 'headers', '_metadata',
+        '_ackd', 'context'
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.context = {}
+        super().__init__(*args, **kwargs)
+
 
 
 class NATSClient:
@@ -101,6 +116,7 @@ class NATSClient:
 
     async def _establish_connection(self):
         self.client = NATS()
+        self.client.msg_class = Msg
         if self.servers is None:
             server = 'nats://' + self.host + ":" + str(self.port)
             self.servers = [server]
@@ -288,7 +304,7 @@ class NATSClient:
             reply_to: str = None,
             force: bool = False,
             data_type: type or str = "json.dumps",
-            headers: dict = None,
+            headers: dict = {},
     ):
         return await self._publish_wrapped(
             subject=subject,
