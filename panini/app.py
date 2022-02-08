@@ -5,12 +5,10 @@ import typing
 import uuid
 from types import CoroutineType
 
-from aiohttp import web
 
 from panini.managers.nats_client import NATSClient
 from .exceptions import InitializingEventManagerError
 
-from .http_server.http_server_app import HTTPServer
 from .managers.event_manager import EventManager
 from .managers.task_manager import TaskManager
 from .middleware.error import ErrorMiddleware
@@ -59,7 +57,6 @@ class App:
         """
 
         try:
-            # client_id initialization
             if client_nats_name is None:
                 self.client_nats_name = create_client_code_by_hostname(service_name)
             else:
@@ -133,6 +130,9 @@ class App:
         """
         Setup server and run with NATS when called app.start()
         """
+        from aiohttp import web
+        from .http_server.http_server_app import HTTPServer
+
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
             self.http_server = HTTPServer(routes=self.http, loop=self.loop, web_app=web_app, web_server_params=params)
@@ -179,7 +179,7 @@ class App:
             self,
             subject: list or str,
             validator: type = None,
-            data_type="json.loads"
+            data_type = "json"
     ):
         return self._event_manager.listen(
             subject=subject,
@@ -193,7 +193,7 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps"
+            data_type: type or str = "json"
     ):
         return await self.nats.publish(
             subject=subject,
@@ -209,7 +209,7 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
     ):
         return self.nats.publish_sync(
             subject=subject,
@@ -224,7 +224,7 @@ class App:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
     ):
         return await self.nats.request(
             subject=subject,
@@ -238,7 +238,7 @@ class App:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
     ):
         return self.nats.request_sync(
             subject=subject,
