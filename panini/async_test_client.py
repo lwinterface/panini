@@ -364,11 +364,11 @@ class AsyncTestClient:
                 incoming_message_data = self._bytes_to_dict(incoming_message.data)
 
                 msg = Msg(
+                    _client=None,
                     subject=incoming_message.subject,
                     data=incoming_message_data,
                     reply=incoming_message.reply,
                     sid=incoming_message.sid,
-                    client=None,
                 )
                 if asyncio.iscoroutinefunction(func):
                     wrapper_response = await func(msg)
