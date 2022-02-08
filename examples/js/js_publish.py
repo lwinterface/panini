@@ -13,7 +13,7 @@ NUM = 0
 
 @app.on_start_task()
 async def on_start_task():
-    # Persist messages on 'foo's subject.
+    # Persist messages on 'test.*.stream' subject.
     await app.nats.js_client.add_stream(name="sample-stream-1", subjects=["test.*.stream"])
 
 
