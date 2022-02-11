@@ -71,14 +71,6 @@ jobs:
       version: <<parameters.version>>
     steps:
       - checkout
-      - when:
-          condition:
-            matches: { pattern: "3.10*", value: <<parameters.version>> }
-          steps:
-            - run:
-                command: |
-                  apt update && apt install -y libc6-dev gcc build-essential
-                  sed -i 's/yarl==.*/yarl==1.7.2/' requirements/defaults.txt
       - install-requirements
       - run-tests
       - store-results
