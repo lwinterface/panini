@@ -13,7 +13,7 @@ from pynats import NATSClient, NATSMessage
 
 from .exceptions import TestClientError
 from .utils.helper import start_process, start_thread
-from panini.managers.nats_client import Msg
+from nats.aio.client import Msg
 
 
 # Annotations for `Session.request()`
@@ -316,6 +316,7 @@ class TestClient:
                 incoming_message_data = self._bytes_to_dict(incoming_message.payload)
 
                 msg = Msg(
+                    _client=None,
                     subject=incoming_message.subject,
                     data=incoming_message_data,
                     reply=incoming_message.reply,
