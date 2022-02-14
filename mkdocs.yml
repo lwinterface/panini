@@ -18,6 +18,7 @@ nav:
     - 🦆 HTTP server: HTTP_server.md
     - 🦅 WebSocket server example: WebSocket_server.md
     - 🤹 Balancer: Balancer.md
+    - ⛓ JetStream: JetStream.md
     - 👀 Application Monitoring : Application_monitoring.md
     - 🕰️ Emulator - "time machine" debug: Emulator.md
     - 🔍 Distributed tracing: Distributed_tracing.md

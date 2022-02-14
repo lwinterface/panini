@@ -1,7 +1,5 @@
 import asyncio
-
 import pytest
-
 from panini.async_test_client import AsyncTestClient
 
 

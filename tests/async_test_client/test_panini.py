@@ -1,5 +1,4 @@
 import pytest
-
 from panini.async_test_client import AsyncTestClient
 from panini import app as panini_app
 

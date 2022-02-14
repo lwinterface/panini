@@ -156,7 +156,7 @@ class NATSClient:
             **kwargs
     ):
         if data_type == None:
-            data_type = getattr(callback, 'data_type', 'json.loads')
+            data_type = getattr(callback, 'data_type', 'json')
 
         callback = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type).call
@@ -195,7 +195,7 @@ class NATSClient:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         asyncio.ensure_future(
@@ -210,7 +210,7 @@ class NATSClient:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         return self.loop.run_until_complete(
@@ -253,7 +253,7 @@ class NATSClient:
 
     @staticmethod
     def format_message_data_type(message, data_type):
-        if type(message) in [dict, list] and data_type == "json.dumps":
+        if type(message) in [dict, list] and data_type == "json":
             message = ujson.dumps(message)
             message = message.encode()
         elif type(message) is str and data_type is str:
@@ -262,7 +262,7 @@ class NATSClient:
             pass
         else:
             raise DataTypeError(
-                f'Expected {"dict" if data_type in [dict, "json.dumps"] else data_type} but got {type(message)}'
+                f'Expected {"dict or list" if data_type in [dict, list, "json"] else data_type} but got {type(message)}'
             )
 
         return message
@@ -273,7 +273,7 @@ class NATSClient:
             message,
             reply_to: str = '',
             force: bool = False,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         message = self.format_message_data_type(message, data_type)
@@ -287,7 +287,7 @@ class NATSClient:
             message,
             reply_to: str = None,
             force: bool = False,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         return await self._publish_wrapped(
@@ -304,13 +304,13 @@ class NATSClient:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         message = self.format_message_data_type(message, data_type)
         response = await self.client.request(subject, message, timeout=timeout, headers=headers)
         response = response.data
-        if data_type == "json.dumps":
+        if data_type == "json":
             response = ujson.loads(response)
         elif data_type is str:
             response = response.decode()
@@ -321,7 +321,7 @@ class NATSClient:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
             headers: dict = None,
     ):
         return await self._request_wrapped(
@@ -397,7 +397,7 @@ class _ReceivedMessageHandler:
             return
         if self.data_type == str:
             msg.data = msg.data.decode()
-        elif self.data_type == dict or self.data_type == "json.loads":
+        elif self.data_type == dict or self.data_type == "json":
             msg.data = ujson.loads(msg.data.decode())
         else:
             raise Exception(f"{self.data_type} is unsupported data format")

@@ -19,7 +19,7 @@ The framework allows you to work with NATS features and some additional logic us
 
 setup(
     name="panini",
-    version="0.6.2",
+    version="0.7.0",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -34,6 +34,8 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3 :: Only",
         "Operating System :: POSIX :: Linux",
         "Operating System :: MacOS :: MacOS X",
@@ -48,11 +50,9 @@ setup(
         "panini.managers",
     ],
     install_requires=[
-        "aiohttp>=3.8.0",
-        "aiohttp-cors>=0.7.0",
         "async-timeout==4.0.0",
-        "asyncio-nats-client>=0.11.4",
-        "websocket-client>=0.58.0",
+        "nats-py==2.0.0",
+        "websocket-client>=1.2.3",
         "requests>=2.24.0",
         "six>=1.15.0",
         "yarl>=1.6.1",
