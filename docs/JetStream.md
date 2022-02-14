@@ -1,3 +1,5 @@
+Supported since Panini 0.7.0
+
 Since Panini switched from [asyncio-nats-client](https://pypi.org/project/asyncio-nats-client/) to [nats-py](https://pypi.org/project/nats-py/), it has become possible to support one of the most important features of NATS 2.0 - JetStream.
 
 
