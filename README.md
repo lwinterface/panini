@@ -2,15 +2,15 @@
   
 Panini is a python microframework based on the [nats.py](http://nats.py/) library. Its goal is to offer developers an easy way to create NATS microservices with a lower barrier of entry. It provides a specific template for creating microservices, similarly to FastAPI, Aiohttp, or Flask. Like all of the above frameworks, Panini has its design limits and edge cases. In the case that you become restricted by Panini's capabilities, we recommend switching to [nats.py](https://github.com/nats-io/nats.py).
 
+[![docs](https://img.shields.io/static/v1?label=docs&message=docs&color=informational)](https://panini.technology/)
+[![Build Status](https://circleci.com/gh/lwinterface/panini/tree/master.svg?style=shield)](https://circleci.com/gh/lwinterface/panini/?branch=main)
+[![Versions](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)](https://pypi.org/project/nats-py)
+[![License Apache 2.0](https://img.shields.io/github/license/lwinterface/panini)](https://www.apache.org/licenses/LICENSE-2.0)
 
 Panini was inspired by [Faust](https://github.com/robinhood/faust) project. 
 ## Documentation
 
 Documentation is [here](https://panini.technology/).
-
-## Supported platforms
-
-Compatible with [Python 3.8](https://docs.python.org/3.9/library/asyncio.html) & [Python 3.9](https://docs.python.org/3.9/library/asyncio.html).
 
 
 ## How to install

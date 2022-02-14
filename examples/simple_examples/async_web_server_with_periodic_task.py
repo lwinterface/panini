@@ -16,7 +16,7 @@ NUM = 0
 def get_message():
     return {
         "version": __version__,
-        "name": app.nats.client_id,
+        "name": app.nats.client_nats_name,
         "id": app.nats.client.client_id,
         "NATS_brokers": app.nats.servers,
 }

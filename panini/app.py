@@ -5,12 +5,10 @@ import typing
 import uuid
 from types import CoroutineType
 
-from aiohttp import web
 
 from panini.managers.nats_client import NATSClient
 from .exceptions import InitializingEventManagerError
 
-from .http_server.http_server_app import HTTPServer
 from .managers.event_manager import EventManager
 from .managers.task_manager import TaskManager
 from .middleware.error import ErrorMiddleware
@@ -30,7 +28,7 @@ class App:
             port: int or str = None,
             service_name: str = "panini_microservice_" + str(uuid.uuid4())[:10],
             servers: list = None,
-            client_id: str = None,
+            client_nats_name: str = None,
             reconnect: bool = False,
             max_reconnect_attempts: int = 60,
             reconnecting_time_sleep: int = 2,
@@ -59,12 +57,11 @@ class App:
         """
 
         try:
-            # client_id initialization
-            if client_id is None:
-                self.client_id = create_client_code_by_hostname(service_name)
+            if client_nats_name is None:
+                self.client_nats_name = create_client_code_by_hostname(service_name)
             else:
-                self.client_id = client_id
-            os.environ["CLIENT_ID"] = self.client_id
+                self.client_nats_name = client_nats_name
+            os.environ["CLIENT_NATS_NAME"] = self.client_nats_name
 
             self.loop = asyncio.get_event_loop()
 
@@ -76,7 +73,7 @@ class App:
                 host=host,
                 port=port,
                 servers=servers,
-                client_id=self.client_id,
+                client_nats_name=self.client_nats_name,
                 loop=self.loop,
                 allow_reconnect=reconnect,
                 queue=allocation_queue_group,
@@ -107,7 +104,7 @@ class App:
                     self.app_root_path,
                     self.logger_files_path,
                     False,
-                    self.client_id,
+                    self.client_nats_name,
                 )
 
             self.logger_process = None
@@ -118,6 +115,7 @@ class App:
             self.http_server = None
             self.http = None
 
+            self.on_start_task = self._task_manager.register_on_start_task
             self.task = self._task_manager.register_task
             self.timer_task = self._task_manager.register_interval_task
 
@@ -132,6 +130,9 @@ class App:
         """
         Setup server and run with NATS when called app.start()
         """
+        from aiohttp import web
+        from .http_server.http_server_app import HTTPServer
+
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
             self.http_server = HTTPServer(routes=self.http, loop=self.loop, web_app=web_app, web_server_params=params)
@@ -150,7 +151,7 @@ class App:
             app_root_path,
             logger_files_path,
             in_separate_process,
-            client_id
+            client_nats_name
     ):
         if in_separate_process:
             (
@@ -162,7 +163,7 @@ class App:
                 app_root_path,
                 logger_files_path,
                 in_separate_process,
-                client_id,
+                client_nats_name,
             )
         else:
             logger.set_logger(
@@ -170,7 +171,7 @@ class App:
                 app_root_path,
                 logger_files_path,
                 in_separate_process,
-                client_id,
+                client_nats_name,
             )
         self.logger.logger = logging.getLogger(service_name)
 
@@ -178,49 +179,73 @@ class App:
             self,
             subject: list or str,
             validator: type = None,
-            data_type="json.loads"
+            data_type = "json"
     ):
-        return self._event_manager.listen(subject, validator, data_type)
+        return self._event_manager.listen(
+            subject=subject,
+            validator=validator,
+            data_type=data_type
+        )
 
     async def publish(
             self,
             subject: str,
             message,
-            reply_to: str = None,
+            reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps"
+            data_type: type or str = "json"
     ):
-        return await self.nats.publish(subject, message, reply_to, force, data_type)
+        return await self.nats.publish(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type
+        )
 
     def publish_sync(
             self,
             subject: str,
             message,
-            reply_to: str = None,
+            reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json.dumps",
+            data_type: type or str = "json",
     ):
-        return self.nats.publish_sync(subject, message, reply_to, force, data_type)
+        return self.nats.publish_sync(
+            subject=subject,
+            message=message,
+            reply_to=reply_to,
+            force=force,
+            data_type=data_type
+        )
 
     async def request(
             self,
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
-            callback: typing.Callable = None
+            data_type: type or str = "json",
     ):
-        return await self.nats.request(subject, message, timeout, data_type, callback)
+        return await self.nats.request(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+        )
 
     def request_sync(
             self,
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json.dumps",
-            callback: typing.Callable = None,
+            data_type: type or str = "json",
     ):
-        return self.nats.request_sync(subject, message, timeout, data_type, callback)
+        return self.nats.request_sync(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            data_type=data_type,
+        )
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
         return self.nats.subscribe_new_subject_sync(subject, callback, **kwargs)
@@ -230,10 +255,14 @@ class App:
             subject: str,
             callback: CoroutineType,
             init_subscription=False,
-            is_async=False,
             data_type=None
     ):
-        return await self.nats.subscribe_new_subject(subject, callback, init_subscription, is_async, data_type)
+        return await self.nats.subscribe_new_subject(
+            subject=subject,
+            callback=callback,
+            init_subscription=init_subscription,
+            data_type=data_type
+        )
 
     def unsubscribe_subject_sync(self, subject: str):
         return self.nats.unsubscribe_subject_sync(subject)
@@ -241,20 +270,16 @@ class App:
     async def unsubscribe_subject(self, subject: str):
         return await self.nats.unsubscribe_subject(subject)
 
-    def unsubscribe_ssid_sync(self, ssid: int, subject: str = None):
-        return self.nats.unsubscribe_ssid_sync(ssid, subject)
-
-    async def unsubscribe_ssid(self, ssid: int, subject: str = None):
-        return await self.nats.unsubscribe_ssid(ssid, subject)
-
     def add_middleware(self, cls, *args, **kwargs):
         return self.nats.middleware_manager.add_middleware(cls, *args, **kwargs)
 
     def _start_event(self):
         asyncio.ensure_future(
-            self.nats.client.publish(
-                f"panini_events.{self.service_name}.{self.client_id}.started",
+            self.nats._publish(
+                f"panini_events.{self.service_name}.{self.client_nats_name}.started",
                 b"{}",
+                data_type=bytes,
+                force=True
             )
         )
 
@@ -277,7 +302,7 @@ class App:
                 self.app_root_path,
                 self.logger_files_path,
                 True,
-                self.client_id,
+                self.client_nats_name,
             )
 
         self.nats.set_listen_subjects_callbacks(self._event_manager.subscriptions)
@@ -285,9 +310,12 @@ class App:
 
         loop = asyncio.get_event_loop()
 
+        for on_start in self._task_manager._on_start_tasks:
+            loop.run_until_complete(on_start())
+
         self._start_event()
-        tasks = asyncio.all_tasks(loop)
         self._task_manager.create_tasks()
+        tasks = asyncio.all_tasks(loop)
 
         if self.http_server:
             self.http_server.start_server()

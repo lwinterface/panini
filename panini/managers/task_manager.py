@@ -12,11 +12,16 @@ class TaskManager:
 
     def __init__(self):
         self._tasks = []
+        self._on_start_tasks = []
         self._loop = asyncio.get_event_loop()
 
     @property
     def tasks(self):
         return self._tasks
+
+    @property
+    def on_start_tasks(self):
+        return self._on_start_tasks
 
     # def __call__(self, interval: float or int = None, **kwargs):
     #     def wrapper(task):
@@ -28,6 +33,12 @@ class TaskManager:
     #         return task
     #
     #     return wrapper
+
+    def register_on_start_task(self):
+        def wrapper(task):
+            self._check_task(task)
+            self._on_start_tasks.append(task)
+        return wrapper
 
     def register_task(self, interval: Union[float, int] = None):
         def wrapper(task):
@@ -78,3 +89,5 @@ class TaskManager:
         loop = asyncio.get_event_loop()
         for task in self._tasks:
             loop.create_task(task())
+
+

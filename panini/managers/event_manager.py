@@ -20,7 +20,7 @@ class EventManager:
         self,
         subject: list or str,
         validator: type = None,
-        data_type="json.loads",
+        data_type="json",
     ):
         def wrapper(function):
             function = self.wrap_function_by_validator(function, validator)

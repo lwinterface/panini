@@ -5,7 +5,6 @@ from panini.async_test_client import AsyncTestClient
 
 def run_panini():
     from tests.async_test_client.separate_file.main import app
-
     app.start()
 
 
