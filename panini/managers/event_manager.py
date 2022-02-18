@@ -48,12 +48,12 @@ class EventManager:
             return msg
 
         def wrapper(msg):
-            validate_message(msg)
-            return function(msg)
+            res = validate_message(msg)
+            return function(msg, validation_report=res)
 
         async def wrapper_async(msg):
-            validate_message(msg)
-            return await function(msg)
+            res = validate_message(msg)
+            return await function(msg, validation_report=res)
 
         if asyncio.iscoroutinefunction(function):
             return wrapper_async
