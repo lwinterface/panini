@@ -3,7 +3,7 @@ import logging
 import os
 import typing
 import uuid
-from types import CoroutineType
+from types import CoroutineType, FunctionType
 
 
 from panini.managers.nats_client import NATSClient
@@ -33,7 +33,6 @@ class App:
             max_reconnect_attempts: int = 60,
             reconnecting_time_sleep: int = 2,
             allocation_queue_group: str = "",
-
             logger_required: bool = True,
             logger_files_path: str = None,
             logger_in_separate_process: bool = False,
@@ -183,13 +182,16 @@ class App:
     def listen(
             self,
             subject: list or str,
+            data_type="json",
             validator: type = None,
-            data_type = "json"
+            validation_error_cb: FunctionType = None,
     ):
         return self._event_manager.listen(
             subject=subject,
+            data_type=data_type,
             validator=validator,
-            data_type=data_type
+            validation_error_cb=validation_error_cb
+
         )
 
     async def publish(
