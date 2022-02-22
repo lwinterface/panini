@@ -37,6 +37,7 @@ class App:
             logger_required: bool = True,
             logger_files_path: str = None,
             logger_in_separate_process: bool = False,
+            custom_logger: logging.Logger = None,
             pending_bytes_limit=65536 * 1024 * 10,
             **kwargs
     ):
@@ -96,9 +97,11 @@ class App:
                 self.logger_files_path = (
                     logger_files_path if logger_files_path else "logs"
                 )
-            self.logger = logger.Logger(None)
 
-            if self.logger_required:
+            if custom_logger:
+                self.logger = custom_logger
+            elif self.logger_required:
+                self.logger = logger.Logger(None)
                 self.set_logger(
                     self.service_name,
                     self.app_root_path,
@@ -106,6 +109,8 @@ class App:
                     False,
                     self.client_nats_name,
                 )
+            else:
+                self.logger = None
 
             self.logger_process = None
             self.log_stop_event = None
@@ -151,7 +156,7 @@ class App:
             app_root_path,
             logger_files_path,
             in_separate_process,
-            client_nats_name
+            client_nats_name,
     ):
         if in_separate_process:
             (
