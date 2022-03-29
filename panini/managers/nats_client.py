@@ -280,6 +280,7 @@ class NATSClient:
         await self.client.publish(subject=subject, payload=message, reply=reply_to, headers=headers)
         if force:
             await self.client.flush()
+        await asyncio.sleep(0)
 
     async def publish(
             self,
