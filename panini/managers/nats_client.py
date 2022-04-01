@@ -380,10 +380,10 @@ class _ReceivedMessageHandler:
         self.data_type = data_type
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
 
-    async def __call__(self, msg):
-        asyncio.ensure_future(self.call(msg))
-
     async def call(self, msg):
+        asyncio.ensure_future(self._call(msg))
+
+    async def _call(self, msg):
         self.parse_data(msg)
         reply_to = self.match_msg_case(msg)
         if self.cb_is_async:
