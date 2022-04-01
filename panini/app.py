@@ -3,7 +3,7 @@ import logging
 import os
 import typing
 import uuid
-from types import CoroutineType
+from types import CoroutineType, FunctionType
 
 
 from panini.managers.nats_client import NATSClient
@@ -33,10 +33,10 @@ class App:
             max_reconnect_attempts: int = 60,
             reconnecting_time_sleep: int = 2,
             allocation_queue_group: str = "",
-
             logger_required: bool = True,
             logger_files_path: str = None,
             logger_in_separate_process: bool = False,
+            custom_logger: logging.Logger = None,
             pending_bytes_limit=65536 * 1024 * 10,
             **kwargs
     ):
@@ -96,9 +96,11 @@ class App:
                 self.logger_files_path = (
                     logger_files_path if logger_files_path else "logs"
                 )
-            self.logger = logger.Logger(None)
 
-            if self.logger_required:
+            if custom_logger:
+                self.logger = custom_logger
+            elif self.logger_required:
+                self.logger = logger.Logger(None)
                 self.set_logger(
                     self.service_name,
                     self.app_root_path,
@@ -106,6 +108,8 @@ class App:
                     False,
                     self.client_nats_name,
                 )
+            else:
+                self.logger = None
 
             self.logger_process = None
             self.log_stop_event = None
@@ -151,7 +155,7 @@ class App:
             app_root_path,
             logger_files_path,
             in_separate_process,
-            client_nats_name
+            client_nats_name,
     ):
         if in_separate_process:
             (
@@ -178,13 +182,16 @@ class App:
     def listen(
             self,
             subject: list or str,
+            data_type="json",
             validator: type = None,
-            data_type = "json"
+            validation_error_cb: FunctionType = None,
     ):
         return self._event_manager.listen(
             subject=subject,
+            data_type=data_type,
             validator=validator,
-            data_type=data_type
+            validation_error_cb=validation_error_cb
+
         )
 
     async def publish(
@@ -193,14 +200,16 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json"
+            data_type: type or str = "json",
+            headers: dict = None
     ):
         return await self.nats.publish(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type
+            data_type=data_type,
+            headers=headers
         )
 
     def publish_sync(
@@ -210,13 +219,15 @@ class App:
             reply_to: str = "",
             force: bool = False,
             data_type: type or str = "json",
+            headers: dict = None
     ):
         return self.nats.publish_sync(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type
+            data_type=data_type,
+            headers=headers
         )
 
     async def request(
@@ -225,12 +236,14 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json",
+            headers: dict = None
     ):
         return await self.nats.request(
             subject=subject,
             message=message,
             timeout=timeout,
             data_type=data_type,
+            headers=headers
         )
 
     def request_sync(
@@ -239,12 +252,14 @@ class App:
             message,
             timeout: int = 10,
             data_type: type or str = "json",
+            headers: dict = None
     ):
         return self.nats.request_sync(
             subject=subject,
             message=message,
             timeout=timeout,
             data_type=data_type,
+            headers=headers
         )
 
     def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
