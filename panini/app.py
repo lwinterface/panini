@@ -335,7 +335,11 @@ class App:
         if self.http_server:
             self.http_server.start_server()
         else:
-            loop.run_until_complete(asyncio.gather(*tasks))
+            try:
+                loop.run_until_complete(asyncio.gather(*tasks))
+            except asyncio.exceptions.CancelledError as exc:
+                self.logger.exception(f"Error: {exc}")
+                self.start()
 
 
 
