@@ -103,3 +103,9 @@ class TestClientError(BaseError):
 
 class JetStreamNotEnabledError(BaseError):
     pass
+
+
+class CriticalError(SystemExit):
+
+    def __init__(self, *args):
+        super().__init__(*args)
