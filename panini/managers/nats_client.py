@@ -99,6 +99,12 @@ class NATSClient:
     def middlewares(self, value: dict):
         self._middleware_manager.middlewares = value
 
+    async def _panini_watcher(self):
+        while True:
+            await asyncio.sleep(0)
+            if not self.client.is_connected and self.client.is_closed:
+                exit(99)
+
     async def _establish_connection(self):
         self.client = NATS()
         if self.servers is None:
@@ -118,6 +124,7 @@ class NATSClient:
             kwargs["reconnect_time_wait"] = self.reconnecting_time_wait
         kwargs.update(self.auth)
         await self.client.connect(**kwargs)
+        self.loop.create_task(self._panini_watcher())
         if self.enable_js:
             self.js_client = self.client.jetstream()
         if self.client.is_connected:
