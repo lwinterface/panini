@@ -101,7 +101,7 @@ class NATSClient:
 
     async def _panini_watcher(self):
         while True:
-            await asyncio.sleep(0)
+            await asyncio.sleep(1)
             if not self.client.is_connected and self.client.is_closed:
                 exit(99)
 
