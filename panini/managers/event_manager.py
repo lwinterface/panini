@@ -1,7 +1,30 @@
 import asyncio
-from types import FunctionType
+from dataclasses import dataclass
+from typing import Optional, Callable
+
+from nats.aio.msg import Msg
+from nats.js import api
+
 from panini import exceptions
 from panini.exceptions import NotReadyError, ValidationError
+
+
+@dataclass
+class Listen:
+    callback: Callable
+    subject: str
+    data_type: str | type = "json"
+    queue: str = ""
+
+@dataclass
+class JsListen(Listen):
+    durable: Optional[str] = None
+    stream: Optional[str] = None
+    config: Optional[api.ConsumerConfig] = None
+    manual_ack: Optional[bool] = False
+    ordered_consumer: Optional[bool] = False
+    idle_heartbeat: Optional[float] = None
+    flow_control: Optional[bool] = False
 
 
 class EventManager:
@@ -11,28 +34,69 @@ class EventManager:
 
     def __init__(self):
         self._subscriptions = {}
+        self._js_subscriptions = {}
 
     @property
     def subscriptions(self):
         return self._subscriptions
 
+    @property
+    def js_subscriptions(self):
+        return self._js_subscriptions
+
     def listen(
         self,
-        subject: list or str,
+        subject: list | str,
         data_type="json",
         validator: type = None,
-        validation_error_cb: FunctionType = None,
+        validation_error_cb: Callable[[Msg, ValidationError], None] = None,
+        **kwargs
     ):
         def wrapper(function):
             function = self.wrap_function_by_validator(function, validator, validation_error_cb)
-            if type(subject) is list:
-                for t in subject:
-                    self._check_subscription(t)
-                    self._subscriptions[t].append(function)
+            if isinstance(subject, list):
+                for s in subject:
+                    self._create_subscription_if_missing(t)
+                    listen_obj = Listen(
+                        callback=function,
+                        subject=s,
+                        data_type=data_type,
+                        **kwargs
+                    )
+                    self._subscriptions[s].append(listen_obj)
             else:
-                self._check_subscription(subject)
-                self._subscriptions[subject].append(function)
-            function.data_type = data_type
+                self._create_subscription_if_missing(subject)
+                listen_obj = Listen(
+                    callback=function,
+                    subject=subject,
+                    data_type=data_type,
+                    **kwargs
+                )
+                self._subscriptions[subject].append(listen_obj)
+            return function
+        return wrapper
+
+    def js_listen(
+        self,
+        subject: list | str,
+        data_type: type | str = "json",
+        validator: type = None,
+        validation_error_cb: Callable[[Msg, ValidationError], None] = None,
+        **kwargs,
+    ):
+        """
+        "PUSH" listen/subscribe
+        """
+        def wrapper(function):
+            function = self.wrap_function_by_validator(function, validator, validation_error_cb)
+            self._create_subscription_if_missing(subject, js=True)
+            js_listen_obj = JsListen(
+                callback=function,
+                subject=subject,
+                data_type=data_type,
+                **kwargs
+            )
+            self._js_subscriptions[subject].append(js_listen_obj)
             return function
         return wrapper
 
@@ -67,6 +131,10 @@ class EventManager:
         else:
             return wrapper
 
-    def _check_subscription(self, subscription):
-        if subscription not in self._subscriptions:
-            self._subscriptions[subscription] = []
+    def _create_subscription_if_missing(self, subscription, js=False):
+        if js:
+            if subscription not in self._js_subscriptions:
+                self._js_subscriptions[subscription] = []
+        else:
+            if subscription not in self._subscriptions:
+                self._subscriptions[subscription] = []
