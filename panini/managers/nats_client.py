@@ -4,10 +4,11 @@ import asyncio
 import threading
 import nest_asyncio
 from types import CoroutineType
-from typing import Union, List
+from typing import Union, List, Callable, Optional
 from nats.aio.client import Client as NATS
 from nats.js import api
 from panini.exceptions import DataTypeError, JetStreamNotEnabledError
+from panini.managers.event_manager import JsListen, Listen
 from panini.managers.middleware_manager import MiddlewareManager
 from panini.utils.logger import get_logger
 
@@ -49,13 +50,15 @@ class NATSClient:
         self.servers = servers
         self.queue = queue
         self.auth = auth
-        self.listen_subjects_callbacks = None
+        self.listeners = None
+        self.js_listeners = None
         self.allow_reconnect = allow_reconnect
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnecting_time_wait = reconnecting_time_wait
         self.pending_bytes_limit = pending_bytes_limit
         self.enable_js = enable_js
         self.sub_map = {}
+        self.js_stream_map = {}
 
         self.include_subjects = None
         self.exclude_subjects = None
@@ -72,15 +75,26 @@ class NATSClient:
 
         self.loop = loop
 
-    def set_listen_subjects_callbacks(self, subscriptions: list):
+    @property
+    def js(self):
+        if not self._js:
+            raise JetStreamNotEnabledError("JetStream is not enabled! Use enable_js=True when create Panini app.")
+        return self._js
+
+    def set_listeners(self, subscriptions: dict, js_subscriptions: dict):
         subscriptions = self.filter_subjects(subscriptions)
-        self.listen_subjects_callbacks = subscriptions
+        self.listeners = subscriptions
+        self.js_listeners = js_subscriptions
+
 
     def start(self):
         # inject send_middlewares
         self._publish_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "publish"
         )(self._publish)
+        self._publish_js_wrapped = self._middleware_manager.wrap_function_by_middleware(
+            "publish"
+        )(self._publish_js)
         self._request_wrapped = self._middleware_manager.wrap_function_by_middleware(
             "request"
         )(self._request)
@@ -126,53 +140,60 @@ class NATSClient:
         await self.client.connect(**kwargs)
         self.loop.create_task(self._panini_watcher())
         if self.enable_js:
-            self.js_client = self.client.jetstream()
+            self._js = self.client.jetstream()
         if self.client.is_connected:
-            listen_subjects_callbacks = self.listen_subjects_callbacks
-            for subject, callbacks in listen_subjects_callbacks.items():
-                for callback in callbacks:
+            listeners = self.listeners
+            for subject, listeners_single_subject in listeners.items():
+                for listener in listeners_single_subject:
                     await self.subscribe_new_subject(
-                        subject, callback, init_subscription=True
+                        listener, init_subscription=True
                     )
+            self.loop.create_task(self.listen_js_subscriptions())
             self.print_connect()
 
+    async def listen_js_subscriptions(self):
+        for subject, js_listeners_single_subject in self.js_listeners.items():
+            for js_listener in js_listeners_single_subject:
+                await self.subscribe_new_js(
+                    js_listener, init_subscription=True,
+                )
+
     def print_connect(self):
-        print('\n======================================================================================')
-        print(f'Panini service connected to NATS..')
+        print("\n======================================================================================")
+        print(f"Panini service connected to NATS..")
         print(f"id: {self.client.client_id}")
         print(f"name: {self.client_nats_name}")
-        print(f'\nNATS brokers:')
+        print(f"\nNATS brokers:")
         for i in self.servers:
-            print("* ",i)
-        print('======================================================================================\n')
+            print("* ", i)
+        print(f"\nJetStream enabled: {self.enable_js}")
+        print("======================================================================================\n")
 
-    def add_js_stream(self, name: str, subjects: List[str], config: api.StreamConfig = None, **params):
-        if not self.enable_js:
-            JetStreamNotEnabledError('Required flag "enable_js" is True')
-        self.js_client.add_stream(name=name, subjects=subjects, config=config, **params)
-
-    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
+    def subscribe_new_subject_sync(self, subject: str, callback: Callable, **kwargs):
         self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
 
     async def subscribe_new_subject(
             self,
-            subject: str,
-            callback: CoroutineType,
-            init_subscription=False,
-            data_type=None,
-            **kwargs
-    ):
-        if data_type == None:
-            data_type = getattr(callback, 'data_type', 'json')
+            listener: Listen,
+            init_subscription: bool = False,
 
-        callback = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
-        wrapped_callback = _ReceivedMessageHandler(self._publish, callback, data_type).call
+    ):
+
+        params = listener.__dict__
+        subject = params.pop("subject")
+        callback = params.pop("callback")
+        data_type = params.pop("data_type")
+        queue = params.pop("queue")
+        if not queue:
+            queue = self.queue
+
+        callback_with_middleware = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
+        wrapped_callback = _ReceivedMessageHandler(self._publish, callback_with_middleware, data_type).call
         sub = await self.client.subscribe(
             subject,
-            queue=self.queue,
             cb=wrapped_callback,
             pending_bytes_limit=self.pending_bytes_limit,
-            **kwargs
+            queue=queue,
         )
 
         if subject not in self.sub_map:
@@ -185,6 +206,41 @@ class NATSClient:
             self.listen_subjects_callbacks[subject].append(callback)
         return sub
 
+    async def subscribe_new_js(
+            self,
+            js_listener: JsListen,
+            init_subscription: bool = False,
+    ):
+        params = js_listener.__dict__
+        callback = params.pop("callback")
+        data_type = params.pop("data_type")
+        queue = params.pop("queue")
+        if not queue:
+            queue = self.queue
+
+        callback_with_middleware = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
+        wrapped_callback = _ReceivedMessageHandler(self._publish, callback_with_middleware, data_type).call_js
+
+        pending_bytes_limit = params.get("pending_bytes_limit")
+        if not pending_bytes_limit:
+            pending_bytes_limit = self.pending_bytes_limit
+        sub = await self.js.subscribe(
+            queue=queue,
+            cb=wrapped_callback,
+            pending_bytes_limit=pending_bytes_limit,
+            **params
+        )
+        stream = sub._stream
+        if stream not in self.js_stream_map:
+            self.js_stream_map[stream] = []
+        self.js_stream_map[stream].append(sub)
+
+        if init_subscription is False:
+            if stream not in self.js_stream_map:
+                self.js_stream_map[stream] = []
+            self.js_stream_map[stream].append(callback)
+        return sub
+
     def unsubscribe_subject_sync(self, subject: str):
         self.loop.run_until_complete(self.unsubscribe_subject(subject))
 
@@ -195,6 +251,14 @@ class NATSClient:
             await sub.unsubscribe()
         del self.sub_map[subject]
         del self.listen_subjects_callbacks[subject]
+
+    async def unsubscribe_js_listen(self, stream: str):
+        if stream not in self.js_stream_map:
+            raise Exception(f"Stream {stream} hasn't been subscribed")
+        for js_listener in self.js_stream_map[stream]:
+            await js_listener.unsubscribe()
+        del self.js_stream_map[stream]
+        del self.js_listeners[stream]
 
     def publish_sync(
             self,
@@ -340,6 +404,41 @@ class NATSClient:
             headers=headers,
         )
 
+    async def _publish_js(
+            self,
+            subject: str,
+            message,
+            timeout: float = None,
+            stream: str = None,
+            data_type: type or str = "json",
+            headers: dict = None
+    ) :
+        payload: bytes = self.format_message_data_type(message, data_type)
+        return await self._js.publish(
+                subject=subject,
+                payload=payload,
+                timeout=timeout,
+                stream=stream,
+                headers=headers
+        )
+
+    async def publish_js(
+            self,
+            subject: str,
+            message,
+            timeout: float = None,
+            stream: str = None,
+            data_type: type or str = "json",
+            headers: dict = None,
+    ):
+        return await self._publish_js(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            stream=stream,
+            headers=headers,
+        )
+
     def disconnect_sync(self):
         self.loop.run_until_complete(self.disconnect())
 
@@ -390,14 +489,32 @@ class _ReceivedMessageHandler:
     async def call(self, msg):
         asyncio.ensure_future(self._call(msg))
 
+    async def call_js(self, msg):
+        asyncio.ensure_future(self._call_js(msg))
+
     async def _call(self, msg):
+        reply_to, response = await self._call_main(msg)
+        if reply_to is not None:
+            await self.publish_func(reply_to, response)
+
+    async def _call_js(self, msg):
+        reply_to, response = await self._call_main(msg)
+        if reply_to is not None:
+            if reply_to.startswith("$JS."):
+                return
+            await self.publish_func(reply_to, response)
+
+    async def _call_main(self, msg):
         self.parse_data(msg)
         reply_to = self.match_msg_case(msg)
         if self.cb_is_async:
             response = await self.cb(msg)
         else:
             response = self.cb(msg)
+        return reply_to, response
         if reply_to is not None:
+            if reply_to.startswith("$JS."):
+                return
             await self.publish_func(reply_to, response)
 
     def parse_data(self, msg):
