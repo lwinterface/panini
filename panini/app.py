@@ -1,10 +1,11 @@
 import asyncio
 import logging
 import os
-import typing
 import uuid
 from types import CoroutineType, FunctionType
+from typing import Optional, Callable
 
+from nats.js import api
 
 from panini.managers.nats_client import NATSClient
 from .exceptions import InitializingEventManagerError
@@ -57,6 +58,7 @@ class App:
         """
 
         try:
+            # TODO: make private vars when possible
             if client_nats_name is None:
                 self.client_nats_name = create_client_code_by_hostname(service_name)
             else:
@@ -194,6 +196,52 @@ class App:
 
         )
 
+    def js_listen(
+            self,
+            subject: str = None,
+            data_type="json",
+            validator: type = None,
+            validation_error_cb: FunctionType = None,
+            queue: str = None,
+            durable: Optional[str] = None,
+            stream: Optional[str] = None,
+            config: Optional[api.ConsumerConfig] = None,
+            manual_ack: Optional[bool] = False,
+            ordered_consumer: Optional[bool] = False,
+            idle_heartbeat: Optional[float] = None,
+            flow_control: Optional[bool] = False,
+    ):
+        """
+        "PUSH" JetStream listen(subscribe)
+
+        :param subject: Subject from a stream from JetStream.
+        :param data_type: Expected message type.
+        :param validator: Validator cls instance to check each message.
+        :param validation_error_cb: Callback if validation failed.
+        :param queue: Deliver group name from a set a of queue subscribers.
+        :param durable: Name of the durable consumer to which the the subscription should be bound.
+        :param stream: Name of the stream to which the subscription should be bound. If not set,
+          then the client will automatically look it up based on the subject.
+        :param manual_ack: Disables auto acking for async subscriptions.
+        :param ordered_consumer: Enable ordered consumer mode.
+        :param idle_heartbeat: Enable Heartbeats for a consumer to detect failures.
+        :param flow_control: Enable Flow Control for a consumer.
+        """
+        return self._event_manager.js_listen(
+            subject=subject,
+            data_type=data_type,
+            validator=validator,
+            validation_error_cb=validation_error_cb,
+            queue=queue,
+            durable=durable,
+            stream=stream,
+            config=config,
+            manual_ack=manual_ack,
+            ordered_consumer=ordered_consumer,
+            idle_heartbeat=idle_heartbeat,
+            flow_control=flow_control,
+        )
+
     async def publish(
             self,
             subject: str,
@@ -262,7 +310,25 @@ class App:
             headers=headers
         )
 
-    def subscribe_new_subject_sync(self, subject: str, callback: CoroutineType, **kwargs):
+    async def publish_js(
+            self,
+            subject: str,
+            message,
+            timeout: float = None,
+            stream: str = None,
+            data_type: type or str = "json",
+            headers: dict = None,
+    ):
+        return await self.nats.publish_js(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            stream=stream,
+            data_type=data_type,
+            headers=headers,
+        )
+
+    def subscribe_new_subject_sync(self, subject: str, callback: Callable, **kwargs):
         return self.nats.subscribe_new_subject_sync(subject, callback, **kwargs)
 
     async def subscribe_new_subject(
@@ -320,8 +386,13 @@ class App:
                 self.client_nats_name,
             )
 
-        self.nats.set_listen_subjects_callbacks(self._event_manager.subscriptions)
+        self.nats.set_listeners(
+            self._event_manager.subscriptions,
+            self._event_manager.js_subscriptions,
+        )
         self.nats.start()
+        if self.nats.enable_js:
+            self.js = self.nats.js
 
         loop = asyncio.get_event_loop()
 
