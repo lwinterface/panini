@@ -320,7 +320,6 @@ class TestClient:
                     subject=incoming_message.subject,
                     data=incoming_message_data,
                     reply=incoming_message.reply,
-                    sid=incoming_message.sid,
                 )
                 wrapper_response = func(msg)
                 if wrapper_response is not None and incoming_message.reply != "":
