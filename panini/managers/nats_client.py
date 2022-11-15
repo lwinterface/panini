@@ -138,24 +138,23 @@ class NATSClient:
         self.loop.create_task(self._panini_watcher())
         if self.enable_js:
             self._js = self.client.jetstream()
-        if self.client.is_connected:
-            listeners = self.listeners
-            for subject, listeners_single_subject in listeners.items():
-                for listener in listeners_single_subject:
-                    await self.subscribe_new_subject(
-                        listener, init_subscription=True
-                    )
-            self.loop.create_task(self.listen_js_subscriptions())
-            self.print_connect()
+
+    async def subscribe_listeners(self):
+        if not self.client.is_connected:
+            raise InitializingNATSError("NATS Client hasn't connected")
+        for subject, listeners_single_subject in self.listeners.items():
+            for listener in listeners_single_subject:
+                await self.subscribe_new_subject(listener)
+        self.loop.create_task(self.listen_js_subscriptions())
 
     async def listen_js_subscriptions(self):
         for subject, js_listeners_single_subject in self.js_listeners.items():
             for js_listener in js_listeners_single_subject:
-                await self.subscribe_new_js(
-                    js_listener, init_subscription=True,
-                )
+                await self.subscribe_new_js(js_listener)
 
     def print_connect(self):
+        if not self.client.is_connected:
+            raise InitializingNATSError("NATS Client hasn't connected")
         print("\n======================================================================================")
         print(f"Panini service connected to NATS..")
         print(f"id: {self.client.client_id}")
@@ -166,19 +165,10 @@ class NATSClient:
         print(f"\nJetStream enabled: {self.enable_js}")
         print("======================================================================================\n")
 
-    def subscribe_new_subject_sync(
-            self,
-            listener: Listen,
-    ):
+    def subscribe_new_subject_sync(self, listener: Listen):
         self.loop.run_until_complete(self.subscribe_new_subject(listener))
 
-    async def subscribe_new_subject(
-            self,
-            listener: Listen,
-            init_subscription: bool = False,
-
-    ):
-
+    async def subscribe_new_subject(self, listener: Listen):
         params = listener.__dict__
         subject = params.pop("subject")
         callback = params.pop("callback")
@@ -199,18 +189,9 @@ class NATSClient:
         if subject not in self.sub_map:
             self.sub_map[subject] = []
         self.sub_map[subject].append(sub)
-
-        # if init_subscription is False:
-        #     if subject not in self.listen_subjects_callbacks:
-        #         self.listen_subjects_callbacks[subject] = []
-        #     self.listen_subjects_callbacks[subject].append(callback)
         return sub
 
-    async def subscribe_new_js(
-            self,
-            js_listener: JsListen,
-            init_subscription: bool = False,
-    ):
+    async def subscribe_new_js(self, js_listener: JsListen):
         params = js_listener.__dict__
         callback = params.pop("callback")
         data_type = params.pop("data_type")
@@ -221,24 +202,15 @@ class NATSClient:
         callback_with_middleware = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback_with_middleware, data_type).call_js
 
-        pending_bytes_limit = params.get("pending_bytes_limit")
-        if not pending_bytes_limit:
-            pending_bytes_limit = self.pending_bytes_limit
         sub = await self.js.subscribe(
             queue=queue,
             cb=wrapped_callback,
-            pending_bytes_limit=pending_bytes_limit,
             **params
         )
         stream = sub._stream
         if stream not in self.js_stream_map:
             self.js_stream_map[stream] = []
         self.js_stream_map[stream].append(sub)
-
-        if init_subscription is False:
-            if stream not in self.js_stream_map:
-                self.js_stream_map[stream] = []
-            self.js_stream_map[stream].append(callback)
         return sub
 
     def unsubscribe_subject_sync(self, subject: str):
@@ -250,7 +222,6 @@ class NATSClient:
         for sub in self.sub_map[subject]:
             await sub.unsubscribe()
         del self.sub_map[subject]
-        # del self.listen_subjects_callbacks[subject]
 
     async def unsubscribe_js_listen(self, stream: str):
         if stream not in self.js_stream_map:
@@ -325,8 +296,7 @@ class NATSClient:
     @staticmethod
     def format_message_data_type(message, data_type):
         if type(message) in [dict, list] and data_type == "json":
-            message = ujson.dumps(message)
-            return message.encode()
+            return ujson.dumps(message).encode()
         elif type(message) is str and data_type is str:
             return message.encode()
         elif type(message) is bytes and data_type is bytes:
