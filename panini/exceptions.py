@@ -85,6 +85,14 @@ class RequestError(BaseError):
     pass
 
 
+class SubscribeError(BaseError):
+    pass
+
+
+class UnsubscribeError(BaseError):
+    pass
+
+
 class ValidationError(Exception):
     pass
 
