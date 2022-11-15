@@ -1,28 +1,29 @@
+import asyncio
 import uuid
 import json
 import time
 
 import pytest
 from aiohttp import web
-from panini import app as ant_app
+from panini import app as panini_app
 from panini.test_client import TestClient
 from examples.simple_examples._wss_manager import WSSManager
 
 
 def run_panini():
-    app = ant_app.App(
+    app = panini_app.App(
         service_name="test_wss",
         host="127.0.0.1",
         port=4222,
         logger_in_separate_process=False
     )
 
-    app.setup_web_server(port=1111)
+    app.setup_web_server(port=5001)
     manager = WSSManager(app)
 
     @app.listen("test_wss.start")
     async def publish(msg):
-        await app.publish(subject="test_wss.foo.bar", message={"data": 1})
+        await app.publish(subject="test_wss.foo.bar", message={"data": 1}, force=True)
 
     @app.http.get("/test_wss/stream")
     async def web_endpoint_listener(request):
@@ -58,7 +59,7 @@ def client():
 def test_wss_bridge(client):
     print("Before connect")
     time.sleep(1)
-    client.websocket_session.connect("ws://127.0.0.1:1111/test_wss/stream")
+    client.websocket_session.connect("ws://127.0.0.1:5001/test_wss/stream")
     print("Connected")
     subscribe_message = {
         "subjects": ["test_wss.foo.bar"],
