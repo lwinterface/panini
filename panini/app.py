@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import uuid
-from types import CoroutineType, FunctionType
+from types import FunctionType
 from typing import Optional, Callable
 
 from nats.js import api
@@ -10,7 +10,7 @@ from nats.js import api
 from panini.managers.nats_client import NATSClient
 from .exceptions import InitializingEventManagerError
 
-from .managers.event_manager import EventManager
+from .managers.event_manager import EventManager, Listen
 from .managers.task_manager import TaskManager
 from .middleware.error import ErrorMiddleware
 from .utils import logger
@@ -58,7 +58,6 @@ class App:
         """
 
         try:
-            # TODO: make private vars when possible
             if client_nats_name is None:
                 self.client_nats_name = create_client_code_by_hostname(service_name)
             else:
@@ -141,9 +140,20 @@ class App:
 
         self.http = web.RouteTableDef()  # for http decorator
         if web_app:
-            self.http_server = HTTPServer(routes=self.http, loop=self.loop, web_app=web_app, web_server_params=params)
+            self.http_server = HTTPServer(
+                routes=self.http,
+                loop=self.loop,
+                web_app=web_app,
+                web_server_params=params
+            )
         else:
-            self.http_server = HTTPServer(routes=self.http, loop=self.loop, host=host, port=port, web_server_params=params)
+            self.http_server = HTTPServer(
+                routes=self.http,
+                loop=self.loop,
+                host=host,
+                port=port,
+                web_server_params=params
+            )
 
     def add_filters(self, include: list = None, exclude: list = None):
         """
@@ -222,6 +232,7 @@ class App:
         :param durable: Name of the durable consumer to which the the subscription should be bound.
         :param stream: Name of the stream to which the subscription should be bound. If not set,
           then the client will automatically look it up based on the subject.
+        :param config: api.ConsumerConfig object of JetStream, represent consumer configuration
         :param manual_ack: Disables auto acking for async subscriptions.
         :param ordered_consumer: Enable ordered consumer mode.
         :param idle_heartbeat: Enable Heartbeats for a consumer to detect failures.
@@ -328,21 +339,38 @@ class App:
             headers=headers,
         )
 
-    def subscribe_new_subject_sync(self, subject: str, callback: Callable, **kwargs):
-        return self.nats.subscribe_new_subject_sync(subject, callback, **kwargs)
+    def subscribe_new_subject_sync(
+            self,
+            subject: str,
+            callback: Callable,
+            data_type=None,
+            queue="",
+    ):
+        return self.nats.subscribe_new_subject_sync(
+            listener=Listen(
+                callback=callback,
+                subject=subject,
+                data_type=data_type,
+                queue=queue,
+            )
+        )
 
     async def subscribe_new_subject(
             self,
             subject: str,
-            callback: CoroutineType,
+            callback: Callable,
             init_subscription=False,
-            data_type=None
+            data_type=None,
+            queue="",
     ):
         return await self.nats.subscribe_new_subject(
-            subject=subject,
-            callback=callback,
+            listener=Listen(
+                callback=callback,
+                subject=subject,
+                data_type=data_type,
+                queue=queue,
+            ),
             init_subscription=init_subscription,
-            data_type=data_type
         )
 
     def unsubscribe_subject_sync(self, subject: str):

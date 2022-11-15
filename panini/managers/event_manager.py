@@ -6,14 +6,14 @@ from nats.aio.msg import Msg
 from nats.js import api
 
 from panini import exceptions
-from panini.exceptions import NotReadyError, ValidationError
+from panini.exceptions import ValidationError
 
 
 @dataclass
 class Listen:
     callback: Callable
     subject: str
-    data_type: str | type = "json"
+    data_type: str or type = "json"
     queue: str = ""
 
 @dataclass
@@ -46,19 +46,19 @@ class EventManager:
 
     def listen(
         self,
-        subject: list | str,
+        subject: list or str,
         data_type="json",
         validator: type = None,
         validation_error_cb: Callable[[Msg, ValidationError], None] = None,
         **kwargs
     ):
         def wrapper(function):
-            function = self.wrap_function_by_validator(function, validator, validation_error_cb)
+            wrapped = self.wrap_function_by_validator(function, validator, validation_error_cb)
             if isinstance(subject, list):
                 for s in subject:
-                    self._create_subscription_if_missing(t)
+                    self._create_subscription_if_missing(s)
                     listen_obj = Listen(
-                        callback=function,
+                        callback=wrapped,
                         subject=s,
                         data_type=data_type,
                         **kwargs
@@ -67,37 +67,34 @@ class EventManager:
             else:
                 self._create_subscription_if_missing(subject)
                 listen_obj = Listen(
-                    callback=function,
+                    callback=wrapped,
                     subject=subject,
                     data_type=data_type,
                     **kwargs
                 )
                 self._subscriptions[subject].append(listen_obj)
-            return function
+            return wrapped
         return wrapper
 
     def js_listen(
         self,
-        subject: list | str,
-        data_type: type | str = "json",
+        subject: list or str,
+        data_type: type or str = "json",
         validator: type = None,
         validation_error_cb: Callable[[Msg, ValidationError], None] = None,
         **kwargs,
     ):
-        """
-        "PUSH" listen/subscribe
-        """
         def wrapper(function):
-            function = self.wrap_function_by_validator(function, validator, validation_error_cb)
+            wrapped = self.wrap_function_by_validator(function, validator, validation_error_cb)
             self._create_subscription_if_missing(subject, js=True)
             js_listen_obj = JsListen(
-                callback=function,
+                callback=wrapped,
                 subject=subject,
                 data_type=data_type,
                 **kwargs
             )
             self._js_subscriptions[subject].append(js_listen_obj)
-            return function
+            return wrapped
         return wrapper
 
     def wrap_function_by_validator(self, function, validator, validation_error_cb):
@@ -116,13 +113,13 @@ class EventManager:
 
         def wrapper(msg):
             validation_result = validate_message(msg)
-            if not validation_result is True:
+            if validation_result is not True:
                 return validation_result
             return function(msg)
 
         async def wrapper_async(msg):
             validation_result = validate_message(msg)
-            if not validation_result is True:
+            if validation_result is not True:
                 return validation_result
             return await function(msg)
 

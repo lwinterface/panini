@@ -219,7 +219,7 @@ class AsyncTestClient:
             async def panini_started(msg):
                 panini_started_future.set_result(msg)
 
-            sub = await self.nats_client.subscribe(
+            await self.nats_client.subscribe(
                 f"panini_events.{self.panini_service_name}.{self.panini_client_id}.started",
                 cb=panini_started,
             )
@@ -239,7 +239,7 @@ class AsyncTestClient:
             await asyncio.sleep(1)
             try:
                 await asyncio.wait_for(panini_started_future, self.run_panini_timeout)
-            except Exception as e:
+            except Exception:
                 raise TestClientError(
                     "TestClient was waiting panini to start, but panini does not started"
                 )

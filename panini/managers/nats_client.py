@@ -1,13 +1,10 @@
-import typing
 import ujson
 import asyncio
 import threading
 import nest_asyncio
-from types import CoroutineType
-from typing import Union, List, Callable, Optional
+from typing import Union, List, Dict
 from nats.aio.client import Client as NATS
-from nats.js import api
-from panini.exceptions import DataTypeError, JetStreamNotEnabledError
+from panini.exceptions import DataTypeError, JetStreamNotEnabledError, UnsubscribeError, InitializingNATSError
 from panini.managers.event_manager import JsListen, Listen
 from panini.managers.middleware_manager import MiddlewareManager
 from panini.utils.logger import get_logger
@@ -66,7 +63,7 @@ class NATSClient:
         self._middleware_manager = MiddlewareManager()
 
         def not_assigned_method(*args, **kwargs):
-            raise Exception("used before assignment")
+            raise InitializingNATSError("used before assignment")
 
         self._publish_wrapped = not_assigned_method
         self._request_wrapped = not_assigned_method
@@ -77,11 +74,11 @@ class NATSClient:
 
     @property
     def js(self):
-        if not self._js:
+        if not hasattr(self, "_js"):
             raise JetStreamNotEnabledError("JetStream is not enabled! Use enable_js=True when create Panini app.")
         return self._js
 
-    def set_listeners(self, subscriptions: dict, js_subscriptions: dict):
+    def set_listeners(self, subscriptions: Dict, js_subscriptions: Dict):
         subscriptions = self.filter_subjects(subscriptions)
         self.listeners = subscriptions
         self.js_listeners = js_subscriptions
@@ -169,8 +166,11 @@ class NATSClient:
         print(f"\nJetStream enabled: {self.enable_js}")
         print("======================================================================================\n")
 
-    def subscribe_new_subject_sync(self, subject: str, callback: Callable, **kwargs):
-        self.loop.run_until_complete(self.subscribe_new_subject(subject, callback, **kwargs))
+    def subscribe_new_subject_sync(
+            self,
+            listener: Listen,
+    ):
+        self.loop.run_until_complete(self.subscribe_new_subject(listener))
 
     async def subscribe_new_subject(
             self,
@@ -200,10 +200,10 @@ class NATSClient:
             self.sub_map[subject] = []
         self.sub_map[subject].append(sub)
 
-        if init_subscription is False:
-            if subject not in self.listen_subjects_callbacks:
-                self.listen_subjects_callbacks[subject] = []
-            self.listen_subjects_callbacks[subject].append(callback)
+        # if init_subscription is False:
+        #     if subject not in self.listen_subjects_callbacks:
+        #         self.listen_subjects_callbacks[subject] = []
+        #     self.listen_subjects_callbacks[subject].append(callback)
         return sub
 
     async def subscribe_new_js(
@@ -246,15 +246,15 @@ class NATSClient:
 
     async def unsubscribe_subject(self, subject: str):
         if subject not in self.sub_map:
-            raise Exception(f"Subject {subject} hasn't been subscribed")
+            raise UnsubscribeError(f"Subject {subject} hasn't been subscribed")
         for sub in self.sub_map[subject]:
             await sub.unsubscribe()
         del self.sub_map[subject]
-        del self.listen_subjects_callbacks[subject]
+        # del self.listen_subjects_callbacks[subject]
 
     async def unsubscribe_js_listen(self, stream: str):
         if stream not in self.js_stream_map:
-            raise Exception(f"Stream {stream} hasn't been subscribed")
+            raise UnsubscribeError(f"Stream {stream} hasn't been subscribed")
         for js_listener in self.js_stream_map[stream]:
             await js_listener.unsubscribe()
         del self.js_stream_map[stream]
@@ -326,17 +326,15 @@ class NATSClient:
     def format_message_data_type(message, data_type):
         if type(message) in [dict, list] and data_type == "json":
             message = ujson.dumps(message)
-            message = message.encode()
+            return message.encode()
         elif type(message) is str and data_type is str:
-            message = message.encode()
+            return message.encode()
         elif type(message) is bytes and data_type is bytes:
-            pass
+            return message
         else:
             raise DataTypeError(
                 f'Expected {"dict or list" if data_type in [dict, list, "json"] else data_type} but got {type(message)}'
             )
-
-        return message
 
     async def _publish(
             self,
@@ -436,6 +434,7 @@ class NATSClient:
             message=message,
             timeout=timeout,
             stream=stream,
+            data_type=data_type,
             headers=headers,
         )
 
@@ -458,26 +457,37 @@ class NATSClient:
 
     def filter_subjects(self, subscriptions):
         assert not self.include_subjects or not self.exclude_subjects, "You can use either include or exclude. Not both"
-
         if self.include_subjects:
-            for subject in subscriptions.copy():
-                success = False
-                for subject_include in self.include_subjects:
-                    if subject_include in subject:
-                        success = True
-                        break
-                if not success:
-                    del subscriptions[subject]
+            return self._filter_include(subscriptions)
+        elif self.exclude_subjects:
+            return self._filter_exclude(subscriptions)
+        else:
+            return subscriptions
 
-        if self.exclude_subjects:
-            for subject in subscriptions.copy():
-                for subject_exclude in self.exclude_subjects:
-                    if subject_exclude in subject:
-                        del subscriptions[subject]
-                        break
 
-        return subscriptions
+    def _filter_include(self, subscriptions: Dict):
+        def subject_included(subject):
+            for subject_included in self.include_subjects:
+                if subject_included not in subject:
+                    continue
+                return True
+        return {
+            subject: listeners
+            for subject, listeners in subscriptions.items()
+            if subject_included(subject)
+        }
 
+    def _filter_exclude(self, subscriptions: Dict):
+        def subject_excluded(subject):
+            for subject_excluded in self.exclude_subjects:
+                if subject_excluded in subject:
+                    return False
+            return True
+        return {
+            subject: listeners
+            for subject, listeners in subscriptions.items()
+            if subject_excluded(subject)
+        }
 
 class _ReceivedMessageHandler:
     def __init__(self, publish_func, cb, data_type):
@@ -512,10 +522,6 @@ class _ReceivedMessageHandler:
         else:
             response = self.cb(msg)
         return reply_to, response
-        if reply_to is not None:
-            if reply_to.startswith("$JS."):
-                return
-            await self.publish_func(reply_to, response)
 
     def parse_data(self, msg):
         if self.data_type == "raw" or self.data_type == bytes:
@@ -525,10 +531,10 @@ class _ReceivedMessageHandler:
         elif self.data_type == dict or self.data_type == "json":
             msg.data = ujson.loads(msg.data.decode())
         else:
-            raise Exception(f"{self.data_type} is unsupported data format")
+            raise DataTypeError(f"{self.data_type} is unsupported data format")
 
     def match_msg_case(self, msg):
-        if not msg.reply == "":
+        if msg.reply != "":
             reply_to = msg.reply
         elif self.data_type == "json" and "reply_to" in msg.data:
             reply_to = msg.data.pop("reply_to")
