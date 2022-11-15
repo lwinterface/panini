@@ -45,7 +45,8 @@ class App:
         :param host: NATS broker host
         :param port: NATS broker port
         :param service_name: Name of microservice
-        :param servers: Alternative to NATS broker host+NATS broker port. Allowed establish connection to multiple NATS brokers
+        :param servers: Alternative to NATS broker host+NATS broker port. Allowed establish connection
+        to multiple NATS brokers
         :param client_id: id of microservice, name and client_id used for NATS client name generating
         :param reconnect: allows reconnect if connection to NATS has been lost
         :param max_reconnect_attempts: number of reconnect attempts
@@ -203,7 +204,6 @@ class App:
             data_type=data_type,
             validator=validator,
             validation_error_cb=validation_error_cb
-
         )
 
     def js_listen(
@@ -343,7 +343,7 @@ class App:
             self,
             subject: str,
             callback: Callable,
-            data_type=None,
+            data_type="json",
             queue="",
     ):
         return self.nats.subscribe_new_subject_sync(
@@ -359,8 +359,7 @@ class App:
             self,
             subject: str,
             callback: Callable,
-            init_subscription=False,
-            data_type=None,
+            data_type="json",
             queue="",
     ):
         return await self.nats.subscribe_new_subject(
@@ -370,7 +369,6 @@ class App:
                 data_type=data_type,
                 queue=queue,
             ),
-            init_subscription=init_subscription,
         )
 
     def unsubscribe_subject_sync(self, subject: str):
@@ -418,19 +416,28 @@ class App:
             self._event_manager.subscriptions,
             self._event_manager.js_subscriptions,
         )
+        # establish NATS connection
         self.nats.start()
         if self.nats.enable_js:
             self.js = self.nats.js
 
+        # run on_start tasks
         loop = asyncio.get_event_loop()
-
         for on_start in self._task_manager._on_start_tasks:
             loop.run_until_complete(on_start())
 
+        # subscribe all listeners
+        loop.run_until_complete(self.nats.subscribe_listeners())
+        self.nats.print_connect()
+
+        # send first message
         self._start_event()
+
+        # prepare all tasks from task_manager
         self._task_manager.create_tasks()
         tasks = asyncio.all_tasks(loop)
 
+        # start app, with http_server if required
         if self.http_server:
             self.http_server.start_server()
         else:
