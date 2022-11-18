@@ -195,23 +195,17 @@ class App:
     def listen(
             self,
             subject: list or str,
-            data_type="json",
-            validator: type = None,
-            validation_error_cb: FunctionType = None,
+            data_type=dict,
     ):
         return self._event_manager.listen(
             subject=subject,
             data_type=data_type,
-            validator=validator,
-            validation_error_cb=validation_error_cb
         )
 
     def js_listen(
             self,
             subject: str = None,
-            data_type="json",
-            validator: type = None,
-            validation_error_cb: FunctionType = None,
+            data_type=dict,
             queue: str = None,
             durable: Optional[str] = None,
             stream: Optional[str] = None,
@@ -225,9 +219,7 @@ class App:
         "PUSH" JetStream listen(subscribe)
 
         :param subject: Subject from a stream from JetStream.
-        :param data_type: Expected message type.
-        :param validator: Validator cls instance to check each message.
-        :param validation_error_cb: Callback if validation failed.
+        :param data_type: Type of message to convert to.
         :param queue: Deliver group name from a set a of queue subscribers.
         :param durable: Name of the durable consumer to which the the subscription should be bound.
         :param stream: Name of the stream to which the subscription should be bound. If not set,
@@ -241,8 +233,6 @@ class App:
         return self._event_manager.js_listen(
             subject=subject,
             data_type=data_type,
-            validator=validator,
-            validation_error_cb=validation_error_cb,
             queue=queue,
             durable=durable,
             stream=stream,
@@ -259,7 +249,6 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json",
             headers: dict = None
     ):
         return await self.nats.publish(
@@ -267,7 +256,6 @@ class App:
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type,
             headers=headers
         )
 
@@ -277,7 +265,6 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json",
             headers: dict = None
     ):
         return self.nats.publish_sync(
@@ -285,7 +272,6 @@ class App:
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type,
             headers=headers
         )
 
@@ -294,14 +280,14 @@ class App:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json",
+            response_data_type: type = dict,
             headers: dict = None
     ):
         return await self.nats.request(
             subject=subject,
             message=message,
             timeout=timeout,
-            data_type=data_type,
+            response_data_type=response_data_type,
             headers=headers
         )
 
@@ -310,14 +296,14 @@ class App:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json",
+            response_data_type: type = dict,
             headers: dict = None
     ):
         return self.nats.request_sync(
             subject=subject,
             message=message,
             timeout=timeout,
-            data_type=data_type,
+            response_data_type=response_data_type,
             headers=headers
         )
 
@@ -327,7 +313,6 @@ class App:
             message,
             timeout: float = None,
             stream: str = None,
-            data_type: type or str = "json",
             headers: dict = None,
     ):
         return await self.nats.publish_js(
@@ -335,7 +320,6 @@ class App:
             message=message,
             timeout=timeout,
             stream=stream,
-            data_type=data_type,
             headers=headers,
         )
 
@@ -343,7 +327,7 @@ class App:
             self,
             subject: str,
             callback: Callable,
-            data_type="json",
+            data_type=dict,
             queue="",
     ):
         return self.nats.subscribe_new_subject_sync(
@@ -359,7 +343,7 @@ class App:
             self,
             subject: str,
             callback: Callable,
-            data_type="json",
+            data_type=dict,
             queue="",
     ):
         return await self.nats.subscribe_new_subject(
@@ -385,7 +369,6 @@ class App:
             self.nats._publish(
                 f"panini_events.{self.service_name}.{self.client_nats_name}.started",
                 b"{}",
-                data_type=bytes,
                 force=True
             )
         )
