@@ -1,12 +1,12 @@
-import ujson
 import asyncio
 import threading
 import nest_asyncio
 from typing import Union, List, Dict
 from nats.aio.client import Client as NATS
-from panini.exceptions import DataTypeError, JetStreamNotEnabledError, UnsubscribeError, InitializingNATSError
+from panini.exceptions import JetStreamNotEnabledError, UnsubscribeError, InitializingNATSError, MessageSchemaError
 from panini.managers.event_manager import JsListen, Listen
 from panini.managers.middleware_manager import MiddlewareManager
+from panini.managers.schema_manager import SchemaManager
 from panini.utils.logger import get_logger
 
 NoneType = type(None)
@@ -39,7 +39,7 @@ class NATSClient:
         """
         if auth is None:
             auth = {}
-        self.log = get_logger("panini")
+        self.logger = get_logger("panini")
         self.connected = False
         self.client_nats_name = client_nats_name
         self.host = host
@@ -237,11 +237,10 @@ class NATSClient:
             message,
             reply_to: str = "",
             force: bool = False,
-            data_type: type or str = "json",
             headers: dict = None,
     ):
         asyncio.ensure_future(
-            self.publish(subject, message, reply_to, force, data_type, headers)
+            self.publish(subject, message, reply_to, force, headers)
         )
 
     def publish_from_another_thread(self, subject: str, message):
@@ -252,11 +251,11 @@ class NATSClient:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json",
+            response_data_type: type = dict,
             headers: dict = None,
     ):
         return self.loop.run_until_complete(
-            self.request(subject, message, timeout, data_type, headers)
+            self.request(subject, message, timeout, response_data_type, headers)
         )
 
     def request_from_another_thread_sync(
@@ -295,16 +294,10 @@ class NATSClient:
 
     @staticmethod
     def format_message_data_type(message, data_type):
-        if type(message) in [dict, list] and data_type == "json":
-            return ujson.dumps(message).encode()
-        elif type(message) is str and data_type is str:
-            return message.encode()
-        elif type(message) is bytes and data_type is bytes:
-            return message
-        else:
-            raise DataTypeError(
-                f'Expected {"dict or list" if data_type in [dict, list, "json"] else data_type} but got {type(message)}'
-            )
+        return SchemaManager.deserialize_message(
+            data_type=data_type,
+            message=message
+        )
 
     async def _publish(
             self,
@@ -312,10 +305,9 @@ class NATSClient:
             message,
             reply_to: str = '',
             force: bool = False,
-            data_type: type or str = "json",
             headers: dict = None,
     ):
-        message = self.format_message_data_type(message, data_type)
+        message = self.format_message_data_type(message, type(message))
         await self.client.publish(subject=subject, payload=message, reply=reply_to, headers=headers)
         if force:
             await self.client.flush()
@@ -327,7 +319,6 @@ class NATSClient:
             message,
             reply_to: str = None,
             force: bool = False,
-            data_type: type or str = "json",
             headers: dict = None,
     ):
         return await self._publish_wrapped(
@@ -335,7 +326,6 @@ class NATSClient:
             message=message,
             reply_to=reply_to,
             force=force,
-            data_type=data_type,
             headers=headers
         )
 
@@ -344,31 +334,26 @@ class NATSClient:
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json",
+            response_data_type: type = dict,
             headers: dict = None,
     ):
-        message = self.format_message_data_type(message, data_type)
+        message = self.format_message_data_type(message, type(message))
         response = await self.client.request(subject, message, timeout=timeout, headers=headers)
-        response = response.data
-        if data_type == "json":
-            response = ujson.loads(response)
-        elif data_type is str:
-            response = response.decode()
-        return response
+        return SchemaManager.serialize_message(response_data_type, response.data)
 
     async def request(
             self,
             subject: str,
             message,
             timeout: int = 10,
-            data_type: type or str = "json",
+            response_data_type: type = dict,
             headers: dict = None,
     ):
         return await self._request_wrapped(
             subject=subject,
             message=message,
             timeout=timeout,
-            data_type=data_type,
+            response_data_type=response_data_type,
             headers=headers,
         )
 
@@ -378,7 +363,7 @@ class NATSClient:
             message,
             timeout: float = None,
             stream: str = None,
-            data_type: type or str = "json",
+            data_type: type = dict,
             headers: dict = None
     ) :
         payload: bytes = self.format_message_data_type(message, data_type)
@@ -396,7 +381,7 @@ class NATSClient:
             message,
             timeout: float = None,
             stream: str = None,
-            data_type: type or str = "json",
+            data_type: type = dict,
             headers: dict = None,
     ):
         return await self._publish_js(
@@ -413,13 +398,13 @@ class NATSClient:
 
     async def disconnect(self):
         await self.client.drain()
-        self.log.warning("Disconnected")
+        self.logger.warning("Disconnected")
 
     def check_connection(self):
         if self.client._status is NATS.CONNECTED:
-            self.log.info("NATS Client status: CONNECTED")
+            self.logger.info("NATS Client status: CONNECTED")
             return True
-        self.log.warning("NATS Client status: DISCONNECTED")
+        self.logger.warning("NATS Client status: DISCONNECTED")
 
     def add_filters(self, include: list = None, exclude: list = None):
         self.include_subjects = include
@@ -433,7 +418,6 @@ class NATSClient:
             return self._filter_exclude(subscriptions)
         else:
             return subscriptions
-
 
     def _filter_include(self, subscriptions: Dict):
         def subject_included(subject):
@@ -465,6 +449,7 @@ class _ReceivedMessageHandler:
         self.cb = cb
         self.data_type = data_type
         self.cb_is_async = asyncio.iscoroutinefunction(cb)
+        self.logger = get_logger("panini")
 
     async def call(self, msg):
         asyncio.ensure_future(self._call(msg))
@@ -485,8 +470,10 @@ class _ReceivedMessageHandler:
             await self.publish_func(reply_to, response)
 
     async def _call_main(self, msg):
-        self.parse_data(msg)
         reply_to = self.match_msg_case(msg)
+        msg_error = self.parse_data(msg)
+        if msg_error:
+            return reply_to, msg_error
         if self.cb_is_async:
             response = await self.cb(msg)
         else:
@@ -494,20 +481,18 @@ class _ReceivedMessageHandler:
         return reply_to, response
 
     def parse_data(self, msg):
-        if self.data_type == "raw" or self.data_type == bytes:
-            return
-        if self.data_type == str:
-            msg.data = msg.data.decode()
-        elif self.data_type == dict or self.data_type == "json":
-            msg.data = ujson.loads(msg.data.decode())
-        else:
-            raise DataTypeError(f"{self.data_type} is unsupported data format")
+        try:
+            msg.data = SchemaManager.serialize_message(
+                data_type=self.data_type,
+                message=msg.data
+            )
+        except MessageSchemaError as mse:
+            self.logger.error(mse)
+            return {"success": False, "error": "MessageSchemaError"}
 
     def match_msg_case(self, msg):
         if msg.reply != "":
             reply_to = msg.reply
-        elif self.data_type == "json" and "reply_to" in msg.data:
-            reply_to = msg.data.pop("reply_to")
         else:
             reply_to = None
         return reply_to
