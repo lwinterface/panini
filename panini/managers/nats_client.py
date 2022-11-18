@@ -363,10 +363,9 @@ class NATSClient:
             message,
             timeout: float = None,
             stream: str = None,
-            data_type: type = dict,
             headers: dict = None
     ) :
-        payload: bytes = self.format_message_data_type(message, data_type)
+        payload: bytes = self.format_message_data_type(message, type(message))
         return await self._js.publish(
                 subject=subject,
                 payload=payload,
@@ -381,7 +380,6 @@ class NATSClient:
             message,
             timeout: float = None,
             stream: str = None,
-            data_type: type = dict,
             headers: dict = None,
     ):
         return await self._publish_js(
@@ -389,7 +387,6 @@ class NATSClient:
             message=message,
             timeout=timeout,
             stream=stream,
-            data_type=data_type,
             headers=headers,
         )
 
