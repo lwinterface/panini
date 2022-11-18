@@ -8,6 +8,12 @@ class BaseError(Exception):
     pass
 
 
+class CriticalError(SystemExit):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 class BaseLoggedError(Exception):
     def __init__(self, error_message="", log_obj=None, exception_obj=None):
         if log_obj is not None:
@@ -97,6 +103,10 @@ class ValidationError(Exception):
     pass
 
 
+class MessageSchemaError(Exception):
+    pass
+
+
 class DecodeError(BaseError):
     pass
 
@@ -113,7 +123,4 @@ class JetStreamNotEnabledError(BaseError):
     pass
 
 
-class CriticalError(SystemExit):
 
-    def __init__(self, *args):
-        super().__init__(*args)
