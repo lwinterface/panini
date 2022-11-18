@@ -1,9 +1,7 @@
 import pytest
-
-from panini.exceptions import ValidationError
 from panini.test_client import TestClient
 from panini import app as panini_app
-from panini.validator import Validator, Field
+from pydantic import BaseModel, validator, ValidationError
 from .helper import Global
 
 
@@ -15,24 +13,30 @@ def run_panini():
         logger_in_separate_process=False,
     )
 
-    class DataValidator(Validator):
-        data = Field(type=int)
 
-    @app.listen("test_validator.foo", validator=DataValidator)
+    class DataSchema(BaseModel):
+        data: int
+
+        @validator('data')
+        def validate_data_greater_then_zero(cls, v):
+            if v < 0:
+                raise ValueError(f"Value of field 'data' is {v} that negative")
+
+    @app.listen("test_validator.foo", data_type=DataSchema)
     async def publish(msg):
         return {"success": True}
 
     def validation_error_cb(msg, error):
         return {"success": False, "error": "validation_error_cb"}
 
-    @app.listen("test_validator.foo-with-error-cb", validator=DataValidator, validation_error_cb=validation_error_cb)
+    @app.listen("test_validator.foo-with-error-cb", data_type=DataSchema)
     async def publish(msg):
         return {"success": True}
 
     @app.listen("test_validator.check")
     async def check(msg):
         try:
-            DataValidator.validated_message(msg.data)
+            DataSchema(**msg.data)
         except ValidationError:
             return {"success": False}
 
@@ -64,20 +68,20 @@ def test_correct_message(client):
 
 
 def test_request_with_correct_message(client):
-    response = client.request("test_validator.foo", {"data": "string"})
-    assert response["success"] is False
+    response = client.request("test_validator.foo", {"data": 1})
+    assert response["success"] is True
 
 
 def test_request_with_incorrect_message(client):
-    response = client.request("test_validator.foo", {"data": 1})
+    response = client.request("test_validator.foo", {"data": "string"})
     assert (
-        response["success"] is True
-    )  # both should be success = True, validator do not stop the request
+        response["success"] is False
+    )
 
 
 def test_request_with_incorrect_message_error_cb(client):
     response = client.request("test_validator.foo-with-error-cb", {"notdata": "string"})
     assert response["success"] is False
     assert "error" in response
-    assert "validation_error_cb" in response["error"]
+    assert "MessageSchemaError" in response["error"]
 
