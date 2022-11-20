@@ -1,5 +1,5 @@
+import nats
 from .utils.logger import Logger
-from nats.aio.errors import ErrTimeout
 
 app_logger = None
 
@@ -75,7 +75,7 @@ class NotReadyError(BaseError):
     pass
 
 
-class NATSTimeoutError(ErrTimeout):
+class NATSTimeoutError(nats.errors.TimeoutError):
     pass
 
 
