@@ -22,8 +22,8 @@ class TestMessage(BaseModel):
     key4: list
     key5: dict
     key6: SubTestData
-    key7: int
-    key8: int
+    key7: int = None
+    key8: int = None
 
 
 message = {

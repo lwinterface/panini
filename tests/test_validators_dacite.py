@@ -26,9 +26,6 @@ def run_panini():
     async def publish(msg):
         return {"success": True}
 
-    def validation_error_cb(msg, error):
-        return {"success": False, "error": "validation_error_cb"}
-
     @app.listen("test_validator.foo-with-error-cb", data_type=DataSchema)
     async def publish(msg):
         return {"success": True}
