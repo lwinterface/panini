@@ -198,7 +198,6 @@ class NATSClient:
         queue = params.pop("queue")
         if not queue:
             queue = self.queue
-
         callback_with_middleware = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
         wrapped_callback = _ReceivedMessageHandler(self._publish, callback_with_middleware, data_type).call_js
 
@@ -387,6 +386,42 @@ class NATSClient:
             message=message,
             timeout=timeout,
             stream=stream,
+            headers=headers,
+        )
+
+    async def _publish_js(
+            self,
+            subject: str,
+            message,
+            timeout: float = None,
+            stream: str = None,
+            data_type: type or str = "json",
+            headers: dict = None
+    ) :
+        payload: bytes = self.format_message_data_type(message, data_type)
+        return await self._js.publish(
+                subject=subject,
+                payload=payload,
+                timeout=timeout,
+                stream=stream,
+                headers=headers
+        )
+
+    async def publish_js(
+            self,
+            subject: str,
+            message,
+            timeout: float = None,
+            stream: str = None,
+            data_type: type or str = "json",
+            headers: dict = None,
+    ):
+        return await self._publish_js(
+            subject=subject,
+            message=message,
+            timeout=timeout,
+            stream=stream,
+            data_type=data_type,
             headers=headers,
         )
 

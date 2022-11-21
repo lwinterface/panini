@@ -3,7 +3,6 @@ from typing import Optional, Callable
 from nats.js import api
 
 
-
 @dataclass
 class Listen:
     callback: Callable
@@ -85,6 +84,7 @@ class EventManager:
             self._js_subscriptions[subject].append(js_listen_obj)
             return callback
         return wrapper
+
 
     def _create_subscription_if_missing(self, subscription, js=False):
         if js:
