@@ -1,7 +1,6 @@
 import asyncio
 import time
 from typing import Union
-
 from panini.exceptions import InitializingTaskError
 
 
@@ -23,17 +22,6 @@ class TaskManager:
     def on_start_tasks(self):
         return self._on_start_tasks
 
-    # def __call__(self, interval: float or int = None, **kwargs):
-    #     def wrapper(task):
-    #         if interval:
-    #             self.register_interval_task(interval, task)
-    #         else:
-    #             self.register_single_task(task)
-    #         self.register_single_task(task)
-    #         return task
-    #
-    #     return wrapper
-
     def register_on_start_task(self):
         def wrapper(task):
             self._check_task(task)
@@ -53,7 +41,6 @@ class TaskManager:
         def wrapper(task):
             self._check_task(task)
             self._tasks.append(task)
-        # self._loop.create_task(task())
         return wrapper
 
     def register_interval_task(self, interval: int or float):
