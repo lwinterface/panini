@@ -1,11 +1,17 @@
+import nats
 from .utils.logger import Logger
-from nats.aio.errors import ErrTimeout
 
 app_logger = None
 
 
 class BaseError(Exception):
     pass
+
+
+class CriticalError(SystemExit):
+
+    def __init__(self, *args):
+        super().__init__(*args)
 
 
 class BaseLoggedError(Exception):
@@ -69,7 +75,7 @@ class NotReadyError(BaseError):
     pass
 
 
-class NATSTimeoutError(ErrTimeout):
+class NATSTimeoutError(nats.errors.TimeoutError):
     pass
 
 
@@ -97,6 +103,10 @@ class ValidationError(Exception):
     pass
 
 
+class MessageSchemaError(Exception):
+    pass
+
+
 class DecodeError(BaseError):
     pass
 
@@ -113,7 +123,4 @@ class JetStreamNotEnabledError(BaseError):
     pass
 
 
-class CriticalError(SystemExit):
 
-    def __init__(self, *args):
-        super().__init__(*args)
