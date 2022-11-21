@@ -29,7 +29,7 @@ def run_panini():
     async def listen_dict(msg):
         try:
             response = await app.request(
-                "test_diff_datatypes.listen.bytes.helper", b"", data_type=bytes
+                "test_diff_datatypes.listen.bytes.helper", b"", response_data_type=bytes
             )
             return {"type": type(response).__name__}
         except Exception:
@@ -56,7 +56,6 @@ def run_panini():
         await app.publish(
             "test_diff_datatypes.publish.str.helper",
             "",
-            data_type=str,
             reply_to="test_diff_datatypes.publish.listener",
         )
 
@@ -69,7 +68,6 @@ def run_panini():
         await app.publish(
             "test_diff_datatypes.publish.bytes.helper",
             b"",
-            data_type=bytes,
             reply_to="test_diff_datatypes.publish.listener",
         )
 
@@ -81,14 +79,14 @@ def run_panini():
     @app.listen("test_diff_datatypes.request.str")
     async def request_str(msg):
         response = await app.request(
-            "test_diff_datatypes.publish.str.helper", "", data_type=str
+            "test_diff_datatypes.publish.str.helper", "", response_data_type=str
         )
         return {"type": type(response).__name__}
 
     @app.listen("test_diff_datatypes.request.bytes")
     async def request_bytes(msg):
         response = await app.request(
-            "test_diff_datatypes.publish.bytes.helper", b"", data_type=bytes
+            "test_diff_datatypes.publish.bytes.helper", b"", response_data_type=bytes
         )
         return {"type": type(response).__name__}
 
