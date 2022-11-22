@@ -31,8 +31,7 @@ async def publish():
 async def publish_periodically():
     for _ in range(10):
         await app.publish(
-            subject="some.publish.subject", message=json.dumps(message), data_type=str
-        )
+            subject="some.publish.subject", message=json.dumps(message))
 
 
 @app.listen("some.publish.subject", data_type=str)

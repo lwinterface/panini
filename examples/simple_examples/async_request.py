@@ -26,7 +26,6 @@ async def request():
         result = await app.request(
             subject="some.request.subject.123",
             message=json.dumps(message).encode(),
-            data_type=bytes,
         )
         log.info(result)
 
