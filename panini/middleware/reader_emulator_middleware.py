@@ -5,8 +5,8 @@ import copy
 
 from panini.emulator_client import EmulatorClient
 from panini.middleware import Middleware
-from panini.managers.nats_client import Msg
 from panini.utils.helper import start_thread
+from nats.aio.msg import Msg
 
 
 class ReaderEmulatorMiddleware(Middleware):
@@ -18,10 +18,10 @@ class ReaderEmulatorMiddleware(Middleware):
         app = get_app()
         assert app is not None
         print("Emulator is experimental feature!")
-        subjects = copy.copy(list(app.SUBSCRIPTIONS.keys()))
+        subjects = copy.copy(list(app._event_manager.subscriptions.keys()))
         for subject in subjects:
             subject_with_prefix = self._prefix + "." + subject
-            app.SUBSCRIPTIONS[subject_with_prefix] = app.SUBSCRIPTIONS.pop(subject)
+            app._event_manager.subscriptions[subject_with_prefix] = app._event_manager.subscriptions.pop(subject)
 
         self._run_emulator = kwargs.get("run_emulator", True)
 
