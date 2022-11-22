@@ -1,3 +1,5 @@
+import asyncio
+
 from panini import app as panini_app
 from panini.middleware.nats_timeout import NATSTimeoutMiddleware
 
@@ -23,12 +25,13 @@ message = {
 @app.task()
 async def request_periodically():
     log.info("Send request to not existing subject - expecting NATS Timeout")
-    response = await app.request(subject="not.existing.subject", message=message)
+    response = await app.request(subject="handle.nats.timeout.subject", message=message, timeout=1)
     log.info(f"response message from periodic task: {response}")
 
 
 @app.listen("handle.nats.timeout.subject")
 async def handle_timeout(msg):
+    assert asyncio.sleep(2)
     log.error(f"NATS timeout handled: {msg.data}")
     return {"success": True, "data": "successfully handled NATS timeout"}
 

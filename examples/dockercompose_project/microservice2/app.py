@@ -11,8 +11,8 @@ log = app.logger
 
 
 @app.listen("some.publish.subject")
-async def receive_messages(subject, message):
-    log.warning(f"got message {message}")
+async def receive_messages(msg):
+    log.warning(f"got message {msg.data}")
 
 
 if __name__ == "__main__":
