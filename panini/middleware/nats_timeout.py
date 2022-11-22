@@ -1,6 +1,6 @@
 import traceback
 
-from nats.aio.errors import ErrTimeout
+from nats.errors import TimeoutError
 
 from ..app import get_app
 from .error import ErrorMiddleware
@@ -21,7 +21,7 @@ class NATSTimeoutMiddleware(ErrorMiddleware):
             else:
                 await app.publish(subject, error_msg)
 
-        super().__init__(ErrTimeout, handle_nats_timeout_callback)
+        super().__init__(TimeoutError, handle_nats_timeout_callback)
 
     async def send_any(self, subject: str, message, send_func, *args, **kwargs):
         return await super(NATSTimeoutMiddleware, self).send_any(
