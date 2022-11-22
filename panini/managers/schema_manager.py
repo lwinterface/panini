@@ -39,7 +39,7 @@ class SchemaManager:
             return SchemaManager._list_to_bytes(message)
         else:
             try:
-                return SchemaManager._dataclass_to_bytes(data_type, message)
+                return SchemaManager._dataclass_to_bytes(message)
             except TypeError:
                 pass
         raise MessageSchemaError(
@@ -53,7 +53,8 @@ class SchemaManager:
 
     @staticmethod
     def _dataclass_to_bytes(message) -> bytes:
-        data = ujson.dumps(message.to_dict())
+        """ works only for pydantic dataclasses """
+        data = ujson.dumps(message.dict())
         return data.encode()
 
     @staticmethod
