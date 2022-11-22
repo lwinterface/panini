@@ -38,22 +38,19 @@ message = {
 
 
 @papp.task()
-async def publish():
+async def publish_dataclass():
     for _ in range(10):
-        await papp.publish(subject="some.publish.subject", message=message)
-
-
-# @app.timer_task(interval=2)
-# async def publish_periodically():
-#     for _ in range(10):
-#         dataclass_message =
-#         await app.publish(subject="some.publish.subject", message=message)
+        message_dataclass = TestMessage(**message)
+        await papp.publish(
+            subject="some.publish.subject",
+            message=message_dataclass
+        )
 
 
 
 
 @papp.listen("some.publish.subject", data_type=TestMessage)
-async def requests_listener(msg):
+async def receive_dataclass(msg):
     log.info(f"got message {msg.data}")
     await asyncio.sleep(1)
 

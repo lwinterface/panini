@@ -44,7 +44,7 @@ NUM = 0
 
 @app.on_start_task()
 async def create_js_staff():
-    await app.js.delete_stream(name=TEST_STREAM)
+    # await app.js.delete_stream(name=TEST_STREAM)
     await app.js.add_stream(name=TEST_STREAM, subjects=STREAM_SUBJECTS)
     await app.js.add_consumer(stream=TEST_STREAM, durable_name=TEST_STREAM, deliver_group='ABCD')
 
