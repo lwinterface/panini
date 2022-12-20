@@ -1,12 +1,13 @@
 import asyncio
 from panini import app as panini_app
+from pydantic import BaseModel
 
 papp = panini_app.App(
     service_name="validators",
     host="127.0.0.1",
     port=4222,
 )
-from pydantic import BaseModel
+
 
 log = papp.logger
 
