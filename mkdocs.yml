@@ -31,7 +31,16 @@ nav:
 plugins:
   - search:
       separator: '[\s\-\.]+'
-      lang: en    
+      lang: en
+  - mike:
+      # These fields are all optional; the defaults are as below...
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: 'v'
+      canonical_version: null
+      version_selector: true
+      css_dir: css
+      javascript_dir: js
 theme:
   name: material
   features:
@@ -79,3 +88,6 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+extra:
+  version:
+    provider: mike
