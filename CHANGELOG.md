@@ -1,4 +1,28 @@
 # Changelog
+
+## [v0.8.0](https://github.com/lwinterface/panini/tree/v0.7.0) (2022-12-20)
+
+- Parameter data_type "json" removed
+- No need to declare "data_type" for "publish" and "request"
+- New parameter for “request” method - “response_data_type”
+- Panini supports Dataclass as data_type
+- Experimental: Custom data_type with Callable object
+- Panini Validator has been removed
+- JetStream syntax support
+- Removed "validation_error_cb"
+
+## [v0.7.2](https://github.com/lwinterface/panini/tree/v0.7.0) (2022-02-14)
+
+- Fixed reconnection problem
+
+## [v0.7.0](https://github.com/lwinterface/panini/tree/v0.7.0) (2022-02-14)
+
+- Support NATS 2.0🎉. Now the panini stands on shoulders of nats-py v2.0.0
+- Support Python 3.10
+- Introducing on_start_task
+- Introducing minimal JetStream support
+Since Panini switched from asyncio-nats-client to nats-py, it has become possible to support one of the most important features of NATS 2.0 - JetStream. Panini v0.7.0 does not implement an interface to JetStream at the framework level. Instead, it is suggested to use directly nats-py.
+
 ## [v0.6.2](https://github.com/lwinterface/panini/tree/v0.6.2) (2021-11-11)
 
 - Fixed bug: tasks doesn't works with HTTP server
