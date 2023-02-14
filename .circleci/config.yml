@@ -80,7 +80,7 @@ workflows:
       - deploy-documentation:
           filters:
             branches:
-              only: [documentation]
+              only: [web-docs]
   main:
     jobs:
       - test:
