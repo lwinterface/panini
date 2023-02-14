@@ -13,7 +13,7 @@ nav:
         - How to validate that microservice connected to NATS: Panini_Validation.md
     - 👨‍👩‍👧‍👦 Datatypes: Datatypes.md
     - 🔑 Authentication: Authentication.md
-    - 👮‍♂️ Incoming data validation: Data_Validation.md
+    - 👮‍♂️ Incoming data serialization: Data_Serialization.md
     - 🖖 Middlewares: Middlewares.md
     - 🦆 HTTP server: HTTP_server.md
     - 🦅 WebSocket server example: WebSocket_server.md
