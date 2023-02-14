@@ -13,7 +13,7 @@ nav:
         - How to validate that microservice connected to NATS: Panini_Validation.md
     - 👨‍👩‍👧‍👦 Datatypes: Datatypes.md
     - 🔑 Authentication: Authentication.md
-    - 👮‍♂️ Incoming data validation: Data_Validation.md
+    - 👮‍♂️ Incoming data serialization: Data_Serialization.md
     - 🖖 Middlewares: Middlewares.md
     - 🦆 HTTP server: HTTP_server.md
     - 🦅 WebSocket server example: WebSocket_server.md
@@ -32,15 +32,6 @@ plugins:
   - search:
       separator: '[\s\-\.]+'
       lang: en
-  - mike:
-      # These fields are all optional; the defaults are as below...
-      alias_type: symlink
-      redirect_template: null
-      deploy_prefix: 'v'
-      canonical_version: null
-      version_selector: true
-      css_dir: css
-      javascript_dir: js
 theme:
   name: material
   features:
@@ -88,6 +79,3 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
-extra:
-  version:
-    provider: mike
