@@ -15,7 +15,7 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 
 
 @dataclass
-class TraceConfig:
+class SpanConfig:
     span_name: str
     span_attributes: Optional[dict]
 
@@ -68,18 +68,19 @@ class TracingMiddleware(Middleware):
     async def send_any(self, subject: str, message: Msg, send_func, *args, **kwargs):
         carrier = {}
         headers = {}
-        current_trace_config = kwargs.get("trace_config")
+        span_config = kwargs.get("span_config")
         use_tracing = kwargs.get("use_tracing", True)
-        if use_tracing is True and not isinstance(current_trace_config, TraceConfig):
-            raise Exception("Trace config should be explicitly provided!")
-        if use_tracing is True and current_trace_config and current_trace_config.span_name and current_trace_config.span_attributes:
-            with self.tracer.start_as_current_span(
-                    current_trace_config.span_name if current_trace_config.span_name else self._create_uuid()) as span:
-                for attr_key, attr_value in current_trace_config.span_attributes.items():
+        if use_tracing is True and not isinstance(span_config, SpanConfig):
+            span_config = SpanConfig(
+                span_name=self._create_uuid(),
+                span_attributes={})
+        if use_tracing is True and span_config and span_config.span_name and span_config.span_attributes:
+            with self.tracer.start_as_current_span(span_config.span_name) as span:
+                for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
                 self.parent.inject(carrier=carrier)
                 headers = {
-                    "tracing_span_name": current_trace_config.span_name,
+                    "tracing_span_name": span_config.span_name,
                     "tracing_span_carrier": json.dumps(carrier)
                 }
         if "use_tracing" in kwargs:
@@ -92,21 +93,19 @@ class TracingMiddleware(Middleware):
         assert app is not None
         listen_obj_list = app._event_manager.subscriptions[msg.subject]
         for index in range(0, len(listen_obj_list)):
-            listen_obj: Listen = listen_obj_list[index]
-            callback_info = listen_obj._meta.get("callback", {})
+            listen_object: Listen = listen_obj_list[index]
+            callback_info = listen_object._meta.get("callback", {})
             if id(callback) == callback_info.get("callback_id", "") and callback.__name__ == callback_info.get(
-                    "callback_name", "") and listen_obj._meta.get("use_tracing", True) is True:
+                    "callback_name", "") and listen_object._meta.get("use_tracing", True) is True:
                 context = self.parent.extract(carrier=json.loads(msg.headers.get("tracing_span_carrier", "")))
                 span_name = msg.headers.get("span_name", "")
-                current_trace_config = listen_obj._meta.get("trace_config")
-                if not isinstance(current_trace_config, TraceConfig) or not context:
-                    raise Exception("Trace config or context should be explicitly provided!")
-                span_attributes = {at: msg.headers[at] for at in msg.headers.keys() if "tracing." in at}
-                if current_trace_config.span_attributes:
-                    span_attributes.update(current_trace_config.span_attributes)
-                with self.tracer.start_as_current_span(span_name if span_name else self._create_uuid(),
-                                                       context=context) as span:
-                    for attr_key, attr_val in span_attributes.items():
+                span_config = listen_object._meta.get("span_config")
+                if not isinstance(span_config, SpanConfig) or not context:
+                    span_config = SpanConfig(
+                        span_name=self._create_uuid(),
+                        span_attributes={})
+                with self.tracer.start_as_current_span(span_name, context=context) as span:
+                    for attr_key, attr_val in span_config.span_attributes.items():
                         span.set_attribute(attr_key, attr_val)
                     response = await callback(msg)
                     return response
