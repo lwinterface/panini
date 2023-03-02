@@ -170,10 +170,10 @@ class NATSClient:
 
     async def subscribe_new_subject(self, listener: Listen):
         params = listener.__dict__
-        subject = params.pop("subject")
-        callback = params.pop("callback")
-        data_type = params.pop("data_type")
-        queue = params.pop("queue")
+        subject = params.get("subject")
+        callback = params.get("callback")
+        data_type = params.get("data_type")
+        queue = params.get("queue")
         if not queue:
             queue = self.queue
 
@@ -237,9 +237,12 @@ class NATSClient:
             reply_to: str = "",
             force: bool = False,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         asyncio.ensure_future(
-            self.publish(subject, message, reply_to, force, headers)
+            self.publish(subject, message, reply_to, force, headers, *args,
+            **kwargs)
         )
 
     def publish_from_another_thread(self, subject: str, message):
@@ -252,9 +255,12 @@ class NATSClient:
             timeout: int = 10,
             response_data_type: type = dict,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         return self.loop.run_until_complete(
-            self.request(subject, message, timeout, response_data_type, headers)
+            self.request(subject, message, timeout, response_data_type, headers, *args,
+            **kwargs)
         )
 
     def request_from_another_thread_sync(
@@ -319,13 +325,17 @@ class NATSClient:
             reply_to: str = None,
             force: bool = False,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self._publish_wrapped(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            headers=headers
+            headers=headers,
+            *args,
+            **kwargs
         )
 
     async def _request(
@@ -347,6 +357,8 @@ class NATSClient:
             timeout: int = 10,
             response_data_type: type = dict,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self._request_wrapped(
             subject=subject,
@@ -354,6 +366,8 @@ class NATSClient:
             timeout=timeout,
             response_data_type=response_data_type,
             headers=headers,
+            *args,
+            **kwargs
         )
 
     async def _publish_js(
@@ -380,6 +394,8 @@ class NATSClient:
             timeout: float = None,
             stream: str = None,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self._publish_js(
             subject=subject,
@@ -396,7 +412,9 @@ class NATSClient:
             timeout: float = None,
             stream: str = None,
             data_type: type = dict,
-            headers: dict = None
+            headers: dict = None,
+            *args,
+            **kwargs
     ) :
         payload: bytes = self.format_message_data_type(message, data_type)
         return await self._js.publish(

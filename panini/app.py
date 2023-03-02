@@ -196,10 +196,12 @@ class App:
             self,
             subject: list or str,
             data_type=dict,
+            **kwargs
     ):
         return self._event_manager.listen(
             subject=subject,
             data_type=data_type,
+            **kwargs
         )
 
     def js_listen(
@@ -214,6 +216,7 @@ class App:
             ordered_consumer: Optional[bool] = False,
             idle_heartbeat: Optional[float] = None,
             flow_control: Optional[bool] = False,
+            **kwargs
     ):
         """
         "PUSH" JetStream listen(subscribe)
@@ -241,6 +244,7 @@ class App:
             ordered_consumer=ordered_consumer,
             idle_heartbeat=idle_heartbeat,
             flow_control=flow_control,
+            **kwargs
         )
 
     async def publish(
@@ -249,14 +253,18 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            headers: dict = None
+            headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self.nats.publish(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            headers=headers
+            headers=headers,
+            *args,
+            **kwargs
         )
 
     def publish_sync(
@@ -265,14 +273,18 @@ class App:
             message,
             reply_to: str = "",
             force: bool = False,
-            headers: dict = None
+            headers: dict = None,
+            *args,
+            **kwargs
     ):
         return self.nats.publish_sync(
             subject=subject,
             message=message,
             reply_to=reply_to,
             force=force,
-            headers=headers
+            headers=headers,
+            *args,
+            **kwargs
         )
 
     async def request(
@@ -281,14 +293,18 @@ class App:
             message,
             timeout: int = 10,
             response_data_type: type = dict,
-            headers: dict = None
+            headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self.nats.request(
             subject=subject,
             message=message,
             timeout=timeout,
             response_data_type=response_data_type,
-            headers=headers
+            headers=headers,
+            *args,
+            **kwargs
         )
 
     def request_sync(
@@ -297,14 +313,18 @@ class App:
             message,
             timeout: int = 10,
             response_data_type: type = dict,
-            headers: dict = None
+            headers: dict = None,
+            *args,
+            **kwargs
     ):
         return self.nats.request_sync(
             subject=subject,
             message=message,
             timeout=timeout,
             response_data_type=response_data_type,
-            headers=headers
+            headers=headers,
+            *args,
+            **kwargs
         )
 
     async def publish_js(
@@ -314,6 +334,8 @@ class App:
             timeout: float = None,
             stream: str = None,
             headers: dict = None,
+            *args,
+            **kwargs
     ):
         return await self.nats.publish_js(
             subject=subject,
@@ -321,6 +343,8 @@ class App:
             timeout=timeout,
             stream=stream,
             headers=headers,
+            *args,
+            **kwargs
         )
 
     def subscribe_new_subject_sync(
@@ -329,6 +353,7 @@ class App:
             callback: Callable,
             data_type=dict,
             queue="",
+            **listen_kwargs
     ):
         return self.nats.subscribe_new_subject_sync(
             listener=Listen(
@@ -336,6 +361,7 @@ class App:
                 subject=subject,
                 data_type=data_type,
                 queue=queue,
+                _meta=listen_kwargs
             )
         )
 
@@ -345,6 +371,7 @@ class App:
             callback: Callable,
             data_type=dict,
             queue="",
+            **listen_kwargs
     ):
         return await self.nats.subscribe_new_subject(
             listener=Listen(
@@ -352,6 +379,7 @@ class App:
                 subject=subject,
                 data_type=data_type,
                 queue=queue,
+                _meta=listen_kwargs
             ),
         )
 
