@@ -9,6 +9,7 @@ class Listen:
     subject: str
     data_type: type = dict
     queue: str = ""
+    _meta: dict = dict
 
 @dataclass
 class JsListen(Listen):
@@ -19,6 +20,7 @@ class JsListen(Listen):
     ordered_consumer: Optional[bool] = False
     idle_heartbeat: Optional[float] = None
     flow_control: Optional[bool] = False
+    _meta: dict = dict
 
 
 class EventManager:
@@ -42,7 +44,7 @@ class EventManager:
         self,
         subject: list or str,
         data_type: type = dict,
-        **kwargs
+        **listen_kwargs
     ):
         def wrapper(callback):
             if isinstance(subject, list):
@@ -52,7 +54,7 @@ class EventManager:
                         callback=callback,
                         subject=s,
                         data_type=data_type,
-                        **kwargs
+                        _meta=listen_kwargs
                     )
                     self._subscriptions[s].append(listen_obj)
             else:
@@ -61,7 +63,7 @@ class EventManager:
                     callback=callback,
                     subject=subject,
                     data_type=data_type,
-                    **kwargs
+                    _meta=listen_kwargs
                 )
                 self._subscriptions[subject].append(listen_obj)
             return callback
@@ -71,7 +73,7 @@ class EventManager:
         self,
         subject: list or str,
         data_type: type = dict,
-        **kwargs,
+        **listen_kwargs,
     ):
         def wrapper(callback):
             self._create_subscription_if_missing(subject, js=True)
@@ -79,7 +81,7 @@ class EventManager:
                 callback=callback,
                 subject=subject,
                 data_type=data_type,
-                **kwargs
+                _meta=listen_kwargs
             )
             self._js_subscriptions[subject].append(js_listen_obj)
             return callback
