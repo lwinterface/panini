@@ -91,26 +91,27 @@ class TracingMiddleware(Middleware):
     async def listen_any(self, msg: Msg, callback):
         app = get_app()
         assert app is not None
+        log = app.logger
         listen_obj_list = app._event_manager.subscriptions[msg.subject]
         for index in range(0, len(listen_obj_list)):
             listen_object: Listen = listen_obj_list[index]
-            print("LISTEN OBJECT:", listen_object)
+            log.info(f"LISTEN OBJECT: {listen_object}")
             use_tracing = listen_object._meta.get("use_tracing", True)
             if use_tracing:
                 if id(callback) == id(listen_object.callback) and callback.__name__ == listen_object.callback.__name__:
                     context = self.parent.extract(carrier=json.loads(msg.headers.get("tracing_span_carrier", "")))
-                    print("CONTEXT:", context)
+                    log.info(f"CONTEXT: {context}")
                     span_name = msg.headers.get("span_name", "")
                     span_config = listen_object._meta.get("span_config")
                     if not isinstance(span_config, SpanConfig) or not context:
                         span_config = SpanConfig(
                             span_name=self._create_uuid(),
                             span_attributes={})
-                    print("HAS SPAN CONFIG: ", span_config)
+                    log.info(f"HAS SPAN CONFIG: {span_config}")
                     with self.tracer.start_as_current_span(span_name, context=context) as span:
                         for attr_key, attr_val in span_config.span_attributes.items():
                             span.set_attribute(attr_key, attr_val)
-                        print("SENDING TRACE")
+                        log.info("SENDING TRACE")
                         response = await callback(msg)
                         return response
         return await callback(msg)
