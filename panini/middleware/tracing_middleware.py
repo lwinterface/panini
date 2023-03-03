@@ -70,7 +70,7 @@ class TracingMiddleware(Middleware):
         headers = {}
         span_config = kwargs.get("span_config")
         use_tracing = kwargs.get("use_tracing", True)
-        if use_tracing is True and not isinstance(span_config, SpanConfig):
+        if not isinstance(span_config, SpanConfig):
             span_config = SpanConfig(
                 span_name=self._create_uuid(),
                 span_attributes={})
@@ -89,6 +89,7 @@ class TracingMiddleware(Middleware):
         return response
 
     async def listen_any(self, msg: Msg, callback):
+        context = {}
         app = get_app()
         assert app is not None
         listen_obj_list = app._event_manager.subscriptions[msg.subject]
@@ -99,17 +100,13 @@ class TracingMiddleware(Middleware):
                 if id(callback) == id(listen_object.callback) and callback.__name__ == listen_object.callback.__name__:
                     headers = msg.headers
                     if headers:
-                        context = self.parent.extract(carrier=json.loads(msg.headers.get("tracing_span_carrier", "")))
-                        span_name = headers.get("span_name", "")
-                    else:
-                        context = None
-                        span_name = None
+                        context = self.parent.extract(carrier=json.loads(msg.headers.get("tracing_span_carrier", "{}")))
                     span_config = listen_object._meta.get("span_config")
-                    if not isinstance(span_config, SpanConfig) or not context:
+                    if not isinstance(span_config, SpanConfig):
                         span_config = SpanConfig(
                             span_name=self._create_uuid(),
                             span_attributes={})
-                    with self.tracer.start_as_current_span(span_name, context=context) as span:
+                    with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
                         for attr_key, attr_val in span_config.span_attributes.items():
                             span.set_attribute(attr_key, attr_val)
                         response = await callback(msg)
