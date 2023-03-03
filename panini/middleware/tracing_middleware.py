@@ -74,7 +74,7 @@ class TracingMiddleware(Middleware):
             span_config = SpanConfig(
                 span_name=self._create_uuid(),
                 span_attributes={})
-        if use_tracing is True and span_config and span_config.span_name and span_config.span_attributes:
+        if use_tracing is True and span_config:
             with self.tracer.start_as_current_span(span_config.span_name) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
