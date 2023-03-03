@@ -1,0 +1,188 @@
+version: '3.6'
+
+networks:
+  main:
+    name: "main"
+    #    internal: true
+    driver: bridge
+  cadvisor_net:
+    driver: bridge
+
+
+services:
+  sender:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORK_FOLDER=sender
+    command: >
+      sh -c "python /app/main.py"
+    restart: always
+    volumes:
+      - ./sender/logs:/logs
+    networks:
+      - main
+    depends_on:
+      - natsserver
+      - receiver
+  receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - WORK_FOLDER=receiver
+    command: >
+      sh -c "python /app/main.py"
+    restart: always
+    volumes:
+      - ./receiver/logs:/logs
+    networks:
+      - main
+    depends_on:
+      - natsserver
+  nats-exporter:
+    image: synadia/prometheus-nats-exporter:0.3.0
+    command: '-varz "http://nats-server:8222"'
+    hostname: prometheus-nats-exporter
+    ports: [ "7777:7777" ]
+    networks: [ "main" ]
+    expose: [ "7777" ]
+  natsserver:
+    image: nats:alpine3.13
+    container_name: nats-server
+    hostname: nats-server
+    command: "-p 4222 -m 8222 -c /config/nats-server.conf"
+    ports: [ "4222:4222", "8222:8222" ]
+    networks:
+      - main
+    volumes:
+      - ./nats-server.conf:/config/nats-server.conf
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: always
+  prometheus:
+    image: prom/prometheus:v2.22.0
+    container_name: prometheus
+    hostname: prometheus
+    command:
+      - "--config.file=/config/prometheus.yml"
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=365d'
+      - '--web.enable-lifecycle'
+    ports: [ "9090:9090" ]
+    networks:
+      - main
+    volumes:
+      - ./prometheus.yml:/config/prometheus.yml
+      - ./prometheus/:/etc/prometheus/:rw
+      - ./prometheus-data:/prometheus/:rw
+    user: "${UID}:${GID}"
+    restart: always
+    labels:
+      org.label-schema.group: "monitoring"
+  grafana:
+    image: grafana/grafana:8.5.13
+    container_name: grafana
+    restart: always
+    env_file:
+      - environments/.env.grafana
+    ports: [ "3030:3000" ]
+    networks:
+      - main
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/plugins:/var/lib/grafana/plugins
+      - ./grafana/config.ini:/etc/grafana/config.ini
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+  loki:
+    image: grafana/loki:master-8ea5fd1
+    container_name: loki
+    command: "-config.file=/etc/loki/local-config.yaml"
+    ports: [ "3100:3100" ]
+    restart: always
+    networks:
+      - main
+    volumes:
+      - ./loki.yaml:/etc/loki/local-config.yaml
+  promtail:
+    image: grafana/promtail:master
+    container_name: promtail
+    command: "-config.file=/etc/promtail/docker-config.yaml"
+    restart: always
+    networks:
+      - main
+    user: "${UID}:${GID}"
+    volumes:
+      - ./promtail.yaml:/etc/promtail/docker-config.yaml
+      - /var/log:/var/log
+      - ./../../tests/fake_logs_for_main_test_logic:/var/strategy_test_logs
+  open_telemetry:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: open_telemetry
+    hostname: open_telemetry
+    restart: always
+    volumes:
+      - ./open_telemetry_config.yaml:/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    networks:
+      - main
+    ports:
+      - "1888:1888"   # pprof extension
+      - "8888:8888"   # Prometheus metrics exposed by the collector
+      - "8889:8889"   # Prometheus exporter metrics
+      - "13133:13133" # health_check extension
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP http receiver
+      - "55679:55679" # zpages extension
+    depends_on:
+      - jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:1.42
+    container_name: jaeger
+    hostname: jaeger
+    restart: always
+    networks:
+      - main
+    ports: [ "6831:6831/udp", "6832:6832/udp", "5778:5778", "16686:16686", "14317:4317", "14318:4318", "14250:14250", "14268:14268", "14269:14269", "9411:9411" ]
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+  nodeexporter:
+    image: prom/node-exporter:v0.18.1
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    expose: ["9100"]
+    networks:
+      - main
+    labels:
+      org.label-schema.group: "monitoring"
+  pushgateway:
+    image: prom/pushgateway:v1.0.0
+    container_name: pushgateway
+    restart: always
+    ports: ["9091:9091"]
+    healthcheck:
+      test: "/bin/wget -qO- http://localhost:9091/ || exit 1"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - main
+    labels:
+      org.label-schema.group: "monitoring"

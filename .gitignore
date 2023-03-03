@@ -133,3 +133,4 @@ dmypy.json
 **/test_logs
 **/test_logger_logs
 **/resources/
+examples/tracing_middleware_compose/prometheus-data
