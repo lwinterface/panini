@@ -17,8 +17,6 @@ processors:
   batch:
 
 exporters:
-  logging:
-    loglevel: debug
   prometheus:
     namespace: test-space
     const_labels:
@@ -54,12 +52,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, jaeger]
-    logs:
-      receivers: [filelog]
-      processors: [batch]
-      exporters: [logging]
+      exporters: [jaeger]
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, prometheus]
+      exporters: [prometheus]

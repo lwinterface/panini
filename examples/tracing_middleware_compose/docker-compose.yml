@@ -93,6 +93,7 @@ services:
     restart: always
     env_file:
       - environments/.env.grafana
+      - environments/.env.alert_channels
     ports: [ "3030:3000" ]
     networks:
       - main
