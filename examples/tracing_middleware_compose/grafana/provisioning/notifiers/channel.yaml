@@ -1,0 +1,10 @@
+apiVersion: 1
+
+notifiers:
+  - name: default-notifacion-channel
+    type: slack
+    is_default: true
+    uid: notifier1
+    settings:
+      uploadImage: false
+      url: ${SLACK_WEBHOOK} 
