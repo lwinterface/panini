@@ -193,9 +193,9 @@ class NATSClient:
 
     async def subscribe_new_js(self, js_listener: JsListen):
         params = js_listener.__dict__
-        callback = params.pop("callback")
-        data_type = params.pop("data_type")
-        queue = params.pop("queue")
+        callback = params.get("callback")
+        data_type = params.get("data_type")
+        queue = params.get("queue")
         if not queue:
             queue = self.queue
         callback_with_middleware = self._middleware_manager.wrap_function_by_middleware("listen")(callback)
