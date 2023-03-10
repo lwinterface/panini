@@ -21,6 +21,7 @@ services:
     restart: always
     volumes:
       - ./sender/logs:/logs
+      - ./tracing_middleware_config.yaml:/app/tracing_middleware_config.yaml
     networks:
       - main
     depends_on:
@@ -37,6 +38,7 @@ services:
     restart: always
     volumes:
       - ./receiver/logs:/logs
+      - ./tracing_middleware_config.yaml:/app/tracing_middleware_config.yaml
     networks:
       - main
     depends_on:

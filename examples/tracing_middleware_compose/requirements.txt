@@ -4,3 +4,4 @@ opentelemetry-sdk==1.15.0
 opentelemetry-exporter-otlp-proto-grpc==1.15.0
 opentelemetry-exporter-prometheus==1.12.0rc1
 python-logging-loki==0.3.1
+PyYAML==5.4

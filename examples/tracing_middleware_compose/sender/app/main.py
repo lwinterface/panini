@@ -1,3 +1,5 @@
+import yaml
+
 from panini import app as panini_app
 from panini.middleware.tracing_middleware import SpanConfig, TracingMiddleware
 
@@ -44,9 +46,13 @@ async def custom_span_tracing():
     return {"result": True}
 
 
+# mimic config loading from yaml file
+with open('tracing_middleware_config.yaml', 'r') as file:
+    tracing_config = yaml.load(file, Loader=yaml.FullLoader)
+
+tracing_config["service_name"] = "sender_test"
+
 if __name__ == "__main__":
     app.add_middleware(TracingMiddleware,
-                       service_name="sender_test",
-                       otel_endpoint="open_telemetry:4317",
-                       insecure_connection=True)
+                       tracing_config=tracing_config)
     app.start()
