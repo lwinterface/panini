@@ -20,12 +20,15 @@ class SpanConfig:
     span_attributes: Optional[dict]
 
 
-class OTelTracer:
-    def __init__(self, service_name: str, otel_endpoint: str, insecure_connection: bool = True, *args, **kwargs):
+class OTELTracer:
+    def __init__(self, service_name: str, otel_endpoint: str, insecure_connection: bool = True, **kwargs):
         self.service_name = service_name
-        self.otel_endpoint = otel_endpoint
-        self.insecure_connection = insecure_connection
         self.tracer = self.create_tracer()
+        self.otel_span_exporter_config = {
+            "endpoint": otel_endpoint,
+            "insecure": insecure_connection,
+            **kwargs
+        }
 
     def create_tracer(self):
         resource = Resource(attributes={
@@ -33,10 +36,7 @@ class OTelTracer:
         })
 
         provider = TracerProvider(resource=resource)
-        processor = BatchSpanProcessor(OTLPSpanExporter(
-            endpoint=self.otel_endpoint,
-            insecure=self.insecure_connection
-        ))
+        processor = BatchSpanProcessor(OTLPSpanExporter(**self.otel_span_exporter_config))
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
         return trace.get_tracer(__name__)
@@ -45,19 +45,12 @@ class OTelTracer:
 class TracingMiddleware(Middleware):
     def __init__(
             self,
-            service_name: str,
-            otel_endpoint: str,
-            insecure_connection: bool,
-            *args,
+            tracing_config: dict,
             **kwargs
     ):
-        self._otel_tracer = OTelTracer(
-            service_name=service_name,
-            otel_endpoint=otel_endpoint,
-            insecure_connection=insecure_connection,
-            *args,
-            **kwargs
-        )
+        self.tracing_config = tracing_config
+        self.tracing_config.update(kwargs)
+        self._otel_tracer = OTELTracer(**tracing_config)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
         super().__init__()
