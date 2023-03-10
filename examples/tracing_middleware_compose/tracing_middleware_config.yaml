@@ -1,0 +1,2 @@
+otel_endpoint: open_telemetry:4317
+insecure_connection: yes
