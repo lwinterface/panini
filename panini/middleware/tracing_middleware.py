@@ -21,22 +21,21 @@ class SpanConfig:
 
 
 class OTELTracer:
-    def __init__(self, service_name: str, otel_endpoint: str, insecure_connection: bool = True, **kwargs):
-        self.service_name = service_name
-        self.otel_span_exporter_config = {
-            "endpoint": otel_endpoint,
-            "insecure": insecure_connection,
-            **kwargs
-        }
+    def __init__(self, tracing_config: dict, **kwargs):
+        self._config = tracing_config
+        self.service_name = self._config["service_name"]
+        self._exporter_config = self._config["exporter_config"]
+        self._provider_config = self._config["provider_config"]
+        self._custom_config = self._config["custom_config"]
+        self._custom_config.update(**kwargs)
         self.tracer = self.create_tracer()
 
     def create_tracer(self):
         resource = Resource(attributes={
             SERVICE_NAME: self.service_name
         })
-
-        provider = TracerProvider(resource=resource)
-        processor = BatchSpanProcessor(OTLPSpanExporter(**self.otel_span_exporter_config))
+        provider = TracerProvider(resource=resource, **self._provider_config)
+        processor = BatchSpanProcessor(OTLPSpanExporter(**self._exporter_config))
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
         return trace.get_tracer(__name__)
@@ -48,8 +47,7 @@ class TracingMiddleware(Middleware):
             tracing_config: dict,
             **kwargs
     ):
-        tracing_config.update(kwargs)
-        self._otel_tracer = OTELTracer(**tracing_config)
+        self._otel_tracer = OTELTracer(tracer_config=tracing_config, **kwargs)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
         super().__init__()

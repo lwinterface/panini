@@ -1,2 +1,11 @@
-otel_endpoint: open_telemetry:4317
-insecure_connection: yes
+service_name: abcdef
+exporter_config:
+  otel_endpoint: open_telemetry:4317
+  insecure_connection: yes
+  headers: null
+  timeout: null
+provider_config:
+  sampler: null
+  shutdown_on_exit: yes
+custom_config:
+  any_key: null
