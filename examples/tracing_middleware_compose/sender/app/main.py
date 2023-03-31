@@ -1,4 +1,5 @@
 import yaml
+from nats.aio.msg import Msg
 
 from panini import app as panini_app
 from panini.middleware.tracing_middleware import SpanConfig, TracingMiddleware
@@ -44,6 +45,20 @@ async def custom_span_tracing():
     )
     await app.request("test.tracing.middleware.custom_config", {}, span_config=sender_span_config)
     return {"result": True}
+
+######################## EXAMPLE OF TRACING WITHIN MICROSERVICE ########################
+@app.task()
+async def tracing_within_microservice():
+    res = await app.request("test.tracing.inside.microservice.query", {"price": 2})
+    log.info(f"Result from tracing within microservice: {res}")
+
+@app.listen("test.tracing.inside.microservice.*")
+async def success_or_fail_result(msg: Msg):
+    _, _, _, _, success = msg.subject.split('.')
+    if success == "success":
+        log.info("Got success message")
+    else:
+        log.info("Got fail message")
 
 
 # mimic config loading from yaml file
