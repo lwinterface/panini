@@ -1,3 +1,5 @@
+import asyncio
+
 import yaml
 from nats.aio.msg import Msg
 from panini import app as panini_app
@@ -32,6 +34,32 @@ receiver_span_config = SpanConfig(
 @app.listen("test.tracing.middleware.custom_config", span_config=receiver_span_config)
 async def custom_span_tracing(msg: Msg):
     return {"result": True}
+
+
+######################## EXAMPLE OF TRACING WITHIN MICROSERVICE ########################
+from panini.middleware.tracing_middleware import register_trace
+
+
+@register_trace(span_name="job2")
+async def job_2(price: int):
+    await asyncio.sleep(1)  # heavy work
+    if price >= 1:
+        await app.publish("test.tracing.inside.microservice.success", {}, use_current_span=True)
+        return True
+    else:
+        await app.publish("test.tracing.inside.microservice.fail", {})
+        return False
+
+
+@register_trace(span_name='job1')
+async def job_1(msg: Msg):
+    return await job_2(msg.data.get("price"))
+
+
+@app.listen("test.tracing.inside.microservice.query")
+async def tracing_multiple_layers(msg: Msg):
+    result = await job_1(msg)
+    return {"result": result}
 
 
 # mimic config loading from yaml file

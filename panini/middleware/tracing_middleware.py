@@ -1,5 +1,6 @@
 import uuid
 import json
+from functools import wraps
 from typing import Optional
 from nats.aio.msg import Msg
 from panini.app import get_app
@@ -18,6 +19,22 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 class SpanConfig:
     span_name: str
     span_attributes: Optional[dict]
+
+
+def register_trace(**decorator_kwargs):  # the decorator
+    def wrapper(f):  # a wrapper for the function
+        @wraps(f)
+        def decorated_function(*args, **kwargs):  # the decorated function
+            ctx = trace.get_current_span().get_span_context()
+            link = trace.Link(ctx)
+            tracer = trace.get_tracer(__name__)
+            with tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
+                                              links=[link]):
+                return f(*args, **kwargs)
+
+        return decorated_function
+
+    return wrapper
 
 
 class OTELTracer:
@@ -47,7 +64,7 @@ class TracingMiddleware(Middleware):
             tracing_config: dict,
             **kwargs
     ):
-        self._otel_tracer = OTELTracer(tracer_config=tracing_config, **kwargs)
+        self._otel_tracer = OTELTracer(tracing_config=tracing_config, **kwargs)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
         super().__init__()
@@ -60,12 +77,17 @@ class TracingMiddleware(Middleware):
         headers = {}
         span_config = kwargs.get("span_config")
         use_tracing = kwargs.get("use_tracing", True)
+        if kwargs.get("use_current_span", False):
+            ctx = trace.get_current_span().get_span_context()
+            link = [trace.Link(ctx)]
+        else:
+            link = []
         if not isinstance(span_config, SpanConfig):
             span_config = SpanConfig(
                 span_name=self._create_uuid(),
                 span_attributes={})
         if use_tracing is True and span_config:
-            with self.tracer.start_as_current_span(span_config.span_name) as span:
+            with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
                 self.parent.inject(carrier=carrier)
