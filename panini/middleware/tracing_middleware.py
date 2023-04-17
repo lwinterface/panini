@@ -1,3 +1,4 @@
+import inspect
 import uuid
 import json
 from functools import wraps
@@ -23,14 +24,26 @@ class SpanConfig:
 
 def register_trace(**decorator_kwargs):  # the decorator
     def wrapper(f):  # a wrapper for the function
-        @wraps(f)
-        def decorated_function(*args, **kwargs):  # the decorated function
-            ctx = trace.get_current_span().get_span_context()
-            link = trace.Link(ctx)
-            tracer = trace.get_tracer(__name__)
-            with tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
-                                              links=[link]):
-                return f(*args, **kwargs)
+        if inspect.iscoroutinefunction(f):
+            @wraps(f)
+            async def decorated_function(*args, **kwargs):  # the decorated function
+                ctx = trace.get_current_span().get_span_context()
+                link = trace.Link(ctx)
+                _tracer = trace.get_tracer(__name__)
+                with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
+                                                  links=[link]):
+                    result = await f(*args, **kwargs)
+                return result
+        else:
+            @wraps(f)
+            def decorated_function(*args, **kwargs):  # the decorated function
+                ctx = trace.get_current_span().get_span_context()
+                link = trace.Link(ctx)
+                _tracer = trace.get_tracer(__name__)
+                with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
+                                                  links=[link]):
+                    result = f(*args, **kwargs)
+                return result
 
         return decorated_function
 
