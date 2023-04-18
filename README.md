@@ -101,7 +101,7 @@ app = panini_app.App(
 
 @app.task(interval=1)
 async def request_periodically():
-		message = {"data":"request1234567890"}
+    message = {"data":"request1234567890"}
     response = await app.request(
         subject="some.subject.for.request", 
         message=message,
@@ -111,7 +111,7 @@ async def request_periodically():
 
 @app.task(interval=1)
 async def publish_periodically():
-		message = {"data":"event1234567890"}
+    message = {"data":"event1234567890"}
     await app.publish(
         subject="some.subject.for.stream", 
         message=message,
