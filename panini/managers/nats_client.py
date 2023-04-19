@@ -261,7 +261,7 @@ class NATSClient:
         return self.loop.run_until_complete(
             self.request(subject, message, timeout, response_data_type, headers, *args,
             **kwargs
-        )
+        ))
 
     def request_from_another_thread_sync(
             self,
