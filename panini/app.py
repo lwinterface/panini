@@ -452,7 +452,7 @@ class App:
         if self.http_server:
             self.http_server.start_server()
         else:
-            loop.run_until_complete(asyncio.gather(*tasks))
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
 
 
 
