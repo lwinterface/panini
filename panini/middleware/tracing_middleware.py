@@ -18,6 +18,14 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 
 @dataclass
 class SpanConfig:
+    """
+     Represents a configuration for a span.
+
+    Attributes:
+        span_name (str): The name of the span.
+        span_attributes (Optional[dict]): The optional dictionary of attributes for the span.
+
+    """
     span_name: str
     span_attributes: Optional[dict]
 
@@ -31,7 +39,7 @@ def register_trace(**decorator_kwargs):  # the decorator
                 link = trace.Link(ctx)
                 _tracer = trace.get_tracer(__name__)
                 with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
-                                                  links=[link]):
+                                                   links=[link]):
                     result = await f(*args, **kwargs)
                 return result
         else:
@@ -41,7 +49,7 @@ def register_trace(**decorator_kwargs):  # the decorator
                 link = trace.Link(ctx)
                 _tracer = trace.get_tracer(__name__)
                 with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
-                                                  links=[link]):
+                                                   links=[link]):
                     result = f(*args, **kwargs)
                 return result
 
@@ -51,6 +59,33 @@ def register_trace(**decorator_kwargs):  # the decorator
 
 
 class OTELTracer:
+    """
+    The OTELTracer class is used to create and configure an OpenTelemetry tracer for distributed tracing.
+
+    Attributes:
+        tracing_config (dict): The configuration dictionary containing the tracing settings.
+        service_name (str): The name of the service being traced.
+        _config (dict): The internal configuration dictionary.
+        _exporter_config (dict): The configuration for the tracer exporter.
+        _provider_config (dict): The configuration for the tracer provider.
+        _custom_config (dict): Additional custom configuration provided by the user.
+        tracer: The OpenTelemetry tracer instance.
+
+    Methods:
+        __init__(self, tracing_config: dict, **kwargs)
+            Initializes a new instance of the OTELTracer class.
+
+            Args:
+                tracing_config (dict): The configuration dictionary containing the tracing settings.
+                **kwargs: Additional custom configuration parameters.
+
+        create_tracer(self)
+            Creates and configures the OpenTelemetry tracer.
+
+            Returns:
+                The initialized OpenTelemetry tracer instance.
+    """
+
     def __init__(self, tracing_config: dict, **kwargs):
         self._config = tracing_config
         self.service_name = self._config["service_name"]
@@ -72,6 +107,26 @@ class OTELTracer:
 
 
 class TracingMiddleware(Middleware):
+    """
+    Class representing a middleware for tracing requests and events in a Panini application.
+
+    Args:
+        tracing_config (dict): A dictionary containing the configuration parameters for tracing.
+
+    Attributes:
+        _otel_tracer (OTELTracer): The OpenTelemetry Tracer instance.
+        tracer (Tracer): The Tracer instance extracted from _otel_tracer.
+        parent (TraceContextTextMapPropagator): The Trace Context TextMap Propagator instance.
+
+    Methods:
+        _create_uuid(): Generates a UUID v4 string.
+
+        send_any(subject: str, message: Msg, send_func, *args, **kwargs): Sends a message with tracing information.
+
+        wildcard_match(match_key: str, subject: str) -> str: Performs a wildcard match between two strings.
+
+        listen_any(msg: Msg, callback): Listens for events with tracing information.
+    """
     def __init__(
             self,
             tracing_config: dict,
@@ -113,27 +168,47 @@ class TracingMiddleware(Middleware):
         response = await send_func(subject, message, headers=headers)
         return response
 
+    @classmethod
+    def wildcard_match(cls, match_key: str, subject: str) -> Optional[str]:
+        """Perform a wildcard match between the match_key and the subject"""
+        split_subject = subject.split('.')
+        split_key = match_key.split('.')
+
+        if len(split_subject) != len(split_key):
+            return None
+
+        if all(k == "*" or k == s for k, s in zip(split_key, split_subject)):
+            return match_key
+
+        return None
+
     async def listen_any(self, msg: Msg, callback):
         context = {}
         app = get_app()
         assert app is not None
-        listen_obj_list = app._event_manager.subscriptions[msg.subject]
-        for index in range(0, len(listen_obj_list)):
-            listen_object: Listen = listen_obj_list[index]
-            use_tracing = listen_object._meta.get("use_tracing", True)
-            if use_tracing:
-                if id(callback) == id(listen_object.callback) and callback.__name__ == listen_object.callback.__name__:
-                    headers = msg.headers
-                    if headers:
-                        context = self.parent.extract(carrier=json.loads(msg.headers.get("tracing_span_carrier", "{}")))
-                    span_config = listen_object._meta.get("span_config")
-                    if not isinstance(span_config, SpanConfig):
-                        span_config = SpanConfig(
-                            span_name=self._create_uuid(),
-                            span_attributes={})
-                    with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
-                        for attr_key, attr_val in span_config.span_attributes.items():
-                            span.set_attribute(attr_key, attr_val)
-                        response = await callback(msg)
-                        return response
+        for subject in app._event_manager.subscriptions.keys():
+            matched_subject = self.wildcard_match(subject, msg.subject)
+            if not matched_subject:
+                continue
+            listen_obj_list = app._event_manager.subscriptions[matched_subject]
+            listen_object: Listen
+            for listen_object in listen_obj_list:
+                use_tracing = listen_object._meta.get("use_tracing", True)
+                if use_tracing:
+                    if id(callback) == id(
+                            listen_object.callback) and callback.__name__ == listen_object.callback.__name__:
+                        headers = msg.headers
+                        if headers:
+                            context = self.parent.extract(
+                                carrier=json.loads(msg.headers.get("tracing_span_carrier", "{}")))
+                        span_config = listen_object._meta.get("span_config")
+                        if not isinstance(span_config, SpanConfig):
+                            span_config = SpanConfig(
+                                span_name=self._create_uuid(),
+                                span_attributes={})
+                        with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
+                            for attr_key, attr_val in span_config.span_attributes.items():
+                                span.set_attribute(attr_key, attr_val)
+                            response = await callback(msg)
+                            return response
         return await callback(msg)
