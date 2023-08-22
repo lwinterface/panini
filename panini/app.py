@@ -39,6 +39,7 @@ class App:
             logger_in_separate_process: bool = False,
             custom_logger: logging.Logger = None,
             pending_bytes_limit=65536 * 1024 * 10,
+            ignore_tasks_exceptions: bool = True,
             **kwargs
     ):
         """
@@ -88,6 +89,8 @@ class App:
             self.app_root_path = get_app_root_path()
             self.logger_required = logger_required
             self.logger_in_separate_process = logger_in_separate_process
+
+            self._ignore_tasks_exceptions = ignore_tasks_exceptions
 
             # check, if TestClient is running
             if os.environ.get("PANINI_TEST_MODE"):
@@ -452,7 +455,7 @@ class App:
         if self.http_server:
             self.http_server.start_server()
         else:
-            loop.run_until_complete(asyncio.gather(*tasks))
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=self._ignore_tasks_exceptions))
 
 
 
