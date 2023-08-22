@@ -17,9 +17,16 @@ The framework allows you to work with NATS features and some additional logic us
 
 """
 
+tracing_dependencies = [
+            "opentelemetry-api==1.15.0",
+            "opentelemetry-sdk==1.15.0",
+            "opentelemetry-exporter-otlp-proto-grpc==1.15.0",
+            "opentelemetry-exporter-prometheus==1.12.0rc1"
+        ]
+
 setup(
     name="panini",
-    version="0.8.0a2",
+    version="0.8.2",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -53,7 +60,7 @@ setup(
         "async-timeout==4.0.0",
         "nats-py==2.2.0",
         "websocket-client>=1.2.3",
-        "requests>=2.24.0",
+        "requests>=2.31.0",
         "six>=1.15.0",
         "yarl>=1.6.1",
         "python-json-logger>=2.0.1",
@@ -76,4 +83,7 @@ setup(
         "Source": "https://github.com/lwinterface/panini/",
     },
     zip_safe=False,
+    extras_required={
+        'tracing': tracing_dependencies
+    }
 )
