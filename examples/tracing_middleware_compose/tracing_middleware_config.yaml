@@ -1,6 +1,6 @@
 service_name: abcdef
 exporter_config:
-  endpoint: localhost:4317
+  endpoint: open_telemetry:4317
   insecure: yes
   headers: null
   timeout: null

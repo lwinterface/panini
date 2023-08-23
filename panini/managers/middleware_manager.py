@@ -45,6 +45,17 @@ class MiddlewareManager:
         ), f"At least one of the following functions must be implemented: {high_priority_functions + global_functions}"
 
         middleware_obj = middleware_cls(*args, **kwargs)
+        # Check if Tracing Middleware is first in order when adding middlewares
+        class_name = middleware_obj.__class__.__name__
+        middlewares = self._middlewares
+
+        listen_publish_middleware_exists = middlewares.get('listen_publish_middleware')
+        listen_request_middleware_exists = middlewares.get('listen_request_middleware')
+
+        if (class_name == 'TracingMiddleware' and
+                listen_publish_middleware_exists and
+                listen_request_middleware_exists):
+            raise Exception("TracingMiddleware should be placed first when adding middlewares!")
         for function_name in high_priority_functions:
             if function_name in middleware_cls.__dict__:
                 self._middlewares[f"{function_name}_middleware"].append(
@@ -86,7 +97,7 @@ class MiddlewareManager:
 
         def decorator(function: Callable):
             def wrap_function_by_send_middleware(
-                func: Callable, single_middleware
+                    func: Callable, single_middleware
             ) -> Callable:
                 def next_wrapper(subject: str, message, *args, **kwargs):
                     return single_middleware(subject, message, func, *args, **kwargs)
@@ -102,7 +113,7 @@ class MiddlewareManager:
                     return next_wrapper
 
             def wrap_function_by_listen_middleware(
-                func: Callable, single_middleware
+                    func: Callable, single_middleware
             ) -> Callable:
                 def next_wrapper(msg):
                     return single_middleware(msg, func)
@@ -116,7 +127,7 @@ class MiddlewareManager:
                     return next_wrapper
 
             def build_middleware_wrapper(
-                func: Callable, middleware_key: str, wrapper: Callable
+                    func: Callable, middleware_key: str, wrapper: Callable
             ) -> Callable:
                 for middleware in self._middlewares[middleware_key]:
                     func = wrapper(func, middleware)
@@ -138,9 +149,9 @@ class MiddlewareManager:
 
             else:
                 if (
-                    len(self._middlewares["listen_publish_middleware"]) == 0
-                    and len(self._middlewares["listen_request_middleware"])
-                    == 0
+                        len(self._middlewares["listen_publish_middleware"]) == 0
+                        and len(self._middlewares["listen_request_middleware"])
+                        == 0
                 ):
                     return function
 
