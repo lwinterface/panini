@@ -1,7 +1,7 @@
 aiohttp==3.8.1
 aiohttp-cors==0.7.0
 async-timeout==4.0.0
-requests==2.24.0
+requests==2.31.0
 six==1.16.0
 nats-py==2.0.0
 nats-python==0.8.0
