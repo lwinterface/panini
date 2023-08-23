@@ -45,17 +45,6 @@ class MiddlewareManager:
         ), f"At least one of the following functions must be implemented: {high_priority_functions + global_functions}"
 
         middleware_obj = middleware_cls(*args, **kwargs)
-        # Check if Tracing Middleware is first in order when adding middlewares
-        class_name = middleware_obj.__class__.__name__
-        middlewares = self._middlewares
-
-        listen_publish_middleware_exists = middlewares.get('listen_publish_middleware')
-        listen_request_middleware_exists = middlewares.get('listen_request_middleware')
-
-        if (class_name == 'TracingMiddleware' and
-                listen_publish_middleware_exists and
-                listen_request_middleware_exists):
-            raise Exception("TracingMiddleware should be placed first when adding middlewares!")
         for function_name in high_priority_functions:
             if function_name in middleware_cls.__dict__:
                 self._middlewares[f"{function_name}_middleware"].append(
