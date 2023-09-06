@@ -152,7 +152,7 @@ class TracingMiddleware(Middleware):
                     span.set_attribute(attr_key, attr_value)
                 span.set_attribute("nats_subject", subject)
                 span.set_attribute("nats_message", json.dumps(message))
-                span.set_attribute("nats_action", send_func.__name__)
+                span.set_attribute("nats_action", kwargs.get('nats_action', send_func.__name__))
                 self.parent.inject(carrier=carrier)
                 headers = {
                     "tracing_span_name": span_config.span_name,
@@ -164,9 +164,15 @@ class TracingMiddleware(Middleware):
         return response
 
     async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
+        kwargs.update({
+            "nats_action": "send_publish"
+        })
         return await self.trace_send_any(subject, message, publish_func, *args, **kwargs)
 
     async def send_request(self, subject: str, message, request_func, *args, **kwargs):
+        kwargs.update({
+            "nats_action": "send_request"
+        })
         return await self.trace_send_any(subject, message, request_func, *args, **kwargs)
 
     @classmethod
@@ -195,7 +201,7 @@ class TracingMiddleware(Middleware):
 
         return None
 
-    async def trace_listen_any(self, msg: Msg, callback):
+    async def trace_listen_any(self, msg: Msg, callback, nats_action=None):
         context = {}
         app = get_app()
         assert app is not None
@@ -224,7 +230,10 @@ class TracingMiddleware(Middleware):
                                 span.set_attribute(attr_key, attr_val)
                             span.set_attribute("nats_subject", subject)
                             span.set_attribute("nats_message", json.dumps(msg.data))
-                            span.set_attribute("nats_action", callback.__name__)
+                            if nats_action:
+                                span.set_attribute("nats_action", nats_action)
+                            else:
+                                span.set_attribute("nats_action", callback.__name__)
                             response = await callback(msg)
                             return response
                     else:
@@ -234,7 +243,7 @@ class TracingMiddleware(Middleware):
         return await callback(msg)
 
     async def listen_publish(self, msg, callback):
-        return await self.trace_listen_any(msg, callback)
+        return await self.trace_listen_any(msg, callback, nats_action="listen_publish")
 
     async def listen_request(self, msg, callback):
-        return await self.trace_listen_any(msg, callback)
+        return await self.trace_listen_any(msg, callback, nats_action="listen_request")

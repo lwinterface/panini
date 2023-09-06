@@ -26,7 +26,10 @@ services:
       - main
     depends_on:
       - natsserver
+      - jaeger
+      - grafana
       - receiver
+      - open_telemetry
   receiver:
     build:
       context: .
@@ -43,6 +46,9 @@ services:
       - main
     depends_on:
       - natsserver
+      - jaeger
+      - grafana
+      - open_telemetry
   nats-exporter:
     image: synadia/prometheus-nats-exporter:0.3.0
     command: '-varz "http://nats-server:8222"'
