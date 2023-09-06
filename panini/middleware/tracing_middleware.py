@@ -132,7 +132,7 @@ class TracingMiddleware(Middleware):
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
 
-    async def send_any(self, subject: str, message: dict, send_func, *args, **kwargs):
+    async def trace_send_any(self, subject: str, message: dict, send_func, *args, **kwargs):
         carrier = {}
         headers = {}
         span_config = kwargs.get("span_config")
@@ -163,6 +163,12 @@ class TracingMiddleware(Middleware):
         response = await send_func(subject, message, headers=headers)
         return response
 
+    async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
+        return await self.trace_send_any(subject, message, publish_func, *args, **kwargs)
+
+    async def send_request(self, subject: str, message, request_func, *args, **kwargs):
+        return await self.trace_send_any(subject, message, request_func, *args, **kwargs)
+
     @classmethod
     def wildcard_match(cls, match_key: str, subject: str) -> Optional[str]:
         """Perform a wildcard match between the match_key and the subject"""
@@ -189,7 +195,7 @@ class TracingMiddleware(Middleware):
 
         return None
 
-    async def listen_any(self, msg: Msg, callback):
+    async def trace_listen_any(self, msg: Msg, callback):
         context = {}
         app = get_app()
         assert app is not None
@@ -226,3 +232,9 @@ class TracingMiddleware(Middleware):
                             "TracingMiddleware logic on listener doesn't work, it should be placed first when adding middlewares!")
                         return await callback(msg)
         return await callback(msg)
+
+    async def listen_publish(self, msg, callback):
+        return await self.trace_listen_any(msg, callback)
+
+    async def listen_request(self, msg, callback):
+        return await self.trace_listen_any(msg, callback)
