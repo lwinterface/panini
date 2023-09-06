@@ -132,7 +132,7 @@ class TracingMiddleware(Middleware):
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
 
-    async def send_any(self, subject: str, message: Msg, send_func, *args, **kwargs):
+    async def send_any(self, subject: str, message: dict, send_func, *args, **kwargs):
         carrier = {}
         headers = {}
         span_config = kwargs.get("span_config")
@@ -150,6 +150,9 @@ class TracingMiddleware(Middleware):
             with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
+                span.set_attribute("nats_subject", subject)
+                span.set_attribute("nats_message", json.dumps(message))
+                span.set_attribute("nats_action", send_func.__name__)
                 self.parent.inject(carrier=carrier)
                 headers = {
                     "tracing_span_name": span_config.span_name,
@@ -213,6 +216,9 @@ class TracingMiddleware(Middleware):
                         with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
                             for attr_key, attr_val in span_config.span_attributes.items():
                                 span.set_attribute(attr_key, attr_val)
+                            span.set_attribute("nats_subject", subject)
+                            span.set_attribute("nats_message", json.dumps(msg.data))
+                            span.set_attribute("nats_action", callback.__name__)
                             response = await callback(msg)
                             return response
                     else:
