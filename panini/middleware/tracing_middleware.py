@@ -238,7 +238,7 @@ class TracingMiddleware(Middleware):
                             #     span.set_attribute("nats_action", nats_action)
                             # else:
                             #     span.set_attribute("nats_action", callback.__name__)
-                            span.add_event("name", {"nast.subject": subject, "nats.message": json.dumps(message),
+                            span.add_event("name", {"nast.subject": subject, "nats.message": json.dumps(msg.data),
                                                     "nats.action": nats_action})
                             response = await callback(msg)
                             return response
