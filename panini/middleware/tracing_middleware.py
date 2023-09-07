@@ -150,9 +150,11 @@ class TracingMiddleware(Middleware):
             with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
-                span.set_attribute("nats_subject", subject)
-                span.set_attribute("nats_message", json.dumps(message))
-                span.set_attribute("nats_action", kwargs.get('nats_action', send_func.__name__))
+                span.add_event("name", {"nast.subject": subject, "nats.message": json.dumps(message),
+                                        "nats.action": kwargs.get('nats_action')})
+                # span.set_attribute("nats_subject", subject)
+                # span.set_attribute("nats_message", json.dumps(message))
+                # span.set_attribute("nats_action", kwargs.get('nats_action', send_func.__name__))
                 self.parent.inject(carrier=carrier)
                 headers = {
                     "tracing_span_name": span_config.span_name,
@@ -230,12 +232,14 @@ class TracingMiddleware(Middleware):
                         with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
                             for attr_key, attr_val in span_config.span_attributes.items():
                                 span.set_attribute(attr_key, attr_val)
-                            span.set_attribute("nats_subject", subject)
-                            span.set_attribute("nats_message", json.dumps(msg.data))
-                            if nats_action:
-                                span.set_attribute("nats_action", nats_action)
-                            else:
-                                span.set_attribute("nats_action", callback.__name__)
+                            # span.set_attribute("nats_subject", subject)
+                            # span.set_attribute("nats_message", json.dumps(msg.data))
+                            # if nats_action:
+                            #     span.set_attribute("nats_action", nats_action)
+                            # else:
+                            #     span.set_attribute("nats_action", callback.__name__)
+                            span.add_event("name", {"nast.subject": subject, "nats.message": json.dumps(message),
+                                                    "nats.action": nats_action})
                             response = await callback(msg)
                             return response
                     else:
