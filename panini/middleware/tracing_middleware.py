@@ -132,7 +132,7 @@ class TracingMiddleware(Middleware):
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
 
-    async def trace_send_any(self, subject: str, message: dict, send_func, *args, **kwargs):
+    async def trace_send_any(self, subject: str, message: Msg, send_func, *args, **kwargs):
         carrier = {}
         headers = {}
         span_config = kwargs.get("span_config")
