@@ -167,13 +167,15 @@ class TracingMiddleware(Middleware):
         kwargs.update({
             "nats_action": "send_publish"
         })
-        return await self.trace_send_any(subject, message, publish_func, *args, **kwargs)
+        response = await self.trace_send_any(subject, message, publish_func, *args, **kwargs)
+        return response
 
     async def send_request(self, subject: str, message, request_func, *args, **kwargs):
         kwargs.update({
             "nats_action": "send_request"
         })
-        return await self.trace_send_any(subject, message, request_func, *args, **kwargs)
+        response = await self.trace_send_any(subject, message, request_func, *args, **kwargs)
+        return response
 
     @classmethod
     def wildcard_match(cls, match_key: str, subject: str) -> Optional[str]:
@@ -243,7 +245,9 @@ class TracingMiddleware(Middleware):
         return await callback(msg)
 
     async def listen_publish(self, msg, callback):
-        return await self.trace_listen_any(msg, callback, nats_action="listen_publish")
+        response = await self.trace_listen_any(msg, callback, nats_action="listen_publish")
+        return response
 
     async def listen_request(self, msg, callback):
-        return await self.trace_listen_any(msg, callback, nats_action="listen_request")
+        response = await self.trace_listen_any(msg, callback, nats_action="listen_request")
+        return response
