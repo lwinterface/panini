@@ -3,7 +3,7 @@ import asyncio
 import yaml
 from nats.aio.msg import Msg
 from panini import app as panini_app
-from panini.middleware.tracing_middleware import TracingMiddleware, SpanConfig
+from panini.middleware.tracing_middleware import TracingMiddleware, SpanConfig, TracingEvent
 
 app = panini_app.App(
     servers=["nats://nats-server:4222"],
@@ -16,6 +16,28 @@ log = app.logger
 @app.listen("test.tracing.middleware")
 async def default_auto_tracing(msg: Msg):
     return {"result": True}
+
+
+@app.listen("test.tracing.middleware.with.events")
+async def listen_with_events(msg: Msg):
+    event = TracingEvent(
+        event_name='tracing_event_01',
+        event_data={
+            "took_ms": 15,
+            "request_from": "frontend",
+            "request_type": "POST"
+        }
+    )
+    return {
+        "success": True,
+        "data": [1, 2, 3, 4, 5],
+        "tracing_events": [event]
+    }
+
+
+@app.listen("test.tracing.middleware.with.exceptions")
+async def listen_with_exception(msg: Msg):
+    raise Exception("test exception raised!")
 
 
 @app.listen("test.tracing.middleware.no_tracing", use_tracing=False)
