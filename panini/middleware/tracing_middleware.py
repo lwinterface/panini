@@ -1,3 +1,5 @@
+import time
+
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider, Tracer
@@ -147,10 +149,11 @@ class TracingMiddleware(Middleware):
                 span_name=self._create_uuid(),
                 span_attributes={})
         if use_tracing is True and span_config:
+            self.tracer.start_span()
             with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
-                span.add_event("name", {"nast.subject": subject, "nats.message": json.dumps(message),
+                span.add_event("name", {"nats.subject": subject, "nats.message": json.dumps(message),
                                         "nats.action": kwargs.get('nats_action')})
                 span.set_attribute("nats.subject", subject)
                 # span.set_attribute("nats_message", json.dumps(message))
@@ -162,8 +165,15 @@ class TracingMiddleware(Middleware):
                 }
         if "use_tracing" in kwargs:
             del kwargs['use_tracing']
-        response = await send_func(subject, message, headers=headers)
-        return response
+        try:
+            response = await send_func(subject, message, headers=headers, *args, **kwargs)
+            return response
+        except Exception as exc:
+            if use_tracing is True and span_config:
+                self.tracer.start_span()
+                with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
+                    span.record_exception(exc, timestamp=time.time_ns() // 10_000)
+
 
     async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
         kwargs.update({
