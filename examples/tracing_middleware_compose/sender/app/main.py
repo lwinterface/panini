@@ -2,7 +2,7 @@ import yaml
 from nats.aio.msg import Msg
 
 from panini import app as panini_app
-from panini.middleware.tracing_middleware import SpanConfig, TracingMiddleware
+from panini.middleware.tracing_middleware import SpanConfig, TracingMiddleware, TracingEvent
 
 app = panini_app.App(
     servers=["nats://nats-server:4222"],
@@ -46,11 +46,29 @@ async def custom_span_tracing():
     await app.request("test.tracing.middleware.custom_config", {}, span_config=sender_span_config)
     return {"result": True}
 
+
+@app.task()
+async def tracing_with_events():
+    event = TracingEvent()
+    await app.publish("test.tracing.middleware.with.events", {"data": [1, 2, 3, 4, 5]}, tracing_events=[event])
+
+
+@app.task()
+async def exception_tracing_in_listen_function():
+    await app.publish("test.tracing.middleware.with.exception", {})
+
+
+@app.task()
+async def exception_tracing_in_send_function():
+    await app.publish('test', 1)
+
+
 ######################## EXAMPLE OF TRACING WITHIN MICROSERVICE ########################
 @app.task()
 async def tracing_within_microservice():
     res = await app.request("test.tracing.inside.microservice.query", {"price": 2})
     log.info(f"Result from tracing within microservice: {res}")
+
 
 @app.listen("test.tracing.inside.microservice.*")
 async def success_or_fail_result(msg: Msg):
