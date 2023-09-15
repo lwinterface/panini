@@ -179,11 +179,11 @@ class TracingMiddleware(Middleware):
             with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
+                span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(message),
+                                           "nats.action": kwargs.get('nats_action')})
                 existing_event: TracingEvent
                 for existing_event in existing_events:
                     span.add_event(existing_event.event_name, existing_event.event_data)
-                span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(message),
-                                           "nats.action": kwargs.get('nats_action')})
                 kwargs.pop('nats_action')
                 span.set_attribute("nats.subject", subject)
                 self.parent.inject(carrier=carrier)
