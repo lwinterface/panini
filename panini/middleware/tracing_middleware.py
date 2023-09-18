@@ -13,7 +13,7 @@ import inspect
 import uuid
 import json
 from functools import wraps
-from typing import Optional
+from typing import Optional, List
 from nats.aio.msg import Msg
 from panini.app import get_app
 from dataclasses import dataclass, field
@@ -164,7 +164,7 @@ class TracingMiddleware(Middleware):
         headers = {}
         span_config = kwargs.get("span_config")
         use_tracing = kwargs.get("use_tracing", True)
-        existing_events = kwargs.pop("tracing_events", [])
+        existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
         if kwargs.get("use_current_span", False):
             ctx = trace.get_current_span().get_span_context()
             link = [trace.Link(ctx)]
@@ -181,7 +181,6 @@ class TracingMiddleware(Middleware):
                     span.set_attribute(attr_key, attr_value)
                 span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(message),
                                            "nats.action": kwargs.get('nats_action')})
-                existing_event: TracingEvent
                 for existing_event in existing_events:
                     span.add_event(existing_event.event_name, existing_event.event_data)
                 kwargs.pop('nats_action')
@@ -279,8 +278,7 @@ class TracingMiddleware(Middleware):
                             try:
                                 response = await callback(msg)
                                 if 'tracing_events' in response.keys():
-                                    tracing_events = response.pop('tracing_events')
-                                    event: TracingEvent
+                                    tracing_events: List[TracingEvent] = response.pop('tracing_events', [])
                                     for event in tracing_events:
                                         span.add_event(event.event_name, event.event_data)
                                 span.add_event("listen_response", response)
