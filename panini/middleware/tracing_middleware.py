@@ -1,5 +1,3 @@
-import time
-
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider, Tracer
@@ -154,6 +152,7 @@ class TracingMiddleware(Middleware):
         self._otel_tracer = OTELTracer(tracing_config=tracing_config, **kwargs)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
+        self.carrier = {}
         super().__init__()
 
     def _create_uuid(self) -> str:
@@ -161,9 +160,9 @@ class TracingMiddleware(Middleware):
 
     async def trace_send_any(self, subject: str, message: Msg, send_func, *args, **kwargs):
         carrier = {}
-        headers = {}
+        tracing_carrier = kwargs.pop("tracing_span_carrier", None)
         span_config = kwargs.get("span_config")
-        use_tracing = kwargs.get("use_tracing", True)
+        use_tracing = kwargs.pop("use_tracing", True)
         existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
         if kwargs.get("use_current_span", False):
             ctx = trace.get_current_span().get_span_context()
@@ -176,32 +175,38 @@ class TracingMiddleware(Middleware):
                 span_attributes={})
         if use_tracing is True:
             self.tracer.start_span(name=span_config.span_name)
-            with self.tracer.start_as_current_span(span_config.span_name, links=link) as span:
+            if tracing_carrier:
+                context = self.parent.extract(carrier=json.loads(tracing_carrier))
+            else:
+                context = None
+            with self.tracer.start_as_current_span(span_config.span_name, links=link, context=context) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
                 span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(message),
-                                           "nats.action": kwargs.get('nats_action')})
+                                           "nats.action": kwargs.pop('nats_action')})
                 for existing_event in existing_events:
                     span.add_event(existing_event.event_name, existing_event.event_data)
-                kwargs.pop('nats_action')
                 span.set_attribute("nats.subject", subject)
-                self.parent.inject(carrier=carrier)
-                headers = {
-                    "tracing_span_name": span_config.span_name,
-                    "tracing_span_carrier": json.dumps(carrier)
-                }
+                if not context:
+                    self.parent.inject(carrier=carrier)
+                    headers = {
+                        "tracing_span_name": span_config.span_name,
+                        "tracing_span_carrier": json.dumps(carrier)
+                    }
+                else:
+                    headers = {
+                        "tracing_span_name": span_config.span_name,
+                        "tracing_span_carrier": tracing_carrier
+                    }
                 kwargs.update({
                     'headers': headers
                 })
-                if "use_tracing" in kwargs:
-                    del kwargs['use_tracing']
                 try:
                     response = await send_func(subject, message, *args, **kwargs)
                     return response
                 except Exception as exc:
                     span.record_exception(exc)
                     raise exc
-
         response = await send_func(subject, message, *args, **kwargs)
         return response
 
@@ -273,7 +278,7 @@ class TracingMiddleware(Middleware):
                             for attr_key, attr_val in span_config.span_attributes.items():
                                 span.set_attribute(attr_key, attr_val)
                             span.set_attribute("nats.subject", subject)
-                            span.add_event("default", {"nast.subject": subject, "nats.message": json.dumps(msg.data),
+                            span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(msg.data),
                                                        "nats.action": nats_action})
                             try:
                                 response = await callback(msg)
