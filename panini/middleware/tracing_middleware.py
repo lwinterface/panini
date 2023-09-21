@@ -4,9 +4,13 @@ try:
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.sdk.resources import SERVICE_NAME, Resource
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+    from opentelemetry.trace.propagation.tracecontext import (
+        TraceContextTextMapPropagator,
+    )
 except ImportError:
-    raise Exception("Tracing dependencies not found, try to run `$ pip install panini[tracing]`")
+    raise Exception(
+        "Tracing dependencies not found, try to run `$ pip install panini[tracing]`"
+    )
 import inspect
 import uuid
 import json
@@ -28,6 +32,7 @@ class SpanConfig:
         span_name (str): The name of the span.
         span_attributes (Optional[dict]): The optional dictionary of attributes for the span.
     """
+
     span_name: str
     span_attributes: Optional[dict]
 
@@ -52,6 +57,7 @@ class TracingEvent:
         app.request(subject, message, tracing_events=event_list)
 
     """
+
     event_name: str
     event_data: dict = field(default_factory=dict)
 
@@ -59,23 +65,30 @@ class TracingEvent:
 def register_trace(**decorator_kwargs):  # the decorator
     def wrapper(f):  # a wrapper for the function
         if inspect.iscoroutinefunction(f):
+
             @wraps(f)
             async def decorated_function(*args, **kwargs):  # the decorated function
                 ctx = trace.get_current_span().get_span_context()
                 link = trace.Link(ctx)
                 _tracer = trace.get_tracer(__name__)
-                with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
-                                                   links=[link]):
+                with _tracer.start_as_current_span(
+                    decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
+                    links=[link],
+                ):
                     result = await f(*args, **kwargs)
                 return result
+
         else:
+
             @wraps(f)
             def decorated_function(*args, **kwargs):  # the decorated function
                 ctx = trace.get_current_span().get_span_context()
                 link = trace.Link(ctx)
                 _tracer = trace.get_tracer(__name__)
-                with _tracer.start_as_current_span(decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
-                                                   links=[link]):
+                with _tracer.start_as_current_span(
+                    decorator_kwargs.get("span_name", f"unknown-{uuid.uuid4().hex}"),
+                    links=[link],
+                ):
                     result = f(*args, **kwargs)
                 return result
 
@@ -117,9 +130,7 @@ class OTELTracer:
         self.tracer = self.create_tracer()
 
     def create_tracer(self):
-        resource = Resource(attributes={
-            SERVICE_NAME: self.service_name
-        })
+        resource = Resource(attributes={SERVICE_NAME: self.service_name})
         provider = TracerProvider(resource=resource, **self._provider_config)
         processor = BatchSpanProcessor(OTLPSpanExporter(**self._exporter_config))
         provider.add_span_processor(processor)
@@ -143,24 +154,28 @@ class TracingMiddleware(Middleware):
         listen_any(msg: Msg, callback): Listens for events with tracing information.
     """
 
-    def __init__(
-            self,
-            tracing_config: dict,
-            service_name: Optional[str] = None,
-            **kwargs
-    ):
+    def __init__(self, tracing_config: dict, **kwargs):
         self._otel_tracer = OTELTracer(tracing_config=tracing_config, **kwargs)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
-        self.carrier = {}
         super().__init__()
 
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
 
-    async def trace_send_any(self, subject: str, message: Msg, send_func, *args, **kwargs):
+    @staticmethod
+    def extract_context_from_message(msg: Msg):
+        propagator = TraceContextTextMapPropagator()
+        context = propagator.extract(
+            carrier=json.loads(msg.headers.get("tracing_span_carrier", "{}"))
+        )
+        return context
+
+    async def trace_send_any(
+        self, subject: str, message: Msg, send_func, *args, **kwargs
+    ):
         carrier = {}
-        tracing_carrier = kwargs.pop("tracing_span_carrier", None)
+        context = kwargs.pop("tracing_span_carrier", None)
         span_config = kwargs.get("span_config")
         use_tracing = kwargs.pop("use_tracing", True)
         existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
@@ -170,37 +185,30 @@ class TracingMiddleware(Middleware):
         else:
             link = []
         if not isinstance(span_config, SpanConfig):
-            span_config = SpanConfig(
-                span_name=self._create_uuid(),
-                span_attributes={})
+            span_config = SpanConfig(span_name=self._create_uuid(), span_attributes={})
         if use_tracing is True:
             self.tracer.start_span(name=span_config.span_name)
-            if tracing_carrier:
-                context = self.parent.extract(carrier=json.loads(tracing_carrier))
-            else:
-                context = None
-            with self.tracer.start_as_current_span(span_config.span_name, links=link, context=context) as span:
+            with self.tracer.start_as_current_span(
+                span_config.span_name, links=link, context=context
+            ) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
-                span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(message),
-                                           "nats.action": kwargs.pop('nats_action')})
+                span.add_event(
+                    kwargs.pop("nats_action"),
+                    {
+                        "nats.subject": subject,
+                        "nats.message": json.dumps(message),
+                    },
+                )
                 for existing_event in existing_events:
                     span.add_event(existing_event.event_name, existing_event.event_data)
                 span.set_attribute("nats.subject", subject)
-                if not context:
-                    self.parent.inject(carrier=carrier)
-                    headers = {
-                        "tracing_span_name": span_config.span_name,
-                        "tracing_span_carrier": json.dumps(carrier)
-                    }
-                else:
-                    headers = {
-                        "tracing_span_name": span_config.span_name,
-                        "tracing_span_carrier": tracing_carrier
-                    }
-                kwargs.update({
-                    'headers': headers
-                })
+                self.parent.inject(carrier=carrier)
+                headers = {
+                    "tracing_span_name": span_config.span_name,
+                    "tracing_span_carrier": json.dumps(carrier),
+                }
+                kwargs.update({"headers": headers})
                 try:
                     response = await send_func(subject, message, *args, **kwargs)
                     return response
@@ -211,28 +219,30 @@ class TracingMiddleware(Middleware):
         return response
 
     async def send_publish(self, subject: str, message, publish_func, *args, **kwargs):
-        kwargs.update({
-            "nats_action": "send_publish"
-        })
-        response = await self.trace_send_any(subject, message, publish_func, *args, **kwargs)
+        kwargs.update({"nats_action": "send_publish"})
+        response = await self.trace_send_any(
+            subject, message, publish_func, *args, **kwargs
+        )
         return response
 
     async def send_request(self, subject: str, message, request_func, *args, **kwargs):
-        kwargs.update({
-            "nats_action": "send_request"
-        })
-        response = await self.trace_send_any(subject, message, request_func, *args, **kwargs)
+        kwargs.update({"nats_action": "send_request"})
+        response = await self.trace_send_any(
+            subject, message, request_func, *args, **kwargs
+        )
         return response
 
     @classmethod
     def wildcard_match(cls, match_key: str, subject: str) -> Optional[str]:
         """Perform a wildcard match between the match_key and the subject"""
-        split_subject = subject.split('.')
-        split_key = match_key.split('.')
+        split_subject = subject.split(".")
+        split_key = match_key.split(".")
 
         # if `>` at the end of match_key
-        if split_key[-1] == '>':
-            if len(split_subject) < len(split_key) - 1:  # -1 because `>` matches remaining parts
+        if split_key[-1] == ">":
+            if (
+                len(split_subject) < len(split_key) - 1
+            ):  # -1 because `>` matches remaining parts
                 return None
             # checking parts before `>` match
             for k, s in zip(split_key[:-1], split_subject):
@@ -263,45 +273,69 @@ class TracingMiddleware(Middleware):
             for listen_object in listen_obj_list:
                 use_tracing = listen_object._meta.get("use_tracing", True)
                 if use_tracing:
-                    if id(callback) == id(
-                            listen_object.callback) and callback.__name__ == listen_object.callback.__name__:
+                    if (
+                        id(callback) == id(listen_object.callback)
+                        and callback.__name__ == listen_object.callback.__name__
+                    ):
                         headers = msg.headers
                         if headers:
                             context = self.parent.extract(
-                                carrier=json.loads(msg.headers.get("tracing_span_carrier", "{}")))
+                                carrier=json.loads(
+                                    msg.headers.get("tracing_span_carrier", "{}")
+                                )
+                            )
                         span_config = listen_object._meta.get("span_config")
                         if not isinstance(span_config, SpanConfig):
                             span_config = SpanConfig(
-                                span_name=self._create_uuid(),
-                                span_attributes={})
-                        with self.tracer.start_as_current_span(span_config.span_name, context=context) as span:
-                            for attr_key, attr_val in span_config.span_attributes.items():
+                                span_name=self._create_uuid(), span_attributes={}
+                            )
+                        with self.tracer.start_as_current_span(
+                            span_config.span_name, context=context
+                        ) as span:
+                            for (
+                                attr_key,
+                                attr_val,
+                            ) in span_config.span_attributes.items():
                                 span.set_attribute(attr_key, attr_val)
                             span.set_attribute("nats.subject", subject)
-                            span.add_event("default", {"nats.subject": subject, "nats.message": json.dumps(msg.data),
-                                                       "nats.action": nats_action})
+                            span.add_event(
+                                nats_action,
+                                {
+                                    "nats.subject": subject,
+                                    "nats.message": json.dumps(msg.data),
+                                },
+                            )
                             try:
                                 response = await callback(msg)
-                                if 'tracing_events' in response.keys():
-                                    tracing_events: List[TracingEvent] = response.pop('tracing_events', [])
+                                if "tracing_events" in response.keys():
+                                    tracing_events: List[TracingEvent] = response.pop(
+                                        "tracing_events", []
+                                    )
                                     for event in tracing_events:
-                                        span.add_event(event.event_name, event.event_data)
+                                        span.add_event(
+                                            event.event_name, event.event_data
+                                        )
                                 span.add_event("listen_response", response)
                             except Exception as exc:
                                 span.record_exception(exception=exc)
                                 raise exc
                     else:
                         warnings.warn(
-                            "TracingMiddleware logic on listener doesn't work, it should be placed first when adding middlewares!")
+                            "TracingMiddleware logic on listener doesn't work, it should be placed first when adding middlewares!"
+                        )
                         response = await callback(msg)
                 else:
                     response = await callback(msg)
                 return response
 
     async def listen_publish(self, msg, callback):
-        response = await self.trace_listen_any(msg, callback, nats_action="listen_publish")
+        response = await self.trace_listen_any(
+            msg, callback, nats_action="listen_publish"
+        )
         return response
 
     async def listen_request(self, msg, callback):
-        response = await self.trace_listen_any(msg, callback, nats_action="listen_request")
+        response = await self.trace_listen_any(
+            msg, callback, nats_action="listen_request"
+        )
         return response
