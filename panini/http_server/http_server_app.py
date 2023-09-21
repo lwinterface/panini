@@ -14,6 +14,7 @@ class HTTPServer:
         port: int = None,
         web_app: web.Application = None,
         web_server_params=None,
+        middlewares: list = None,
     ):
         if web_server_params is None:
             web_server_params = {}
@@ -27,7 +28,7 @@ class HTTPServer:
         if web_app:
             self.web_app = web_app
         else:
-            self.web_app = web.Application()
+            self.web_app = web.Application(middlewares=middlewares)
 
     def start_server(self):
         self._start_server()
@@ -35,5 +36,7 @@ class HTTPServer:
     def _start_server(self):
         self.web_app.add_routes(self.routes)
         if version.parse(aiohttp.__version__) >= version.parse("3.8.0"):
-            self.web_server_params['loop'] = self.loop
-        web.run_app(self.web_app, host=self.host, port=self.port, **self.web_server_params)
+            self.web_server_params["loop"] = self.loop
+        web.run_app(
+            self.web_app, host=self.host, port=self.port, **self.web_server_params
+        )
