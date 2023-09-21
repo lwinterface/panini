@@ -135,7 +135,7 @@ class App:
             error = f"App.event_registrar critical error: {str(e)}"
             raise InitializingEventManagerError(error)
 
-    def setup_web_server(self, host=None, port=None, web_app=None, params: dict = None):
+    def setup_web_server(self, host=None, port=None, web_app=None, params: dict = None, middlewares: list = None):
         """
         Setup server and run with NATS when called app.start()
         """
@@ -148,7 +148,8 @@ class App:
                 routes=self.http,
                 loop=self.loop,
                 web_app=web_app,
-                web_server_params=params
+                web_server_params=params,
+                middlewares=middlewares
             )
         else:
             self.http_server = HTTPServer(
@@ -156,7 +157,8 @@ class App:
                 loop=self.loop,
                 host=host,
                 port=port,
-                web_server_params=params
+                web_server_params=params,
+                middlewares=middlewares
             )
 
     def add_filters(self, include: list = None, exclude: list = None):
