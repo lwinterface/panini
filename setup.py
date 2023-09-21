@@ -18,15 +18,15 @@ The framework allows you to work with NATS features and some additional logic us
 """
 
 tracing_dependencies = [
-    "opentelemetry-api==1.15.0",
-    "opentelemetry-sdk==1.15.0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.15.0",
+    "opentelemetry-api==1.19.0",
+    "opentelemetry-sdk==1.19.0",
+    "opentelemetry-exporter-otlp-proto-grpc==1.19.0",
     "opentelemetry-exporter-prometheus==1.12.0rc1"
 ]
 
 setup(
     name="panini",
-    version="0.8.3b4",
+    version="0.8.3a5",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
