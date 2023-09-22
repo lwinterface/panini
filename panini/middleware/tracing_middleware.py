@@ -220,6 +220,13 @@ class TracingMiddleware(Middleware):
                 kwargs.update({"headers": headers})
                 try:
                     response = await send_func(subject, message, *args, **kwargs)
+                    if response:
+                        span.add_event(
+                            "request_response",
+                            {
+                                "nats.message": response
+                            }
+                        )
                     return response
                 except Exception as exc:
                     span.record_exception(exc)
