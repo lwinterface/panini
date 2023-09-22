@@ -155,13 +155,21 @@ class TracingMiddleware(Middleware):
     """
 
     def __init__(self, tracing_config: dict, **kwargs):
-        self._otel_tracer = OTELTracer(tracing_config=tracing_config, **kwargs)
+        otel_tracer = kwargs.get("otel_tracer")
+        if otel_tracer:
+            self._otel_tracer = otel_tracer
+        else:
+            self._otel_tracer = OTELTracer(tracing_config=tracing_config, **kwargs)
         self.tracer: Tracer = self._otel_tracer.tracer
         self.parent = TraceContextTextMapPropagator()
+        self._service_name = tracing_config["service_name"]
         super().__init__()
 
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
+
+    def _get_span_name(self, action: str, subject:str) -> str:
+        return f"{self._service_name}: {action.upper()} {subject}"
 
     @staticmethod
     def extract_context_from_message(msg: Msg):
@@ -178,6 +186,7 @@ class TracingMiddleware(Middleware):
         context = kwargs.pop("tracing_span_carrier", None)
         span_config = kwargs.get("span_config")
         use_tracing = kwargs.pop("use_tracing", True)
+        action = kwargs.pop("nats_action")
         existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
         if kwargs.get("use_current_span", False):
             ctx = trace.get_current_span().get_span_context()
@@ -185,7 +194,7 @@ class TracingMiddleware(Middleware):
         else:
             link = []
         if not isinstance(span_config, SpanConfig):
-            span_config = SpanConfig(span_name=self._create_uuid(), span_attributes={})
+            span_config = SpanConfig(span_name=self._get_span_name(action, subject), span_attributes={})
         if use_tracing is True:
             self.tracer.start_span(name=span_config.span_name)
             with self.tracer.start_as_current_span(
@@ -194,7 +203,7 @@ class TracingMiddleware(Middleware):
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
                 span.add_event(
-                    kwargs.pop("nats_action"),
+                    action,
                     {
                         "nats.subject": subject,
                         "nats.message": json.dumps(message),
@@ -287,7 +296,7 @@ class TracingMiddleware(Middleware):
                         span_config = listen_object._meta.get("span_config")
                         if not isinstance(span_config, SpanConfig):
                             span_config = SpanConfig(
-                                span_name=self._create_uuid(), span_attributes={}
+                                span_name=self._get_span_name(nats_action, subject), span_attributes={}
                             )
                         with self.tracer.start_as_current_span(
                             span_config.span_name, context=context
