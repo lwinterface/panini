@@ -182,6 +182,7 @@ class TracingMiddleware(Middleware):
     async def trace_send_any(
         self, subject: str, message: Msg, send_func, *args, **kwargs
     ):
+        verbose = kwargs.pop("verbose", False)
         carrier = {}
         context = kwargs.pop("tracing_span_carrier", None)
         span_config = kwargs.get("span_config")
@@ -208,7 +209,7 @@ class TracingMiddleware(Middleware):
                     action,
                     {
                         "nats.subject": subject,
-                        "nats.message": json.dumps(message),
+                        "nats.message": json.dumps(message) if verbose else json.dumps(message)[:300],
                     },
                 )
                 for existing_event in existing_events:
@@ -222,7 +223,7 @@ class TracingMiddleware(Middleware):
                 kwargs.update({"headers": headers})
                 try:
                     response = await send_func(subject, message, *args, **kwargs)
-                    if response:
+                    if response and verbose:
                         span.add_event("request_response", {"nats.message": response})
                     return response
                 except Exception as exc:
@@ -286,6 +287,7 @@ class TracingMiddleware(Middleware):
             for listen_object in listen_obj_list:
                 use_tracing = listen_object._meta.get("use_tracing", True)
                 if use_tracing:
+                    verbose = listen_object._meta.get("verbose", False)
                     if (
                         id(callback) == id(listen_object.callback)
                         and callback.__name__ == listen_object.callback.__name__
@@ -316,7 +318,7 @@ class TracingMiddleware(Middleware):
                                 nats_action,
                                 {
                                     "nats.subject": subject,
-                                    "nats.message": json.dumps(msg.data),
+                                    "nats.message": json.dumps(msg.data) if verbose else json.dumps(msg.data)[:300],
                                 },
                             )
                             try:
@@ -329,7 +331,8 @@ class TracingMiddleware(Middleware):
                                         span.add_event(
                                             event.event_name, event.event_data
                                         )
-                                span.add_event("listen_response", response)
+                                if verbose:
+                                    span.add_event("listen_response", response)
                             except Exception as exc:
                                 span.record_exception(exception=exc)
                                 raise exc
