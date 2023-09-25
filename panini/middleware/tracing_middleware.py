@@ -168,8 +168,8 @@ class TracingMiddleware(Middleware):
     def _create_uuid(self) -> str:
         return uuid.uuid4().hex
 
-    def _get_span_name(self, action: str, subject:str) -> str:
-        return f"{self._service_name}: {action.upper()} {subject}"
+    def _get_span_name(self, action: str, subject: str) -> str:
+        return f"{action.upper()} {subject}"
 
     @staticmethod
     def extract_context_from_message(msg: Msg):
@@ -194,7 +194,9 @@ class TracingMiddleware(Middleware):
         else:
             link = []
         if not isinstance(span_config, SpanConfig):
-            span_config = SpanConfig(span_name=self._get_span_name(action, subject), span_attributes={})
+            span_config = SpanConfig(
+                span_name=self._get_span_name(action, subject), span_attributes={}
+            )
         if use_tracing is True:
             self.tracer.start_span(name=span_config.span_name)
             with self.tracer.start_as_current_span(
@@ -221,12 +223,7 @@ class TracingMiddleware(Middleware):
                 try:
                     response = await send_func(subject, message, *args, **kwargs)
                     if response:
-                        span.add_event(
-                            "request_response",
-                            {
-                                "nats.message": response
-                            }
-                        )
+                        span.add_event("request_response", {"nats.message": response})
                     return response
                 except Exception as exc:
                     span.record_exception(exc)
@@ -303,7 +300,8 @@ class TracingMiddleware(Middleware):
                         span_config = listen_object._meta.get("span_config")
                         if not isinstance(span_config, SpanConfig):
                             span_config = SpanConfig(
-                                span_name=self._get_span_name(nats_action, subject), span_attributes={}
+                                span_name=self._get_span_name(nats_action, subject),
+                                span_attributes={},
                             )
                         with self.tracer.start_as_current_span(
                             span_config.span_name, context=context
