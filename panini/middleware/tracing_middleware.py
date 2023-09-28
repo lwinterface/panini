@@ -1,6 +1,7 @@
 try:
     from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider, Tracer
+    from opentelemetry.trace import SpanKind
+    from opentelemetry.sdk.trace import TracerProvider, Tracer, Span
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.sdk.resources import SERVICE_NAME, Resource
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -189,7 +190,7 @@ class TracingMiddleware(Middleware):
         use_tracing = kwargs.pop("use_tracing", True)
         action = kwargs.pop("nats_action")
         existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
-        if kwargs.get("use_current_span", False):
+        if kwargs.pop("use_current_span", False):
             ctx = trace.get_current_span().get_span_context()
             link = [trace.Link(ctx)]
         else:
@@ -201,7 +202,7 @@ class TracingMiddleware(Middleware):
         if use_tracing is True:
             self.tracer.start_span(name=span_config.span_name)
             with self.tracer.start_as_current_span(
-                span_config.span_name, links=link, context=context
+                span_config.span_name, links=link, context=context, kind=SpanKind.SERVER
             ) as span:
                 for attr_key, attr_value in span_config.span_attributes.items():
                     span.set_attribute(attr_key, attr_value)
@@ -306,7 +307,7 @@ class TracingMiddleware(Middleware):
                                 span_attributes={},
                             )
                         with self.tracer.start_as_current_span(
-                            span_config.span_name, context=context
+                            span_config.span_name, context=context, kind=SpanKind.CLIENT
                         ) as span:
                             for (
                                 attr_key,
@@ -323,7 +324,7 @@ class TracingMiddleware(Middleware):
                             )
                             try:
                                 response = await callback(msg)
-                                if "tracing_events" in response.keys():
+                                if response and "tracing_events" in response.keys():
                                     tracing_events: List[TracingEvent] = response.pop(
                                         "tracing_events", []
                                     )

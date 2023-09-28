@@ -13,7 +13,7 @@ scrape_configs:
   - job_name: 'otel-collector'
     scrape_interval: 10s
     static_configs:
-      - targets: [ 'otel-collector:8889' ]
+      - targets: [ 'open_telemetry:8889' ]
 
   - job_name: 'nodeexporter'
     static_configs:
@@ -38,6 +38,11 @@ scrape_configs:
   - job_name: 'nats-server'
     static_configs:
       - targets: [ 'prometheus-nats-exporter:7777' ]
+
+  - job_name: 'jaeger'
+    metrics_path: /metrics
+    static_configs:
+      - targets: [ 'jaeger:14269' ]
 
 
 alerting:
