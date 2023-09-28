@@ -6,52 +6,31 @@ receivers:
     include: [ /var/log/*.log ]
 
 processors:
-#  attributes:
-#    actions:
-#      - action: insert
-#        key: log_file_name
-#        from_attribute: log.file.name
-#      - action: insert
-#        key: loki.attribute.labels
-#        value: log_file_name
   batch:
+  spanmetrics:
+    metrics_exporter: prometheus
 
 exporters:
   prometheus:
     namespace: test-space
-    const_labels:
-      label1: value1
-      'another label': spaced value
     send_timestamps: true
     metric_expiration: 180m
     resource_to_telemetry_conversion:
       enabled: true
     endpoint: "0.0.0.0:8889"
-#  loki:
-#    endpoint: "http://loki:3100/loki/api/v1/push"
-#    tenant_id: "example1"
-#    labels:
-#      attributes:
-#        log.file.name: "filename"
-#        container_name: ""
-#        container_id: ""
   jaeger:
     endpoint: jaeger:14250
     tls:
       insecure: true
 extensions:
   health_check:
-  pprof:
-    endpoint: :1888
-  zpages:
-    endpoint: :55679
 
 service:
-  extensions: [pprof, zpages, health_check]
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [batch, spanmetrics]
       exporters: [jaeger]
     metrics:
       receivers: [otlp]
