@@ -1,4 +1,6 @@
-git+https://github.com/i2gor87/panini.git@feature/tracing-middleware
+--index-url https://pypiserver.apps.colibriql-cluster.colibriql-infra.com
+panini[tracing]==0.8.3b2
+panini==0.8.3b2
 opentelemetry-api==1.19.0
 opentelemetry-sdk==1.19.0
 opentelemetry-exporter-otlp-proto-grpc==1.19.0
