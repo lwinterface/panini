@@ -186,7 +186,7 @@ class TracingMiddleware(Middleware):
         verbose = kwargs.pop("verbose", False)
         carrier = {}
         context = kwargs.pop("tracing_span_carrier", None)
-        span_config = kwargs.get("span_config")
+        span_config = kwargs.pop("span_config", None)
         use_tracing = kwargs.pop("use_tracing", True)
         action = kwargs.pop("nats_action")
         existing_events: List[TracingEvent] = kwargs.pop("tracing_events", [])
