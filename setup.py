@@ -26,7 +26,7 @@ tracing_dependencies = [
 
 setup(
     name="panini",
-    version="0.8.3b2",
+    version="0.8.3b3",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
@@ -58,7 +58,7 @@ setup(
     ],
     install_requires=[
         "async-timeout==4.0.0",
-        "nats-py==2.2.0",
+        "nats-py==2.4.0",
         "websocket-client>=1.2.3",
         "requests>=2.31.0",
         "six>=1.15.0",
