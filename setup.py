@@ -58,7 +58,7 @@ setup(
     ],
     install_requires=[
         "async-timeout==4.0.0",
-        "nats-py==2.4.0",
+        "nats-py==2.6.0",
         "websocket-client>=1.2.3",
         "requests>=2.31.0",
         "six>=1.15.0",
