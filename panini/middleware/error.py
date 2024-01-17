@@ -28,7 +28,10 @@ class ErrorMiddleware(Middleware):
 
     async def listen_any(self, msg, callback):
         try:
-            response = await callback(msg)
+            if asyncio.iscoroutinefunction(callback):
+                response = await callback(msg)
+            else:
+                response = callback(msg)
             return response
         except self.error as e:
             if asyncio.iscoroutinefunction(self.callback):

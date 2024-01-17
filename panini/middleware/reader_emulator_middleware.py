@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from panini.app import get_app
@@ -38,7 +39,10 @@ class ReaderEmulatorMiddleware(Middleware):
 
     async def listen_any(self, message: Msg, callback):
         message.subject = message.subject[len(self._prefix) + 1 :]
-        response = await callback(message)
+        if asyncio.iscoroutinefunction(callback):
+            response = await callback(message)
+        else:
+            response = callback(message)
         return response
 
     async def send_any(self, subject: str, message, send_func, *args, **kwargs):
