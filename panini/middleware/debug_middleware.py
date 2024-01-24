@@ -1,3 +1,5 @@
+import asyncio
+
 from panini.middleware import Middleware
 from panini.utils.logger import get_logger
 
@@ -32,10 +34,16 @@ class DebugMiddleware(Middleware):
 
     async def listen_any(self, msg, callback):
         if not self.use_listen_any:
-            return await callback(msg)
+            if asyncio.iscoroutinefunction(callback):
+                return await callback(msg)
+            else:
+                return callback(msg)
 
         self._log(f"Listen to {msg.subject} with payload {msg.data}")
-        response = await callback(msg)
+        if asyncio.iscoroutinefunction(callback):
+            response = await callback(msg)
+        else:
+            response = callback(msg)
         if response is not None:
             self._log(f"Answered to it: {response}")
 
