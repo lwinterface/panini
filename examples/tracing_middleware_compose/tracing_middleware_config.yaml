@@ -9,3 +9,13 @@ provider_config:
   shutdown_on_exit: yes
 custom_config:
   any_key: null
+  ignore_listen_subjects:
+    - ignore.this.subject
+    - ignore.this.subject.wildcard.*
+    - ignore.this.subject.and.more.>
+    - ignore.only.listen.subject
+  ignore_send_subjects:
+    - ignore.this.subject
+    - ignore.this.subject.wildcard.anything
+    - ignore.this.subject.and.more.of.it
+    - ignore.only.send.subject
