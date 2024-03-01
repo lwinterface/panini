@@ -210,7 +210,7 @@ class TracingMiddleware(Middleware):
                     action,
                     {
                         "nats.subject": subject,
-                        "nats.message": json.dumps(message) if verbose else json.dumps(message)[:300],
+                        "nats.message": json.dumps(message, default=str) if verbose else json.dumps(message, default=str)[:300],
                     },
                 )
                 for existing_event in existing_events:
@@ -219,7 +219,7 @@ class TracingMiddleware(Middleware):
                 self.parent.inject(carrier=carrier)
                 headers = {
                     "tracing_span_name": span_config.span_name,
-                    "tracing_span_carrier": json.dumps(carrier),
+                    "tracing_span_carrier": json.dumps(carrier, default=str),
                 }
                 kwargs.update({"headers": headers})
                 try:
@@ -319,7 +319,7 @@ class TracingMiddleware(Middleware):
                                 nats_action,
                                 {
                                     "nats.subject": subject,
-                                    "nats.message": json.dumps(msg.data) if verbose else json.dumps(msg.data)[:300],
+                                    "nats.message": json.dumps(msg.data, default=str) if verbose else json.dumps(msg.data, default=str)[:300],
                                 },
                             )
                             try:
