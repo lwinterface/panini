@@ -26,7 +26,7 @@ tracing_dependencies = [
 
 setup(
     name="panini",
-    version="0.8.3b5",
+    version="0.8.3b8",
     description="A python messaging framework for microservices based on NATS",
     long_description=long_description,
     long_description_content_type="text/x-rst",
