@@ -3,7 +3,7 @@ aiohttp-cors==0.7.0
 async-timeout==4.0.0
 requests==2.31.0
 six==1.16.0
-nats-py==2.0.0
+nats-py==2.6.0
 nats-python==0.8.0
 nest-asyncio==1.5.1
 pytest==6.2.5
