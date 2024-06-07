@@ -1,3 +1,37 @@
+[tool.poetry]
+name = "panini"
+version = "v0.8.2"
+description = "Panini is a python microframework based on the nats.py library. Its goal is to offer developers an easy way to create NATS microservices with a lower barrier of entry. It provides a specific template for creating microservices, similarly to FastAPI, Aiohttp, or Flask. Like all of the above frameworks, Panini has its design limits and edge cases. In the case that you become restricted by Panini's capabilities, we recommend switching to nats.py."
+authors = ["Igor Khvan <i2gor87@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+aiohttp = "^3.9.0"
+aiohttp_cors = "^0.7.0"
+async-timeout = "^4.0.3"
+requests = "^2.31.0"
+nats-py = "^2.6.0"
+nats-python = "^0.8.0"
+nest-asyncio = "^1.5.8"
+pydantic = "^2.5.2"
+prometheus-client = "^0.19.0"
+python-json-logger = "^2.0.7"
+yarl = "^1.9.3"
+ujson = "^5.8.0"
+websocket-client = "^1.6.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+black = "^23.11.0"
+flake8 = "^6.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 py36 = true
 include = '\.pyi?$'
